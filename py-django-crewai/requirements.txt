@@ -1,14 +1,14 @@
 # Django framework
-Django==4.2.7
-python-dotenv==1.0.0
-whitenoise==6.5.0
-gunicorn==21.2.0
+Django==5.2
+python-dotenv==1.1.0
+whitenoise==6.9.0
+gunicorn==23.0.0
 
 # CrewAI and dependencies
-crewai==0.28.5
-langchain==0.0.335
-langchain-openai==0.0.2.post1
-pydantic==2.4.2
+crewai==0.108.0
+langchain==0.3.22
+langchain-openai==0.3.12
+pydantic==2.11.2
 
 # Movie database API
 tmdbsimple==2.9.1
@@ -17,5 +17,5 @@ tmdbsimple==2.9.1
 cfenv==0.5.3
 
 # Production dependencies
-dj-database-url==2.1.0
-psycopg2-binary==2.9.9
+dj-database-url==2.3.0
+psycopg2-binary==2.9.10
