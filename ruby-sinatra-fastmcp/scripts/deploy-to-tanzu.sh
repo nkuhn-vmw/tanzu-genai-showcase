@@ -7,25 +7,19 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Configuration
-APP_NAME="flight-tracking-bot"
-GENAI_SERVICE_NAME="genai-llm-service"
-GENAI_SERVICE_PLAN="basic"
-GENAI_SERVICE_TYPE="genai"
-
 # Print header
 echo -e "${YELLOW}Deploying Flight Tracking Chatbot to Tanzu Platform for Cloud Foundry${NC}"
 echo "-------------------------------------------------------------------------"
 
 # Check if logged in to CF
-CF_API=$(cf target | grep "api endpoint" || echo "")
+CF_API=$(cf target | grep "API endpoint" || echo "")
 if [[ -z "$CF_API" ]]; then
   echo -e "${RED}Not logged in to Cloud Foundry.${NC}"
   echo "Please log in using 'cf login' command before running this script."
   exit 1
 fi
 
-echo -e "${GREEN}Targeting:${NC} $(cf target | grep org -A 1)"
+echo -e "${GREEN}Targeting:${NC}\n$(cf target | grep org -A 1)"
 echo
 
 # Check if service exists
@@ -44,17 +38,20 @@ fi
 echo -e "${YELLOW}Deploying application...${NC}"
 cf push
 
+# Set environment variables
+cf set-env $APP_NAME AVIATIONSTACK_API_KEY $AVIATIONSTACK_API_KEY
+
 # Bind service if not already bound
 APP_SERVICES=$(cf services | grep $APP_NAME || echo "")
 if [[ -z "$APP_SERVICES" ]]; then
   echo -e "${YELLOW}Binding GenAI service to application...${NC}"
   cf bind-service $APP_NAME $GENAI_SERVICE_NAME
-  
-  echo -e "${YELLOW}Restarting application to apply bindings...${NC}"
-  cf restart $APP_NAME
 else
   echo -e "${GREEN}Service already bound to application.${NC}"
 fi
+
+echo -e "${YELLOW}Restarting application...${NC}"
+cf restart $APP_NAME
 
 # Display application information
 echo -e "${GREEN}Deployment completed successfully!${NC}"

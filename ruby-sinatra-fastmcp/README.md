@@ -67,7 +67,7 @@ The application exposes MCP tools that can be called by AI models like Claude to
    git clone https://github.com/cf-toolsuite/tanzu-genai-showcase
    cd tanzu-genai-showcase/ruby-sinatra-fastmcp
    ```
-   
+
 2. Install dependencies:
 
    ```bash
@@ -128,8 +128,8 @@ To use this MCP server with [Claude Desktop](https://claude.ai/download), you ca
 
 Alternatively, you can manually add the server configuration to Claude Desktop's config file:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`  
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ```json
@@ -174,7 +174,7 @@ bundle exec rake test
 
 ## Deploying to Tanzu Platform for Cloud Foundry
 
-### Prerequisites
+### Requirements
 
 - Cloud Foundry CLI
 - Access to a Tanzu Platform for Cloud Foundry environment
@@ -184,21 +184,10 @@ bundle exec rake test
 You can use our deployment script to automate the process:
 
 ```bash
-./scripts/deploy-to-tanzu.sh
-```
-
-Or follow these manual steps:
-
-1. Log in to your CF environment:
-
-```bash
-cf login -a API_ENDPOINT -u USERNAME -p PASSWORD -o ORG -s SPACE
-```
-
-2. Deploy the application:
-
-```bash
-cf push
+set -a; source .env; set +a
+envsubst '${APP_NAME} ${AVIATIONSTACK_API_KEY} ${GENAI_SERVICE_TYPE} ${GENAI_SERVICE_PLAN} ${GENAI_SERVICE_NAME}' < scripts/deploy-to-tanzu.sh > scripts/deploy.sh
+chmod +x deploy.sh
+./scripts/deploy.sh
 ```
 
 ### Important Note About Cloud Foundry Deployment

@@ -26,3 +26,6 @@ Gemfile.lock
 .vscode/
 *.swp
 *.swo
+
+# Trash
+scripts/deploy.sh
