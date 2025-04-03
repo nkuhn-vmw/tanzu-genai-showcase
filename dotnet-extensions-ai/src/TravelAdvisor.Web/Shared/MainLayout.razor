@@ -1,0 +1,34 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <a href="/about">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<style>
+    main {
+        background-color: var(--gray-100);
+    }
+
+    article {
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    @@media (min-width: 641px) {
+        main {
+            padding-left: 0;
+        }
+    }
+</style>

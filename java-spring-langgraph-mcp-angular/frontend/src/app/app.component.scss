@@ -1,0 +1,40 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  background-color: #2c7be5;
+  color: white;
+  padding: 20px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  
+  h1 {
+    margin: 0;
+    font-size: 24px;
+  }
+  
+  .tagline {
+    margin: 8px 0 0;
+    font-size: 16px;
+    opacity: 0.9;
+  }
+}
+
+main {
+  flex: 1;
+  padding: 30px 0;
+}
+
+.app-footer {
+  background-color: #f2f4f8;
+  padding: 20px 0;
+  font-size: 14px;
+  color: #6c757d;
+  border-top: 1px solid #e5e9f2;
+  
+  p {
+    margin: 5px 0;
+  }
+}

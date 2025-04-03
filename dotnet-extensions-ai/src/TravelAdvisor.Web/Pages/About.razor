@@ -1,0 +1,167 @@
+@page "/about"
+
+<PageTitle>Travel Advisor - About</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-4">About the Travel Advisor</h1>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                            <span class="oi oi-info text-primary" aria-hidden="true"></span>
+                        </div>
+                        <h2 class="h4 mb-0">How it Works</h2>
+                    </div>
+                    <p class="text-gray-700">
+                        The Travel Advisor uses artificial intelligence and the Google Maps API to help you decide 
+                        the best way to travel between two locations. It considers factors like distance, time, cost,
+                        environmental impact, and your personal preferences to provide tailored recommendations.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                            <span class="oi oi-map text-primary" aria-hidden="true"></span>
+                        </div>
+                        <h2 class="h4 mb-0">Transportation Modes</h2>
+                    </div>
+                    <p>We analyze and compare various transportation options:</p>
+                    <div class="row row-cols-1 row-cols-md-2 g-4 mb-3">
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-person me-2 text-primary"></i>Walking</h5>
+                                    <p class="card-text small">For short distances, the most environmentally friendly option.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-aperture me-2 text-primary"></i>Biking</h5>
+                                    <p class="card-text small">Great for short to medium distances, eco-friendly and good exercise.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-people me-2 text-primary"></i>Public Transit</h5>
+                                    <p class="card-text small">Buses, trams, and subways for urban and suburban travel.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-map-marker me-2 text-primary"></i>Driving</h5>
+                                    <p class="card-text small">Convenient for medium distances with flexibility.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-location me-2 text-primary"></i>Train</h5>
+                                    <p class="card-text small">Efficient for medium to long distances between major centers.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body py-3 px-3">
+                                    <h5 class="card-title h6"><i class="oi oi-globe me-2 text-primary"></i>Flying</h5>
+                                    <p class="card-text small">Best for very long distances when time is a priority.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                            <span class="oi oi-code text-primary" aria-hidden="true"></span>
+                        </div>
+                        <h2 class="h4 mb-0">Technology Stack</h2>
+                    </div>
+                    
+                    <div class="row row-cols-1 row-cols-md-2 g-3">
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">.NET 9</h5>
+                                    <p class="small text-muted mb-0">The foundation of our application</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">Blazor</h5>
+                                    <p class="small text-muted mb-0">For the interactive web interface</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">Microsoft.Extensions.AI</h5>
+                                    <p class="small text-muted mb-0">For AI service abstractions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">Semantic Kernel</h5>
+                                    <p class="small text-muted mb-0">For natural language processing</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">Google Maps API</h5>
+                                    <p class="small text-muted mb-0">For accurate distance and routing data</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <h5 class="h6 mb-2">Tanzu Platform</h5>
+                                    <p class="small text-muted mb-0">For cloud deployment and scaling</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                            <span class="oi oi-cloud text-primary" aria-hidden="true"></span>
+                        </div>
+                        <h2 class="h4 mb-0">Cloud Foundry Deployment</h2>
+                    </div>
+                    <p>
+                        This application is designed to be deployed to VMware Tanzu Platform for Cloud Foundry
+                        and integrated with the GenAI tile for AI services. This provides a scalable, managed
+                        environment with easy service binding.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

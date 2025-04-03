@@ -1,0 +1,480 @@
+<div class="hero">
+  <h2>Real-time Flight Tracking</h2>
+  <p>Get accurate, up-to-date information on flights worldwide</p>
+  <div class="buttons">
+    <a href="#search-flights" class="btn primary">Search Flights</a>
+    <a href="#mcp-tools" class="btn secondary">MCP Tools</a>
+  </div>
+</div>
+
+<section id="search-flights" class="search-section">
+  <div class="section-header">
+    <h2>Search Flights</h2>
+    <p>Find information about any flight using the options below</p>
+  </div>
+
+  <div class="search-container">
+    <form id="flight-search-form">
+      <div class="form-tabs">
+        <button type="button" class="tab-btn active" data-tab="flight-number">Flight Number</button>
+        <button type="button" class="tab-btn" data-tab="route">Route</button>
+        <button type="button" class="tab-btn" data-tab="airport">Airport</button>
+        <button type="button" class="tab-btn" data-tab="schedules">Schedules</button>
+      </div>
+
+      <div class="tab-content active" id="flight-number-tab">
+        <div class="form-group">
+          <label for="flight-iata">Flight Number/IATA Code</label>
+          <input type="text" id="flight-iata" name="flight-iata" placeholder="e.g., BA123">
+        </div>
+        <button type="submit" class="btn primary">Search</button>
+      </div>
+
+      <div class="tab-content" id="route-tab">
+        <div class="form-group">
+          <label for="dep-iata">Departure Airport</label>
+          <input type="text" id="dep-iata" name="dep-iata" placeholder="e.g., LHR">
+        </div>
+        <div class="form-group">
+          <label for="arr-iata">Arrival Airport</label>
+          <input type="text" id="arr-iata" name="arr-iata" placeholder="e.g., JFK">
+        </div>
+        <button type="submit" class="btn primary">Search</button>
+      </div>
+
+      <div class="tab-content" id="airport-tab">
+        <div class="form-group">
+          <label for="airport-iata">Airport Code</label>
+          <input type="text" id="airport-iata" name="airport-iata" placeholder="e.g., LAX">
+        </div>
+        <button type="submit" class="btn primary">Search</button>
+      </div>
+
+      <div class="tab-content" id="schedules-tab">
+        <div class="form-group">
+          <label for="schedule-date">Date</label>
+          <input type="date" id="schedule-date" name="schedule-date">
+        </div>
+        <div class="form-group">
+          <label for="schedule-airport">Airport (Optional)</label>
+          <input type="text" id="schedule-airport" name="schedule-airport" placeholder="e.g., LAX">
+        </div>
+        <div class="form-group">
+          <label for="schedule-type">Type</label>
+          <select id="schedule-type" name="schedule-type">
+            <option value="">All</option>
+            <option value="departure">Departures</option>
+            <option value="arrival">Arrivals</option>
+          </select>
+        </div>
+        <button type="submit" class="btn primary">Search</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="search-results" class="results-container">
+    <!-- Results will be displayed here -->
+  </div>
+</section>
+
+<section id="mcp-tools" class="mcp-section">
+  <div class="section-header">
+    <h2>MCP Tools</h2>
+    <p>This API exposes the following MCP tools for AI integration:</p>
+  </div>
+
+  <div class="mcp-tools-grid">
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="search"></i>
+      </div>
+      <h3>Flight Search</h3>
+      <p>Search for flights based on various criteria</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="info"></i>
+      </div>
+      <h3>Flight Status</h3>
+      <p>Get detailed status information for specific flights</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="map-pin"></i>
+      </div>
+      <h3>Airport Info</h3>
+      <p>Get information about airports worldwide</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="briefcase"></i>
+      </div>
+      <h3>Airline Info</h3>
+      <p>Get information about airlines</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="calendar"></i>
+      </div>
+      <h3>Flight Schedules</h3>
+      <p>Get current flight schedules</p>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-icon">
+        <i data-feather="clock"></i>
+      </div>
+      <h3>Future Flight Schedules</h3>
+      <p>Get future flight schedules for specific dates</p>
+    </div>
+  </div>
+
+  <div class="integration-guide">
+    <h3>Integration with Claude</h3>
+    <p>This MCP server can be integrated with Claude Desktop for AI-powered flight tracking. Follow the instructions in the README to set up the integration.</p>
+    <div class="code-block">
+      <pre><code>{
+  "mcpServers": {
+    "flight-tracking-bot": {
+      "command": "ruby",
+      "args": [
+        "/path/to/this/repo/mcp_server.rb"
+      ]
+    }
+  }
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching functionality
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Remove active class from all tabs
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        // Add active class to clicked tab and corresponding content
+        btn.classList.add('active');
+        const tabId = btn.getAttribute('data-tab') + '-tab';
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+    
+    // Set current date as default for schedules
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('schedule-date').value = today;
+    
+    // Form submission handling
+    const form = document.getElementById('flight-search-form');
+    const resultsContainer = document.getElementById('search-results');
+    
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Show loading state
+      resultsContainer.innerHTML = '<div class="loading"><i data-feather="loader"></i><p>Loading results...</p></div>';
+      feather.replace();
+      
+      // Determine which tab is active
+      const activeTab = document.querySelector('.tab-btn.active').getAttribute('data-tab');
+      
+      // Prepare data based on active tab
+      let endpoint = '/api/search';
+      let params = new URLSearchParams();
+      
+      switch (activeTab) {
+        case 'flight-number':
+          params.append('flight_iata', document.getElementById('flight-iata').value);
+          break;
+        case 'route':
+          params.append('dep_iata', document.getElementById('dep-iata').value);
+          params.append('arr_iata', document.getElementById('arr-iata').value);
+          break;
+        case 'airport':
+          params.append('iata_code', document.getElementById('airport-iata').value);
+          endpoint = '/api/airports';
+          break;
+        case 'schedules':
+          const date = document.getElementById('schedule-date').value;
+          const airport = document.getElementById('schedule-airport').value;
+          const type = document.getElementById('schedule-type').value;
+          
+          if (date) params.append('date', date);
+          if (airport) params.append('iataCode', airport);
+          if (type) params.append('type', type);
+          
+          // Determine if we're using current or future schedules
+          const today = new Date().toISOString().split('T')[0];
+          const selectedDate = new Date(date).toISOString().split('T')[0];
+          
+          if (selectedDate > today) {
+            endpoint = '/api/future-schedules';
+          } else {
+            endpoint = '/api/schedules';
+          }
+          break;
+      }
+      
+      try {
+        // Make the API request
+        const response = await fetch(`${endpoint}?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Display results
+        displayResults(data, activeTab);
+      } catch (error) {
+        resultsContainer.innerHTML = `
+          <div class="error">
+            <i data-feather="alert-circle"></i>
+            <p>Error: ${error.message}</p>
+          </div>
+        `;
+        feather.replace();
+      }
+    });
+    
+    // Function to display results based on search type
+    function displayResults(data, searchType) {
+      if (!data || data.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="no-results">
+            <i data-feather="info"></i>
+            <p>No results found. Please try different search criteria.</p>
+          </div>
+        `;
+        feather.replace();
+        return;
+      }
+      
+      let html = '<div class="results-list">';
+      
+      switch (searchType) {
+        case 'flight-number':
+        case 'route':
+          html += createFlightResultsHTML(data);
+          break;
+        case 'airport':
+          html += createAirportResultsHTML(data);
+          break;
+        case 'schedules':
+          html += createScheduleResultsHTML(data);
+          break;
+      }
+      
+      html += '</div>';
+      resultsContainer.innerHTML = html;
+      feather.replace();
+    }
+    
+    // Helper functions to create HTML for different result types
+    function createFlightResultsHTML(flights) {
+      let html = '';
+      
+      flights.forEach(flight => {
+        html += `
+          <div class="result-card">
+            <div class="flight-header">
+              <h3>${flight.airline.name || ''} ${flight.flight.iata || ''}</h3>
+              <span class="status ${flight.flight_status}">${flight.flight_status}</span>
+            </div>
+            <div class="flight-route">
+              <div class="departure">
+                <div class="airport-code">${flight.departure.iata || ''}</div>
+                <div class="airport-name">${flight.departure.airport || ''}</div>
+                <div class="time">${formatTime(flight.departure.scheduled) || ''}</div>
+              </div>
+              <div class="flight-path">
+                <i data-feather="arrow-right"></i>
+              </div>
+              <div class="arrival">
+                <div class="airport-code">${flight.arrival.iata || ''}</div>
+                <div class="airport-name">${flight.arrival.airport || ''}</div>
+                <div class="time">${formatTime(flight.arrival.scheduled) || ''}</div>
+              </div>
+            </div>
+            <div class="flight-details">
+              <div class="detail">
+                <i data-feather="calendar"></i>
+                <span>${formatDate(flight.flight_date) || ''}</span>
+              </div>
+              ${flight.departure.terminal ? `
+                <div class="detail">
+                  <i data-feather="home"></i>
+                  <span>Terminal ${flight.departure.terminal}</span>
+                </div>
+              ` : ''}
+              ${flight.departure.gate ? `
+                <div class="detail">
+                  <i data-feather="log-in"></i>
+                  <span>Gate ${flight.departure.gate}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      });
+      
+      return html;
+    }
+    
+    function createAirportResultsHTML(airports) {
+      let html = '';
+      
+      airports.forEach(airport => {
+        html += `
+          <div class="result-card">
+            <div class="airport-header">
+              <h3>${airport.airport_name || ''}</h3>
+              <span class="airport-code">${airport.iata_code || ''}</span>
+            </div>
+            <div class="airport-details">
+              <div class="detail">
+                <i data-feather="map-pin"></i>
+                <span>${airport.city || ''}, ${airport.country_name || ''}</span>
+              </div>
+              <div class="detail">
+                <i data-feather="globe"></i>
+                <span>Latitude: ${airport.latitude || ''}, Longitude: ${airport.longitude || ''}</span>
+              </div>
+              <div class="detail">
+                <i data-feather="clock"></i>
+                <span>Timezone: ${airport.timezone || ''}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      return html;
+    }
+    
+    function createScheduleResultsHTML(schedules) {
+      let html = '';
+      
+      schedules.forEach(schedule => {
+        // Handle future schedules format which is different from regular flights
+        const isFutureSchedule = schedule.departure && schedule.departure.iataCode;
+        
+        if (isFutureSchedule) {
+          html += `
+            <div class="result-card">
+              <div class="flight-header">
+                <h3>${schedule.airline?.name || schedule.airline?.iataCode || ''} ${schedule.flight?.iataNumber || ''}</h3>
+              </div>
+              <div class="flight-route">
+                <div class="departure">
+                  <div class="airport-code">${schedule.departure?.iataCode || ''}</div>
+                  <div class="time">${schedule.departure?.scheduledTime || ''}</div>
+                  ${schedule.departure?.terminal ? `
+                    <div class="terminal">Terminal ${schedule.departure.terminal}</div>
+                  ` : ''}
+                  ${schedule.departure?.gate ? `
+                    <div class="gate">Gate ${schedule.departure.gate}</div>
+                  ` : ''}
+                </div>
+                <div class="flight-path">
+                  <i data-feather="arrow-right"></i>
+                </div>
+                <div class="arrival">
+                  <div class="airport-code">${schedule.arrival?.iataCode || ''}</div>
+                  <div class="time">${schedule.arrival?.scheduledTime || ''}</div>
+                  ${schedule.arrival?.terminal ? `
+                    <div class="terminal">Terminal ${schedule.arrival.terminal}</div>
+                  ` : ''}
+                  ${schedule.arrival?.gate ? `
+                    <div class="gate">Gate ${schedule.arrival.gate}</div>
+                  ` : ''}
+                </div>
+              </div>
+              <div class="flight-details">
+                ${schedule.aircraft?.modelText ? `
+                  <div class="detail">
+                    <i data-feather="cpu"></i>
+                    <span>${schedule.aircraft.modelText}</span>
+                  </div>
+                ` : ''}
+                ${schedule.weekday ? `
+                  <div class="detail">
+                    <i data-feather="calendar"></i>
+                    <span>Day ${schedule.weekday}</span>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        } else {
+          // Regular flight schedule format
+          html += `
+            <div class="result-card">
+              <div class="flight-header">
+                <h3>${schedule.airline?.name || ''} ${schedule.flight?.iata || ''}</h3>
+                <span class="status ${schedule.flight_status}">${schedule.flight_status}</span>
+              </div>
+              <div class="flight-route">
+                <div class="departure">
+                  <div class="airport-code">${schedule.departure?.iata || ''}</div>
+                  <div class="airport-name">${schedule.departure?.airport || ''}</div>
+                  <div class="time">${formatTime(schedule.departure?.scheduled) || ''}</div>
+                </div>
+                <div class="flight-path">
+                  <i data-feather="arrow-right"></i>
+                </div>
+                <div class="arrival">
+                  <div class="airport-code">${schedule.arrival?.iata || ''}</div>
+                  <div class="airport-name">${schedule.arrival?.airport || ''}</div>
+                  <div class="time">${formatTime(schedule.arrival?.scheduled) || ''}</div>
+                </div>
+              </div>
+              <div class="flight-details">
+                <div class="detail">
+                  <i data-feather="calendar"></i>
+                  <span>${formatDate(schedule.flight_date) || ''}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      });
+      
+      return html;
+    }
+    
+    // Utility functions for formatting
+    function formatTime(isoString) {
+      if (!isoString) return '';
+      
+      try {
+        const date = new Date(isoString);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {
+        return isoString;
+      }
+    }
+    
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      
+      try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      } catch (e) {
+        return dateString;
+      }
+    }
+  });
+</script>

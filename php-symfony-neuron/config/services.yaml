@@ -1,0 +1,25 @@
+parameters:
+    llm.api_key: '%env(LLM_API_KEY)%'
+    llm.base_url: '%env(LLM_BASE_URL)%'
+    llm.model: '%env(LLM_MODEL)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies
+        autoconfigure: true # Automatically registers services
+
+    # makes classes in src/ available to be used as services
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # custom services for the application
+    App\Service\LlmClientFactory:
+        arguments:
+            $apiKey: '%llm.api_key%'
+            $baseUrl: '%llm.base_url%'
+            $model: '%llm.model%'

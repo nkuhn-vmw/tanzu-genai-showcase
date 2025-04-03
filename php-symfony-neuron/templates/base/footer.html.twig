@@ -1,0 +1,28 @@
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Company Research Platform</h5>
+                <p class="text-muted">
+                    Powered by Symfony and Neuron AI on Tanzu Platform for Cloud Foundry
+                </p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <ul class="list-inline">
+                    <li class="list-inline-item">
+                        <a href="{{ path('about') }}">About</a>
+                    </li>
+                    <li class="list-inline-item">
+                        <a href="#">Privacy Policy</a>
+                    </li>
+                    <li class="list-inline-item">
+                        <a href="#">Terms of Service</a>
+                    </li>
+                </ul>
+                <p class="text-muted">
+                    &copy; {{ "now"|date("Y") }} Company Research Platform
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>

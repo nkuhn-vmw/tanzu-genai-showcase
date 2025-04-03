@@ -1,0 +1,35 @@
+# Binary
+/congress-chatbot
+
+# Environment variables
+.env
+
+# Go modules
+/vendor/
+
+# Go build cache
+*.test
+*.out
+
+# IDE files
+.idea/
+.vscode/
+
+# Mac OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out

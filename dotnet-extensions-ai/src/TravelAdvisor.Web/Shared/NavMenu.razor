@@ -1,0 +1,77 @@
+﻿﻿﻿﻿﻿﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            Travel Advisor
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3 py-2">
+            <NavLink class="nav-link d-flex align-items-center" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home me-2" aria-hidden="true"></span>
+                <span>Home</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 py-2">
+            <NavLink class="nav-link d-flex align-items-center" href="advisor">
+                <span class="oi oi-map me-2" aria-hidden="true"></span>
+                <span>Travel Advisor</span>
+            </NavLink>
+        </div>
+        <div class="nav-item px-3 py-2">
+            <NavLink class="nav-link d-flex align-items-center" href="about">
+                <span class="oi oi-info me-2" aria-hidden="true"></span>
+                <span>About</span>
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+<style>
+    .navbar-brand {
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+
+    .nav-item {
+        margin-bottom: 0.25rem;
+    }
+
+    .nav-link {
+        color: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .nav-link:hover, .nav-link.active {
+        color: white !important;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-link.active {
+        font-weight: 600;
+    }
+
+    .oi {
+        width: 1.25rem;
+        font-size: 0.875rem;
+        text-align: center;
+    }
+</style>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

@@ -1,0 +1,32 @@
+# Version control
+/.git/
+/.gitignore
+
+# Symfony cache and logs
+/var/cache/*
+/var/log/*
+/var/sessions/*
+
+# Environment variables
+/.env.local
+/.env.local.php
+/.env.*.local
+/.env.test
+
+# Composer dependencies
+/vendor/
+/composer.phar
+
+# PHPUnit
+/phpunit.xml
+/.phpunit.result.cache
+
+# Editor configs
+/.idea/
+/.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

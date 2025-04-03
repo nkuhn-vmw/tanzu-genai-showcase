@@ -1,0 +1,13 @@
+---
+applications:
+- name: company-research
+  memory: 256M
+  instances: 1
+  buildpacks:
+    - php_buildpack
+  path: .
+  env:
+    APP_ENV: prod
+    APP_DEBUG: 0
+  services:
+    - my-llm-service

@@ -1,0 +1,162 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Company Research Platform{% endblock %}
+
+{% block body %}
+<div class="px-4 py-5 my-5 text-center">
+    <h1 class="display-5 fw-bold">Company Research</h1>
+    <div class="col-lg-8 mx-auto">
+        <p class="lead mb-4">
+            Gather comprehensive company data with AI-powered insights. Research financial reports,
+            leadership profiles, competitive analysis, and generate in-depth research reports.
+        </p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+            <a href="{{ path('company_search') }}" class="btn btn-primary btn-lg px-4 gap-3">Search Companies</a>
+            <a href="{{ path('company_new') }}" class="btn btn-outline-secondary btn-lg px-4">Add New Company</a>
+        </div>
+    </div>
+</div>
+
+<div class="container px-4 py-5">
+    <h2 class="pb-2 border-bottom">Recent Companies</h2>
+    
+    <div class="row mt-4">
+        {% if recentCompanies is empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No companies have been added yet. <a href="{{ path('company_new') }}" class="alert-link">Add your first company</a>.
+                </div>
+            </div>
+        {% else %}
+            {% for company in recentCompanies %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ company.name }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                {% if company.tickerSymbol %}{{ company.tickerSymbol }}{% endif %}
+                            </h6>
+                            <p class="card-text">
+                                {% if company.description %}
+                                    {{ company.description|length > 150 ? company.description|slice(0, 150) ~ '...' : company.description }}
+                                {% else %}
+                                    <em>No description available</em>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-sm btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <div class="col-12 mt-3 text-center">
+                <a href="{{ path('company_index') }}" class="btn btn-outline-primary">View All Companies</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container px-4 py-5">
+    <h2 class="pb-2 border-bottom">Recent Reports</h2>
+    
+    <div class="row mt-4">
+        {% if recentReports is empty %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No reports have been generated yet.
+                </div>
+            </div>
+        {% else %}
+            {% for report in recentReports %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ report.title }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                {{ report.company.name }} | {{ report.reportType }}
+                            </h6>
+                            <p class="card-text">
+                                {% if report.executiveSummary %}
+                                    {{ report.executiveSummary|length > 150 ? report.executiveSummary|slice(0, 150) ~ '...' : report.executiveSummary }}
+                                {% else %}
+                                    <em>No summary available</em>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="{{ path('report_show', {'id': report.id}) }}" class="btn btn-sm btn-primary">View Report</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <div class="col-12 mt-3 text-center">
+                <a href="{{ path('report_index') }}" class="btn btn-outline-primary">View All Reports</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="container px-4 py-5">
+    <h2 class="pb-2 border-bottom">Features</h2>
+    
+    <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-search"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">Company Research</h3>
+                <p>Comprehensive data on companies including financial information, leadership, and competitive analysis.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-graph-up"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">Financial Analysis</h3>
+                <p>Review quarterly and annual reports, investor relations data, and financial metrics.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-people"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">Leadership Insights</h3>
+                <p>Profiles of company executives with background information and leadership analysis.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">Competitive Analysis</h3>
+                <p>Compare companies within the same industry to understand competitive advantages and market positioning.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">Research Reports</h3>
+                <p>Generate comprehensive research reports with executive summaries, SWOT analysis, and investment highlights.</p>
+            </div>
+        </div>
+        <div class="col d-flex align-items-start">
+            <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
+                <i class="bi bi-robot"></i>
+            </div>
+            <div>
+                <h3 class="fs-2">AI-Powered Insights</h3>
+                <p>Leverage AI to generate company information, financial analysis, and detailed research reports.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

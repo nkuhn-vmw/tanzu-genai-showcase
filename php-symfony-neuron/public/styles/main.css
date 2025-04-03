@@ -1,0 +1,163 @@
+/* Main CSS File for Company Research Platform */
+
+/* Body and general styles */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-bottom: 60px; /* Space for footer */
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar customization */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Card customizations */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Tables */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Company detail page */
+.company-header {
+    padding: 30px 0;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 30px;
+}
+
+.company-logo {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.company-logo i {
+    font-size: 50px;
+    color: #6c757d;
+}
+
+.company-tabs {
+    margin-bottom: 20px;
+}
+
+/* Report styles */
+.report-section {
+    margin-bottom: 30px;
+}
+
+.report-section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.report-meta {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 20px;
+}
+
+/* Executive profiles */
+.executive-card {
+    margin-bottom: 20px;
+}
+
+.executive-photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.executive-photo i {
+    font-size: 60px;
+    color: #6c757d;
+}
+
+/* Financial data */
+.financial-chart {
+    height: 300px;
+    margin-bottom: 30px;
+}
+
+.financial-metrics {
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    text-align: center;
+    padding: 20px;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.metric-name {
+    font-size: 0.875rem;
+}
+
+/* Form customizations */
+.form-group {
+    margin-bottom: 20px;
+}
+
+/* Icon square for feature boxes */
+.icon-square {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+}
+
+/* Footer */
+.footer {
+    padding: 40px 0;
+    margin-top: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-title {
+        font-size: 1.25rem;
+    }
+    
+    .company-logo, .executive-photo {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .company-logo i, .executive-photo i {
+        font-size: 40px;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+}

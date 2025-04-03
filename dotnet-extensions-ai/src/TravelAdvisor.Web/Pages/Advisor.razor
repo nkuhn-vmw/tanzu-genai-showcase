@@ -1,0 +1,386 @@
+@page "/advisor"
+@using TravelAdvisor.Core.Models
+@using TravelAdvisor.Core.Services
+@inject ITravelAdvisorService TravelAdvisorService
+
+<PageTitle>Travel Advisor</PageTitle>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Transportation Mode Recommendation Bot</h1>
+    
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @ErrorMessage
+        </div>
+    }
+    
+    <div class="row">
+        <!-- Input Form Column -->
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Plan Your Journey</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="queryInput" class="form-label">Ask a question or describe your journey</label>
+                        <textarea id="queryInput" class="form-control" rows="3" placeholder="E.g., What's the best way to get from Boston to New York? I prefer faster options and am willing to spend more for convenience."
+                                 @bind="QueryText" @bind:event="oninput"></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button class="btn btn-primary" @onclick="ProcessQueryAsync" disabled="@IsProcessing">
+                            @if (IsProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span> Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Get Recommendations</span>
+                            }
+                        </button>
+                    </div>
+                    
+                    @if (CurrentQuery != null)
+                    {
+                        <div class="mt-4">
+                            <h6>Understood Query:</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <p class="mb-1"><strong>From:</strong> @CurrentQuery.Origin</p>
+                                    <p class="mb-1"><strong>To:</strong> @CurrentQuery.Destination</p>
+                                    @if (CurrentQuery.TravelTime.DepartureTime.HasValue)
+                                    {
+                                        <p class="mb-1"><strong>Departure:</strong> @CurrentQuery.TravelTime.DepartureTime.Value.ToString("g")</p>
+                                    }
+                                    @if (CurrentQuery.TravelTime.ArrivalTime.HasValue)
+                                    {
+                                        <p class="mb-1"><strong>Arrival:</strong> @CurrentQuery.TravelTime.ArrivalTime.Value.ToString("g")</p>
+                                    }
+                                    <p class="mb-1"><strong>Priority:</strong> @(string.IsNullOrEmpty(CurrentQuery.Preferences.Priority) ? "Not specified" : CurrentQuery.Preferences.Priority)</p>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (Recommendations != null && Recommendations.Count > 0)
+                    {
+                        <div class="mt-4">
+                            <h6>Available Transportation Options:</h6>
+                            <div class="list-group">
+                                @foreach (var recommendation in Recommendations)
+                                {
+                                    <button type="button" 
+                                            class="list-group-item list-group-item-action @(recommendation.IsRecommended ? "active" : "")"
+                                            @onclick="() => SelectRecommendation(recommendation)">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@recommendation.Mode</h6>
+                                            <small>@recommendation.OverallScore/100</small>
+                                        </div>
+                                        <p class="mb-1">@recommendation.DurationMinutes min • @recommendation.DistanceKm.ToString("F1") km</p>
+                                        <small>@(recommendation.EstimatedCost.HasValue ? $"${recommendation.EstimatedCost.Value:F2}" : "Cost unavailable")</small>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (Recommendations != null && Recommendations.Count == 0)
+                    {
+                        <div class="alert alert-warning mt-4" role="alert">
+                            No suitable transportation options found for this journey.
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            @if (SelectedRecommendation != null)
+            {
+                <div class="card mt-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Ask a Follow-up Question</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="2" placeholder="E.g., How long would it take if I left during rush hour?"
+                                     @bind="FollowUpQuestion" @bind:event="oninput"></textarea>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-outline-primary" @onclick="AskFollowUpAsync" disabled="@IsProcessingFollowUp">
+                                @if (IsProcessingFollowUp)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span> Processing...</span>
+                                }
+                                else
+                                {
+                                    <span>Ask Question</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <!-- Results Column -->
+        <div class="col-md-7">
+            @if (SelectedRecommendation != null)
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">@SelectedRecommendation.Mode Recommendation</h5>
+                        <span class="badge bg-primary">@SelectedRecommendation.OverallScore/100</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Journey Details</h6>
+                                        <p class="mb-1"><strong>Distance:</strong> @SelectedRecommendation.DistanceKm.ToString("F1") km</p>
+                                        <p class="mb-1"><strong>Duration:</strong> @SelectedRecommendation.DurationMinutes min</p>
+                                        <p class="mb-1"><strong>Est. Cost:</strong> @(SelectedRecommendation.EstimatedCost.HasValue ? $"${SelectedRecommendation.EstimatedCost.Value:F2}" : "Unavailable")</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Scores</h6>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Environmental:</span>
+                                            <div class="progress flex-grow-1 mx-2" style="height: 20px;">
+                                                <div class="progress-bar bg-success" role="progressbar" style="width: @(SelectedRecommendation.EnvironmentalScore)%">
+                                                    @SelectedRecommendation.EnvironmentalScore%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span>Convenience:</span>
+                                            <div class="progress flex-grow-1 mx-2" style="height: 20px;">
+                                                <div class="progress-bar bg-info" role="progressbar" style="width: @(SelectedRecommendation.ConvenienceScore)%">
+                                                    @SelectedRecommendation.ConvenienceScore%
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Preference Match:</span>
+                                            <div class="progress flex-grow-1 mx-2" style="height: 20px;">
+                                                <div class="progress-bar bg-warning" role="progressbar" style="width: @(SelectedRecommendation.PreferenceMatchScore)%">
+                                                    @SelectedRecommendation.PreferenceMatchScore%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6>Pros</h6>
+                                <ul class="list-group">
+                                    @foreach (var pro in SelectedRecommendation.Pros)
+                                    {
+                                        <li class="list-group-item list-group-item-success">@pro</li>
+                                    }
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Cons</h6>
+                                <ul class="list-group">
+                                    @foreach (var con in SelectedRecommendation.Cons)
+                                    {
+                                        <li class="list-group-item list-group-item-danger">@con</li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        @if (!string.IsNullOrEmpty(Explanation))
+                        {
+                            <div class="card bg-light mb-4">
+                                <div class="card-body">
+                                    <h6 class="card-title">Why This Recommendation?</h6>
+                                    <p class="card-text">@Explanation</p>
+                                </div>
+                            </div>
+                        }
+                        
+                        @if (SelectedRecommendation.Steps.Count > 0)
+                        {
+                            <h6>Journey Steps</h6>
+                            <ul class="list-group mb-4">
+                                @foreach (var step in SelectedRecommendation.Steps)
+                                {
+                                    <li class="list-group-item">
+                                        <div class="d-flex justify-content-between">
+                                            <span>@step.Description</span>
+                                            <span>@step.DistanceKm.ToString("F1") km • @step.DurationMinutes min</span>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(FollowUpAnswer))
+                        {
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Follow-up Question</h6>
+                                    <p class="mb-1"><strong>Q:</strong> @FollowUpQuestion</p>
+                                    <p class="mb-0"><strong>A:</strong> @FollowUpAnswer</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (IsProcessing)
+            {
+                <div class="card">
+                    <div class="card-body text-center p-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3">Analyzing travel options...</p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body text-center p-5">
+                        <div class="d-flex justify-content-center mb-4">
+                            <span class="oi oi-map text-primary" style="font-size: 64px;"></span>
+                        </div>
+                        <h3 class="mt-4">Let's Plan Your Journey</h3>
+                        <p class="text-muted">
+                            Enter your journey details to get personalized recommendations on the best way to travel.
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string QueryText { get; set; } = string.Empty;
+    private string FollowUpQuestion { get; set; } = string.Empty;
+    private string FollowUpAnswer { get; set; } = string.Empty;
+    private string Explanation { get; set; } = string.Empty;
+    private string ErrorMessage { get; set; } = string.Empty;
+    
+    private bool IsProcessing { get; set; } = false;
+    private bool IsProcessingFollowUp { get; set; } = false;
+    
+    private TravelQuery? CurrentQuery { get; set; }
+    private List<TravelRecommendation>? Recommendations { get; set; }
+    private TravelRecommendation? SelectedRecommendation { get; set; }
+    
+    private async Task ProcessQueryAsync()
+    {
+        try
+        {
+            // Clear previous state
+            ErrorMessage = string.Empty;
+            Explanation = string.Empty;
+            FollowUpQuestion = string.Empty;
+            FollowUpAnswer = string.Empty;
+            SelectedRecommendation = null;
+            
+            // Validate query
+            if (string.IsNullOrWhiteSpace(QueryText))
+            {
+                ErrorMessage = "Please enter a query describing your journey.";
+                return;
+            }
+            
+            // Start processing
+            IsProcessing = true;
+            
+            // Process the natural language query
+            CurrentQuery = await TravelAdvisorService.ProcessNaturalLanguageQueryAsync(QueryText);
+            
+            // Check if the query processing returned an error
+            if (CurrentQuery.HasError)
+            {
+                ErrorMessage = CurrentQuery.ErrorMessage;
+                Recommendations = new List<TravelRecommendation>(); // Empty list for error cases
+                return;
+            }
+            
+            // Generate recommendations
+            Recommendations = await TravelAdvisorService.GenerateRecommendationsAsync(CurrentQuery);
+            
+            // Select the recommended option
+            if (Recommendations != null && Recommendations.Count > 0)
+            {
+                var recommended = Recommendations.FirstOrDefault(r => r.IsRecommended) ?? Recommendations[0];
+                await SelectRecommendation(recommended);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"An error occurred: {ex.Message}";
+            Recommendations = new List<TravelRecommendation>();
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+    
+    private async Task SelectRecommendation(TravelRecommendation recommendation)
+    {
+        try
+        {
+            SelectedRecommendation = recommendation;
+            
+            // Clear previous follow-up data
+            FollowUpQuestion = string.Empty;
+            FollowUpAnswer = string.Empty;
+            
+            // Generate explanation for the recommendation
+            if (CurrentQuery != null)
+            {
+                Explanation = await TravelAdvisorService.GenerateExplanationAsync(recommendation, CurrentQuery);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+    
+    private async Task AskFollowUpAsync()
+    {
+        try
+        {
+            // Validate question
+            if (string.IsNullOrWhiteSpace(FollowUpQuestion) || SelectedRecommendation == null || CurrentQuery == null)
+            {
+                return;
+            }
+            
+            // Start processing
+            IsProcessingFollowUp = true;
+            
+            // Get answer to follow-up question
+            FollowUpAnswer = await TravelAdvisorService.AnswerFollowUpQuestionAsync(
+                FollowUpQuestion, SelectedRecommendation, CurrentQuery);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessingFollowUp = false;
+        }
+    }
+}

@@ -1,0 +1,15 @@
+.git/
+.env
+.env.example
+.DS_Store
+*.log
+tmp/
+.bundle/
+vendor/bundle/
+test/
+README.md
+FAQ.md
+CLAUDE.md
+CONTRIBUTING.md
+mcp_server.rb
+scripts/

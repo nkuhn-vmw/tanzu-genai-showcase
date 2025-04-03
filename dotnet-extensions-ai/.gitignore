@@ -1,0 +1,50 @@
+# .NET build output
+bin/
+obj/
+publish/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Visual Studio for Mac
+.vscode/
+.idea/
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# User secrets
+**/secrets.json
+
+# NuGet
+packages/
+*.nupkg
+nuget.exe
+
+# Testing
+TestResults/

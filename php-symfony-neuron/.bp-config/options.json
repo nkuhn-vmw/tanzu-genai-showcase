@@ -1,0 +1,20 @@
+{
+    "PHP_VERSION": "{PHP_81_LATEST}",
+    "COMPOSER_VENDOR_DIR": "vendor",
+    "WEBDIR": "public",
+    "PHP_EXTENSIONS": [
+        "bz2",
+        "zlib",
+        "curl",
+        "openssl",
+        "mbstring",
+        "pdo",
+        "pdo_mysql",
+        "pdo_sqlite",
+        "fileinfo"
+    ],
+    "ADDITIONAL_PREPROCESS_CMDS": [
+        "php bin/console doctrine:schema:update --force --no-interaction",
+        "php bin/console cache:clear --env=prod --no-debug"
+    ]
+}

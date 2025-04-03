@@ -1,0 +1,41 @@
+<div class="error-container">
+  <div class="error-icon">
+    <i data-feather="alert-triangle"></i>
+  </div>
+  <h2><%= @error_title || 'Error' %></h2>
+  <p><%= @error_message || 'An unexpected error occurred.' %></p>
+  <a href="/" class="btn primary">Return to Home</a>
+</div>
+
+<style>
+  .error-container {
+    text-align: center;
+    max-width: 600px;
+    margin: 4rem auto;
+    padding: 3rem;
+    background-color: var(--bg-card);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow);
+  }
+  
+  .error-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .error-icon svg {
+    width: 64px;
+    height: 64px;
+    color: var(--danger-color);
+  }
+  
+  .error-container h2 {
+    margin-bottom: 1rem;
+  }
+  
+  .error-container p {
+    margin-bottom: 2rem;
+    color: var(--text-secondary);
+  }
+</style>

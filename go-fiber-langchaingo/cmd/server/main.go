@@ -1,0 +1,274 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/template/html/v2"
+
+	"github.com/cf-toolsuite/tanzu-genai-showcase/go-fiber-langchaingo/api"
+	"github.com/cf-toolsuite/tanzu-genai-showcase/go-fiber-langchaingo/config"
+	"github.com/cf-toolsuite/tanzu-genai-showcase/go-fiber-langchaingo/internal/handler"
+	"github.com/cf-toolsuite/tanzu-genai-showcase/go-fiber-langchaingo/internal/service"
+	"github.com/cf-toolsuite/tanzu-genai-showcase/go-fiber-langchaingo/pkg/llm"
+)
+
+func main() {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Create Congress.gov API client
+	congressClient := api.NewCongressClient(cfg.CongressAPIKey)
+
+	// Create LLM client
+	llmClient, err := llm.NewLLMClient(cfg.LLMAPIKey, cfg.LLMAPIURL)
+	if err != nil {
+		log.Fatalf("Failed to create LLM client: %v", err)
+	}
+
+	// Create chatbot service
+	chatbotService := service.NewChatbotService(congressClient, llmClient)
+	chatbotService.Initialize()
+
+	// Create handler
+	h := handler.NewHandler(chatbotService)
+
+	// Check if the public directory exists, create it if it doesn't
+	if _, err := os.Stat("public"); os.IsNotExist(err) {
+		if err := os.Mkdir("public", 0755); err != nil {
+			log.Fatalf("Failed to create public directory: %v", err)
+		}
+
+		// Create a basic index.html file if it doesn't exist
+		if _, err := os.Stat("public/index.html"); os.IsNotExist(err) {
+			indexHTML := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congress.gov Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .user-message {
+            background-color: #e2f3ff;
+            border-radius: 1rem;
+            padding: 0.5rem 1rem;
+            max-width: 80%;
+            margin-left: auto;
+            margin-right: 1rem;
+        }
+        .assistant-message {
+            background-color: #f0f0f0;
+            border-radius: 1rem;
+            padding: 0.5rem 1rem;
+            max-width: 80%;
+            margin-right: auto;
+            margin-left: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <header class="bg-blue-600 text-white p-4 rounded-t-lg shadow">
+            <h1 class="text-2xl font-bold">Congress.gov Chatbot</h1>
+            <p class="text-sm">Ask questions about bills, legislation, members of Congress, and more.</p>
+        </header>
+
+        <div class="bg-white rounded-b-lg shadow p-4 mb-4">
+            <div id="chat-container" class="chat-container flex flex-col space-y-4 mb-4">
+                <div class="assistant-message">
+                    Hello! I'm your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.
+                </div>
+            </div>
+
+            <div class="flex space-x-2">
+                <input type="text" id="user-input" placeholder="Type your message here..."
+                    class="flex-grow p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="send-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Send
+                </button>
+                <button id="clear-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <footer class="text-center text-gray-500 text-sm">
+            <p>Powered by Tanzu GenAI and Congress.gov API</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chat-container');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const clearButton = document.getElementById('clear-button');
+
+            // Function to add a message to the chat container
+            function addMessage(content, isUser) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = isUser ? 'user-message' : 'assistant-message';
+                messageDiv.textContent = content;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Function to send a message to the API
+            async function sendMessage(message) {
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const data = await response.json();
+                    addMessage(data.response, false);
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    addMessage('Sorry, I encountered an error. Please try again.', false);
+                }
+            }
+
+            // Function to clear the chat history
+            async function clearChat() {
+                try {
+                    const response = await fetch('/api/clear', {
+                        method: 'POST',
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    // Clear the chat container
+                    chatContainer.innerHTML = '';
+                    addMessage('Hello! I\'m your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.', false);
+                } catch (error) {
+                    console.error('Error clearing chat:', error);
+                }
+            }
+
+            // Event listener for send button
+            sendButton.addEventListener('click', function() {
+                const message = userInput.value.trim();
+                if (message) {
+                    addMessage(message, true);
+                    sendMessage(message);
+                    userInput.value = '';
+                }
+            });
+
+            // Event listener for enter key
+            userInput.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    const message = userInput.value.trim();
+                    if (message) {
+                        addMessage(message, true);
+                        sendMessage(message);
+                        userInput.value = '';
+                    }
+                }
+            });
+
+            // Event listener for clear button
+            clearButton.addEventListener('click', clearChat);
+
+            // Load chat history on page load
+            async function loadChatHistory() {
+                try {
+                    const response = await fetch('/api/history');
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // Clear existing messages
+                        chatContainer.innerHTML = '';
+
+                        // Add messages from history
+                        data.history.forEach(msg => {
+                            if (msg.role !== 'system') {
+                                addMessage(msg.content, msg.role === 'user');
+                            }
+                        });
+
+                        // If no messages, add a welcome message
+                        if (data.history.length === 0 || data.history.every(msg => msg.role === 'system')) {
+                            addMessage('Hello! I\'m your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.', false);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading chat history:', error);
+                }
+            }
+
+            // Load chat history
+            loadChatHistory();
+        });
+    </script>
+</body>
+</html>`;
+			if err := os.WriteFile("public/index.html", []byte(indexHTML), 0644); err != nil {
+				log.Fatalf("Failed to create index.html: %v", err)
+			}
+		}
+	}
+
+	// Create Fiber app with HTML template engine
+	engine := html.New("./public", ".html")
+	app := fiber.New(fiber.Config{
+		Views: engine,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			// Return a custom error message
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		},
+	})
+
+	// Use middleware
+	app.Use(logger.New())
+	app.Use(recover.New())
+	app.Use(cors.New())
+
+	// Register routes
+	h.RegisterRoutes(app)
+
+	// Start server
+	go func() {
+		addr := fmt.Sprintf(":%d", cfg.Port)
+		if err := app.Listen(addr); err != nil {
+			log.Fatalf("Error starting server: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+	if err := app.Shutdown(); err != nil {
+		log.Fatalf("Error shutting down server: %v", err)
+	}
+}

@@ -1,0 +1,15 @@
+pyramid>=2.0.2
+agno>=1.0.8
+SQLAlchemy>=1.4.0
+alembic>=1.7.5
+pyramid_mako
+pyramid_debugtoolbar
+pyramid_tm
+psycopg2-binary
+waitress
+gunicorn
+requests
+python-dotenv
+cfenv
+openai>=1.0.0
+markupsafe

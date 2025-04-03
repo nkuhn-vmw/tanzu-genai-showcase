@@ -1,0 +1,197 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard - Company Research Platform{% endblock %}
+
+{% block body %}
+<h1 class="mb-4">Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Companies</h5>
+                        <h2 class="mb-0">{{ companiesCount }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-building fs-1"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a class="small text-white stretched-link" href="{{ path('company_index') }}">View All Companies</a>
+                <div class="small text-white"><i class="bi bi-chevron-right"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Reports</h5>
+                        <h2 class="mb-0">{{ reportsCount }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-file-earmark-text fs-1"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a class="small text-white stretched-link" href="{{ path('report_index') }}">View All Reports</a>
+                <div class="small text-white"><i class="bi bi-chevron-right"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Actions</h5>
+                        <p class="mb-0">Quick actions</p>
+                    </div>
+                    <div>
+                        <i class="bi bi-lightning fs-1"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex align-items-center justify-content-between">
+                <a class="small text-white stretched-link" href="{{ path('company_new') }}">Add New Company</a>
+                <div class="small text-white"><i class="bi bi-chevron-right"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-table me-1"></i>
+                Recent Companies
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Industry</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for company in recentCompanies %}
+                                <tr>
+                                    <td>{{ company.name }}</td>
+                                    <td>{{ company.industry ?: 'N/A' }}</td>
+                                    <td>{{ company.createdAt|date('Y-m-d') }}</td>
+                                    <td>
+                                        <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer small text-muted">
+                <a href="{{ path('company_index') }}" class="btn btn-outline-primary btn-sm">View All Companies</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-text me-1"></i>
+                Recent Reports
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Company</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in recentReports %}
+                                <tr>
+                                    <td>{{ report.title }}</td>
+                                    <td>{{ report.company.name }}</td>
+                                    <td>{{ report.reportType }}</td>
+                                    <td>
+                                        <a href="{{ path('report_show', {'id': report.id}) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer small text-muted">
+                <a href="{{ path('report_index') }}" class="btn btn-outline-primary btn-sm">View All Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-building me-1"></i>
+                Recently Updated Companies
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Industry</th>
+                                <th>Sector</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for company in updatedCompanies %}
+                                <tr>
+                                    <td>{{ company.name }}</td>
+                                    <td>{{ company.industry ?: 'N/A' }}</td>
+                                    <td>{{ company.sector ?: 'N/A' }}</td>
+                                    <td>{{ company.updatedAt ? company.updatedAt|date('Y-m-d H:i') : 'Never' }}</td>
+                                    <td>
+                                        <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{{ path('company_edit', {'id': company.id}) }}" class="btn btn-sm btn-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No companies have been updated yet.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

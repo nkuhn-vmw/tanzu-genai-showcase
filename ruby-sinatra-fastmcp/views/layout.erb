@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Tracking Chatbot</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="light-theme">
+  <header>
+    <div class="container">
+      <div class="logo">
+        <i data-feather="send"></i>
+        <h1>Flight Tracker</h1>
+      </div>
+      <div class="theme-toggle">
+        <button id="theme-toggle-btn" aria-label="Toggle dark/light theme">
+          <i data-feather="moon" class="theme-icon" id="dark-icon"></i>
+          <i data-feather="sun" class="theme-icon" id="light-icon" style="display: none;"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <%= yield %>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>Powered by Ruby Sinatra, FastMCP, and AviationStack API</p>
+      <p><a href="/mcp">MCP Server Endpoint</a> | <a href="https://github.com/yjacquin/fast-mcp">FastMCP</a></p>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize Feather icons
+    document.addEventListener('DOMContentLoaded', () => {
+      feather.replace();
+      
+      // Theme toggle functionality
+      const body = document.body;
+      const themeToggleBtn = document.getElementById('theme-toggle-btn');
+      const darkIcon = document.getElementById('dark-icon');
+      const lightIcon = document.getElementById('light-icon');
+      
+      // Check for saved theme preference or use the system preference
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        body.classList.replace('light-theme', 'dark-theme');
+        darkIcon.style.display = 'none';
+        lightIcon.style.display = 'block';
+      }
+      
+      // Toggle theme
+      themeToggleBtn.addEventListener('click', () => {
+        if (body.classList.contains('light-theme')) {
+          body.classList.replace('light-theme', 'dark-theme');
+          darkIcon.style.display = 'none';
+          lightIcon.style.display = 'block';
+          localStorage.setItem('theme', 'dark');
+        } else {
+          body.classList.replace('dark-theme', 'light-theme');
+          lightIcon.style.display = 'none';
+          darkIcon.style.display = 'block';
+          localStorage.setItem('theme', 'light');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

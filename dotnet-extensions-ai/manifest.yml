@@ -1,0 +1,14 @@
+---
+applications:
+- name: travel-advisor
+  path: src/TravelAdvisor.Web/bin/Release/net9.0/publish
+  memory: 512M
+  buildpacks:
+    - dotnet_core_buildpack
+  env:
+    ASPNETCORE_ENVIRONMENT: Production
+    DOTNET_CLI_TELEMETRY_OPTOUT: 1
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    DOTNET_NOLOGO: true
+  services:
+    - travel-advisor-llm  # This should match the service name created with cf create-service

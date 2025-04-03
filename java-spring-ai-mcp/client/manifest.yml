@@ -1,0 +1,15 @@
+---
+applications:
+- name: flight-tracker-client
+  path: target/flight-tracker-client-0.0.1-SNAPSHOT.jar
+  memory: 1G
+  instances: 1
+  buildpacks:
+  - java_buildpack
+  env:
+    JAVA_OPTS: -XX:ReservedCodeCacheSize=32M -Xss512k
+    JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 21.+ } }'
+    JBP_CONFIG_SPRING_AUTO_RECONFIGURATION: '{enabled: false}'
+    SPRING_AI_MCP_CLIENT_SSE_CONNECTIONS_FLIGHT-TRACKER_URL: https://flight-tracker-mcp-server.apps.${CF_DOMAIN}/mcp/v1/sse
+  services:
+  - tracker-llm-service

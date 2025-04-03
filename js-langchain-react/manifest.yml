@@ -1,0 +1,14 @@
+---
+applications:
+- name: news-aggregator
+  memory: 256M
+  instances: 1
+  buildpacks:
+    - nodejs_buildpack
+  command: npm run server
+  path: .
+  env:
+    NODE_ENV: production
+    NPM_CONFIG_PRODUCTION: false
+  services:
+    - my-llm-service
