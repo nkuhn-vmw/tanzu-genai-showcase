@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 from typing import Dict, Any, Optional, List, Union
+from urllib.parse import urlparse
 
 # Import Agno components with error handling
 try:
@@ -174,7 +175,8 @@ class AirbnbAssistantAgent:
         # Replace the URL placeholders back
         for placeholder, (display_text, url) in urls.items():
             # Check if this is an image URL from Airbnb
-            if 'a0.muscache.com' in url and not url.endswith(('.pdf', '.doc', '.txt')):
+            parsed_url = urlparse(url)
+            if parsed_url.hostname == 'a0.muscache.com' and not url.endswith(('.pdf', '.doc', '.txt')):
                 text = text.replace(placeholder, f"\n![{display_text}]({url})\n")
             else:
                 text = text.replace(placeholder, f"[{display_text}]({url})")
