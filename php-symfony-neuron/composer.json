@@ -42,8 +42,8 @@
         "symfony/validator": "7.2.*",
         "symfony/web-link": "7.2.*",
         "symfony/yaml": "7.2.*",
-        "twig/extra-bundle": "^2.12|^3.0",
-        "twig/twig": "^2.12|^3.0",
+        "twig/extra-bundle": "^3.11.2",
+        "twig/twig": "^3.11.2",
         "dompdf/dompdf": "^2.0",
         "phpoffice/phpspreadsheet": "^1.29"
     },
