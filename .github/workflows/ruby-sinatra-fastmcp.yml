@@ -43,7 +43,7 @@ jobs:
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         mkdir -p dist
-        zip -r ../dist/ruby-sinatra-fastmcp.zip . -x "*.git*" "*.env*" ".github/*" "dist/*" "test/*" "spec/*"
+        zip -r dist/ruby-sinatra-fastmcp.zip . -x "*.git*" "*.env*" ".github/*" "dist/*" "test/*" "spec/*"
 
     - name: Upload artifacts
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'

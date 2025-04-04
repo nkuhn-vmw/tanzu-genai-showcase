@@ -43,7 +43,7 @@ jobs:
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       run: |
         mkdir -p dist
-        zip -r ../dist/py-django-crewai.zip . -x "*.git*" "*.env*" "*.pyc" "__pycache__/*" "*.github/*" "dist/*"
+        zip -r dist/py-django-crewai.zip . -x "*.git*" "*.env*" "*.pyc" "__pycache__/*" "*.github/*" "dist/*"
 
     - name: Upload artifacts
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'

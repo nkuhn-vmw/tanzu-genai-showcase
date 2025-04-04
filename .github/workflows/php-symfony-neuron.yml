@@ -56,7 +56,7 @@ jobs:
       run: |
         mkdir -p build
         composer dump-autoload --optimize --no-dev
-        zip -r ../build/php-symfony-neuron.zip . -x ".git/*" "tests/*" ".env*" ".github/*" "build/*"
+        zip -r build/php-symfony-neuron.zip . -x ".git/*" "tests/*" ".env*" ".github/*" "build/*"
 
     - name: Upload artifact
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
