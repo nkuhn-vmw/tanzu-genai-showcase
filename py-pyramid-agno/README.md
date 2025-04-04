@@ -79,7 +79,7 @@ If you prefer a manual setup, here are the minimal steps required:
    pserve development.ini --reload
    ```
 > [!NOTE]
-> For detailed setup instructions, including Cloud Foundry deployment, consult [DEPLOY.md](DEPLOY.md)
+> For detailed setup instructions, including Cloud Foundry deployment, consult the [deployment guide](DEPLOY.md)
 
 ## Project Structure
 
