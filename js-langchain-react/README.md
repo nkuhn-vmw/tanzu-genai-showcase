@@ -1,6 +1,6 @@
 # LangChain + React News Aggregator
 
-![Status](https://img.shields.io/badge/status-ready-darkgreen) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/js-langchain-react.yml/badge.svg)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/js-langchain-react.yml/badge.svg)
 
 ## Architecture
 
@@ -103,7 +103,9 @@ This creates optimized production files in the `build` directory.
 3. Deploy the application:
 
    ```bash
-   cf push
+   set -a; source .env; set +a
+   envsubst '${NEWS_API_KEY}' < manifest.template > manifest.yml
+   cf push --no-start
    ```
 
 4. Bind to a GenAI service instance:
@@ -116,6 +118,12 @@ This creates optimized production files in the `build` directory.
 
    > [!IMPORTANT]
    > Replace `PLAN_NAME` above with the name of an available plan for the genai marketplace service offering.
+
+5. Start the application
+
+   ```bash
+   cf start news-aggregator
+   ```
 
 ## Tech Stack
 
