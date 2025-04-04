@@ -162,12 +162,12 @@ If the application crashes during startup:
    - Consider pinning the buildpack version if needed
 
 2. Verify your Node.js version compatibility:
-   - The app requires Node.js 18.0.0 or higher
+   - The app requires Node.js 22.0.0 or higher
    - You can specify a compatible version in manifest.yml:
 
    ```yaml
    env:
-     NODE_VERSION: 18.18.0
+     NODE_VERSION: 22.11.0
    ```
 
 ## Best Practices
