@@ -25,10 +25,10 @@ function NewsItem({ article }) {
           <span className="news-item-date">{formatDate(article.publishedAt)}</span>
         </div>
         <p className="news-item-summary">{article.summary}</p>
-        <a 
-          href={article.url} 
-          className="news-item-link" 
-          target="_blank" 
+        <a
+          href={article.url}
+          className="news-item-link"
+          target="_blank"
           rel="noopener noreferrer"
         >
           Read full article

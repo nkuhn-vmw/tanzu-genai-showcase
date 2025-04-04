@@ -13,7 +13,7 @@ export const searchNews = async (topic) => {
     const response = await axios.get(`${API_BASE_URL}/api/news`, {
       params: { topic }
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error in searchNews service:', error);

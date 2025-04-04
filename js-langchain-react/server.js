@@ -1,9 +1,18 @@
+// Suppress the punycode deprecation warning
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  if (warning.name === 'DeprecationWarning' && warning.message.includes('punycode')) {
+    return;
+  }
+  console.warn(warning.name, warning.message);
+});
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { ChatOpenAI } = require('langchain/chat_models/openai');
-const { HumanMessage, SystemMessage } = require('langchain/schema');
+const { ChatOpenAI } = require('@langchain/openai');
+const { HumanMessage, SystemMessage } = require('@langchain/core/messages');
 const axios = require('axios');
 
 const app = express();
@@ -19,35 +28,35 @@ function getLLMConfig() {
   // Check if running in Cloud Foundry with bound services
   if (process.env.VCAP_SERVICES) {
     const vcapServices = JSON.parse(process.env.VCAP_SERVICES);
-    
+
     // Look for GenAI service instance
     const genaiServices = Object.keys(vcapServices).find(
       (service) => service.includes('genai') || service.includes('llm')
     );
-    
+
     if (genaiServices && vcapServices[genaiServices] && vcapServices[genaiServices][0]) {
       const credentials = vcapServices[genaiServices][0].credentials;
-      
+
       return {
         apiKey: credentials.api_key || credentials.apiKey,
         baseUrl: credentials.url || credentials.baseUrl,
-        modelName: credentials.model || 'gpt-3.5-turbo' // default fallback
+        modelName: credentials.model || 'gpt-4o-mini' // default fallback
       };
     }
   }
-  
+
   // Fallback to environment variables for local development
   return {
     apiKey: process.env.API_KEY,
     baseUrl: process.env.API_BASE_URL,
-    modelName: process.env.MODEL_NAME || 'gpt-3.5-turbo'
+    modelName: process.env.MODEL_NAME || 'gpt-4o-mini'
   };
 }
 
 // Initialize LLM client
 function createLLMClient() {
   const config = getLLMConfig();
-  
+
   return new ChatOpenAI({
     openAIApiKey: config.apiKey,
     modelName: config.modelName,
@@ -60,11 +69,11 @@ function createLLMClient() {
 // API route to search for news
 app.get('/api/news', async (req, res) => {
   const { topic } = req.query;
-  
+
   if (!topic) {
     return res.status(400).json({ error: 'Topic is required' });
   }
-  
+
   try {
     // Fetch news from a public API (example uses newsapi.org)
     // In production, you would use a proper news API with an API key
@@ -76,17 +85,17 @@ app.get('/api/news', async (req, res) => {
         }
       }
     );
-    
+
     const articles = response.data.articles || [];
-    
+
     // Process the articles with LLM to create summaries
     const llm = createLLMClient();
-    
+
     const articlesWithSummaries = await Promise.all(
       articles.map(async (article) => {
         // Create a 25-word summary using LLM
         try {
-          const result = await llm.call([
+          const result = await llm.invoke([
             new SystemMessage(
               "You are a helpful assistant that summarizes news articles. Create a concise summary in exactly 25 words."
             ),
@@ -94,7 +103,7 @@ app.get('/api/news', async (req, res) => {
               `Summarize this article in exactly 25 words: ${article.title}. ${article.description || ''}`
             )
           ]);
-          
+
           return {
             title: article.title,
             url: article.url,
@@ -116,7 +125,7 @@ app.get('/api/news', async (req, res) => {
         }
       })
     );
-    
+
     res.json({ articles: articlesWithSummaries });
   } catch (error) {
     console.error('Error fetching news:', error);
