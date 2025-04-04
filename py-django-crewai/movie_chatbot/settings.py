@@ -117,18 +117,18 @@ def get_llm_config():
     if cf_env.get_service(label='genai') or cf_env.get_service(name='my-llm-service'):
         service = cf_env.get_service(label='genai') or cf_env.get_service(name='my-llm-service')
         credentials = service.credentials
-        
+
         return {
             'api_key': credentials.get('api_key') or credentials.get('apiKey'),
             'base_url': credentials.get('url') or credentials.get('baseUrl'),
-            'model': credentials.get('model') or 'gpt-3.5-turbo'
+            'model': credentials.get('model') or 'gpt-4o-mini'
         }
-    
+
     # Fallback to environment variables for local development
     return {
         'api_key': os.getenv('LLM_API_KEY'),
         'base_url': os.getenv('LLM_BASE_URL'),
-        'model': os.getenv('LLM_MODEL', 'gpt-3.5-turbo')
+        'model': os.getenv('LLM_MODEL', 'gpt-4o-mini')
     }
 
 LLM_CONFIG = get_llm_config()

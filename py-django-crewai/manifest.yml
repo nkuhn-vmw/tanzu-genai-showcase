@@ -12,5 +12,4 @@ applications:
     DJANGO_SECRET_KEY: replace-this-with-secure-key-in-prod
     DJANGO_DEBUG: False
     DISABLE_COLLECTSTATIC: 1
-  services:
-    - my-llm-service
+

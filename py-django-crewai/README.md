@@ -7,6 +7,7 @@ This example demonstrates a movie booking chatbot built with Django and CrewAI t
 ## Features
 
 - Conversational interface to find movies based on interests or topics
+  - transacts the TMDB API (signup for a free account [here](https://www.themoviedb.org/signup))
 - Recommends top 3 movie choices based on user preferences
 - Shows where movies are playing nearby and available show times
 - Uses CrewAI to coordinate multiple AI agents working together
@@ -26,44 +27,51 @@ The application consists of:
 
 ## Prerequisites
 
-- Python 3.9+ and pip
+- Python 3.10+ and pip
 - Cloud Foundry CLI
 - Access to Tanzu Platform for Cloud Foundry with GenAI tile installed
 
 ## Local Development
 
 1. Clone the repository:
-   ```
+
+   ```bash
    git clone https://github.com/cf-toolsuite/tanzu-genai-showcase
    cd tanzu-genai-showcase/py-django-crewai
    ```
 
 2. Create and activate a virtual environment:
-   ```
+
+   ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows, use: venv\Scripts\activate
    ```
 
 3. Install dependencies:
-   ```
+
+   ```bash
    pip install -r requirements.txt
    ```
 
 4. Create a `.env` file with your API keys (for local development only):
-   ```
+
+   ```bash
    LLM_API_KEY=your_llm_api_key_here
    LLM_BASE_URL=optional_custom_endpoint
-   LLM_MODEL=gpt-3.5-turbo
+   LLM_MODEL=gpt-4o-mini
    TMDB_API_KEY=your_movie_db_api_key_here
    ```
 
 5. Run migrations:
-   ```
+
+   ```bash
+   python manage.py makemigrations chatbot
    python manage.py migrate
    ```
 
 6. Start the development server:
-   ```
+
+   ```bash
    python manage.py runserver
    ```
 
@@ -72,26 +80,30 @@ The application consists of:
 ## Building for Production
 
 1. Create a production-ready build:
-   ```
+
+   ```bash
    python manage.py collectstatic --noinput
    ```
 
 ## Deploying to Tanzu Platform for Cloud Foundry
 
 1. Login to your Cloud Foundry instance:
-   ```
+
+   ```bash
    cf login -a API_ENDPOINT
    ```
 
 2. Deploy the application:
-   ```
+
+   ```bash
    cf push
    ```
 
 3. Bind to a GenAI service instance:
-   ```
-   cf create-service genai-service standard my-llm-service
-   cf bind-service movie-chatbot my-llm-service
+
+   ```bash
+   cf create-service genai PLAN_NAME movie-booking-llm
+   cf bind-service movie-chatbot movie-booking-llm
    cf restage movie-chatbot
    ```
 
@@ -108,3 +120,4 @@ The application uses the following approach to consume service credentials:
 - [CrewAI Documentation](https://docs.crewai.com/)
 - [Django Documentation](https://docs.djangoproject.com/)
 - [Cloud Foundry Documentation](https://docs.cloudfoundry.org/)
+- [The Move Database Developer Documentation](https://developer.themoviedb.org/docs/getting-started)
