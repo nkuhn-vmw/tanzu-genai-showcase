@@ -1,6 +1,6 @@
 # Flight Tracker Chatbot
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/java-spring-ai-mcp.yml/badge.svg)
 
 A flight tracking chatbot built with Spring Boot, Spring AI, Model Context Protocol (MCP), and Vaadin. This application integrates with the AviationStack API to provide real-time flight information through a natural language interface.
 

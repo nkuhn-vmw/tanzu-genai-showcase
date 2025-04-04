@@ -1,6 +1,6 @@
 # Congress.gov API Chatbot with Go + Fiber + LangChainGo
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/go-fiber-langchaingo.yml/badge.svg)
 
 This application demonstrates how to build a chatbot that interacts with the Congress.gov API using Go, Fiber, and LangChainGo, deployable on Tanzu Platform for Cloud Foundry.
 

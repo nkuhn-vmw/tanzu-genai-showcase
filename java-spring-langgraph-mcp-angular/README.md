@@ -1,6 +1,6 @@
 # Event Recommendation Chatbot
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/java-spring-langgraph-mcp-angular.yml/badge.svg)
 
 A chatbot application that recommends events based on user preferences and location, using Spring Boot, LangGraph, Model Context Protocol (MCP), and Angular.
 

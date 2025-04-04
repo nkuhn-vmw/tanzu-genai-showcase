@@ -1,6 +1,6 @@
 # CrewAI + Django Movie Booking Chatbot
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/py-django-crewai.yml/badge.svg)
 
 This example demonstrates a movie booking chatbot built with Django and CrewAI that can be deployed to Tanzu Platform for Cloud Foundry and integrate with LLM services through the GenAI tile.
 

@@ -1,6 +1,6 @@
 # Flight Tracking Chatbot with Ruby Sinatra and FastMCP
 
-![Status](https://img.shields.io/badge/status-ready-darkgreen)
+![Status](https://img.shields.io/badge/status-ready-darkgreen) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/ruby-sinatra-fastmcp.yml/badge.svg)
 
 This project demonstrates a flight tracking chatbot built with Ruby, Sinatra, and FastMCP. The chatbot integrates with the AviationStack API to provide real-time flight information and status updates through Model Context Protocol (MCP) for AI-powered interactions.
 

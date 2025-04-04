@@ -1,6 +1,6 @@
 # .NET with Microsoft.Extensions.AI and Semantic Kernel
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/dotnet-extensions-ai.yml/badge.svg)
 
 This directory contains an implementation of a GenAI application using .NET with Microsoft.Extensions.AI and Semantic Kernel. The application demonstrates how to build and deploy AI-powered applications on Tanzu Platform for Cloud Foundry.
 

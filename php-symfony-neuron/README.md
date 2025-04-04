@@ -1,6 +1,6 @@
 # Neuron AI + Symfony Company Research Application
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/php-symfony-neuron.yml/badge.svg)
 
 This example demonstrates a company research application built with Symfony and Neuron AI that can be deployed to Tanzu Platform for Cloud Foundry and integrate with LLM services through the GenAI tile.
 

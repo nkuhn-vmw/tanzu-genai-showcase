@@ -1,6 +1,6 @@
 # Python Pyramid with Agno AI Chatbot
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred)
+![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/py-pyramid-agno.yml/badge.svg)
 
 This application implements an Airbnb search assistant chatbot interface that uses Agno for AI capabilities and the Model Context Protocol (MCP) for external data integration.
 
@@ -18,7 +18,7 @@ This application implements an Airbnb search assistant chatbot interface that us
 
 We provide convenience scripts to automate the setup process:
 
-### On macOS/Linux:
+### On macOS/Linux
 
 ```bash
 # Clone the repository
@@ -32,7 +32,7 @@ cd tanzu-genai-showcase/py-pyramid-agno
 pserve development.ini --reload
 ```
 
-### On Windows:
+### On Windows
 
 ```powershell
 # Clone the repository
