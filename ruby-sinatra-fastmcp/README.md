@@ -63,7 +63,8 @@ The application exposes MCP tools that can be called by AI models like Claude to
 ## Installation
 
 1. Clone the repository:
-   ```
+
+   ```bash
    git clone https://github.com/cf-toolsuite/tanzu-genai-showcase
    cd tanzu-genai-showcase/ruby-sinatra-fastmcp
    ```

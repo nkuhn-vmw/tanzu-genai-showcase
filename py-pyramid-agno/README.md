@@ -131,11 +131,11 @@ Once running, you can test the application by:
 - **Database Errors**: If you encounter database errors, run `initialize_db development.ini --reinitialize`.
 - **Module Not Found**: Make sure you've activated the virtual environment and installed dependencies.
 
-For more troubleshooting tips, see the [Troubleshooting section in SETUP_DEPLOY.md](SETUP_DEPLOY.md#troubleshooting).
+For more troubleshooting tips, see the Troubleshooting section in the [deployment guide](DEPLOY.md#troubleshooting).
 
 ## Deploying to Tanzu Platform for Cloud Foundry
 
-This application is designed to run on Tanzu Platform for Cloud Foundry. For detailed deployment instructions, refer to the [Deployment section in SETUP_DEPLOY.md](SETUP_DEPLOY.md#deployment-to-tanzu-platform-for-cloud-foundry).
+This application is designed to run on Tanzu Platform for Cloud Foundry. For detailed deployment instructions, refer to the appropriate section in the [deployment guide](DEPLOY.md#deployment-to-tanzu-platform-for-cloud-foundry).
 
 ## References
 
