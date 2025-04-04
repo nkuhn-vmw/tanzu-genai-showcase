@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='airbnb-assistant',
-    version='0.1',
+    version='0.1.0',
     description='Airbnb Search Assistant using Pyramid and Agno',
     author='',
     author_email='',
