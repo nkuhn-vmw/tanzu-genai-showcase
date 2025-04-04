@@ -33,6 +33,16 @@ Thumbs.db
 /var/cache/
 /var/log/
 /var/sessions/
+symfony.lock
+
+# Composer
+composer.lock
+composer.phar
 
 # Sensitive
 .env
+
+# Trash
+.env.dev
+migrations/
+bin/
