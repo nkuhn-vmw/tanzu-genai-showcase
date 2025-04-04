@@ -10,7 +10,7 @@ applications:
   env:
     NODE_ENV: production
     NPM_CONFIG_PRODUCTION: false
-    NEWS_API_KEY: ${NEWS_API_KEY}
+    NEWS_API_KEY: a334a24234af4662a231b806acb6d794
     # Setting Node memory limits to avoid heap issues
     NODE_OPTIONS: --max_old_space_size=460
     # Define a specific node engine version (fixing the warning about semver range)

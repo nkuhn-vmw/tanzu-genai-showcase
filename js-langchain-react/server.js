@@ -74,14 +74,24 @@ app.get('/api/news', async (req, res) => {
     return res.status(400).json({ error: 'Topic is required' });
   }
 
+  // Check if NEWS_API_KEY is available
+  if (!process.env.NEWS_API_KEY) {
+    console.error('NEWS_API_KEY is missing. Please set it in your environment variables or bound services.');
+    return res.status(500).json({
+      error: 'News API configuration missing',
+      message: 'The server is not properly configured with a News API key.'
+    });
+  }
+
   try {
-    // Fetch news from a public API (example uses newsapi.org)
-    // In production, you would use a proper news API with an API key
+    console.log(`Searching for news about: ${topic}`);
+
+    // Fetch news from News API
     const response = await axios.get(
       `https://newsapi.org/v2/everything?q=${encodeURIComponent(topic)}&sortBy=publishedAt&pageSize=10`,
       {
         headers: {
-          'X-Api-Key': process.env.NEWS_API_KEY || 'demo-api-key' // Use your actual API key here
+          'X-Api-Key': process.env.NEWS_API_KEY
         }
       }
     );
