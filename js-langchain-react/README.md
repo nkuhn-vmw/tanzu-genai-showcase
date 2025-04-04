@@ -1,28 +1,27 @@
 # LangChain + React News Aggregator
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/js-langchain-react.yml/badge.svg)
+![Status](https://img.shields.io/badge/status-ready-darkgreen) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/js-langchain-react.yml/badge.svg)
 
 ## Architecture
 
 View the [detailed architecture documentation](ARCHITECTURE.md) for a comprehensive explanation of the application components and how they interact.
 
 ```
-+----------------------+        +----------------------+        +----------------------+
-|                      |        |                      |        |                      |
-|   React Frontend     |        |   Express Backend    |        |  External Services   |
-|                      |<------>|                      |<------>|                      |
-+----------+-----------+        +-----------+----------+        +-----------+----------+
-           |                                |                               |
-           |                                |                               |
-           v                                v                               v
-+----------------------+        +----------------------+        +----------------------+
-|                      |        |                      |        |                      |
-|  - App.js            |        |  - server.js         |        |  - News API          |
-|  - NewsSearch        |        |  - API Routes        |        |  - LLM Service       |
-|  - NewsList          |        |  - LangChain         |        |    (GenAI)           |
-|  - NewsItem          |        |    Integration       |        |                      |
-|                      |        |                      |        |                      |
-+----------------------+        +----------------------+        +----------------------+
++------------------------+        +------------------------+        +------------------------+
+|                        |        |                        |        |                        |
+|    React Frontend      |        |    Express Backend     |        |   External Services    |
+|                        |<------>|                        |<------>|                        |
++----------+-------------+        +-----------+------------+        +-----------+------------+
+           |                                  |                                 |
+           v                                  v                                 v
++------------------------+        +------------------------+        +------------------------+
+|                        |        |                        |        |                        |
+|  - App.js              |        |  - server.js           |        |  - News API            |
+|  - NewsSearch          |        |  - API Routes          |        |  - LLM Service (GenAI) |
+|  - NewsList            |        |  - LangChain           |        |                        |
+|  - NewsItem            |        |    Integration         |        |                        |
+|                        |        |                        |        |                        |
++------------------------+        +------------------------+        +------------------------+
 ```
 
 ## What is it?
@@ -79,7 +78,10 @@ This creates optimized production files in the `build` directory.
    npm start
    ```
 
-3. Open your browser to `http://localhost:3000`
+3. Open your browser to `http://localhost:3002`.
+
+> [!NOTE]
+> The actual port may differ.
 
 ## How to Run on Cloud Foundry
 
@@ -95,6 +97,9 @@ This creates optimized production files in the `build` directory.
    cf login -a API_ENDPOINT
    ```
 
+> [!IMPORTANT]
+> Replace `API_ENDPOINT` above targeting a Cloud Foundry foundation API endpoint in your particular environment.
+
 3. Deploy the application:
 
    ```bash
@@ -104,10 +109,13 @@ This creates optimized production files in the `build` directory.
 4. Bind to a GenAI service instance:
 
    ```bash
-   cf create-service genai-service standard my-llm-service
-   cf bind-service news-aggregator my-llm-service
+   cf create-service genai PLAN_NAME news-aggregator-llm
+   cf bind-service news-aggregator news-aggregator-llm
    cf restage news-aggregator
    ```
+
+   > [!IMPORTANT]
+   > Replace `PLAN_NAME` above with the name of an available plan for the genai marketplace service offering.
 
 ## Tech Stack
 
