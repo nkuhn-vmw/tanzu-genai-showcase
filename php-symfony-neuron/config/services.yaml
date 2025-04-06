@@ -1,7 +1,7 @@
 parameters:
-    llm.api_key: '%env(LLM_API_KEY)%'
-    llm.base_url: '%env(LLM_BASE_URL)%'
-    llm.model: '%env(LLM_MODEL)%'
+    llm.api_key: '%env(GENAI_API_KEY)%'
+    llm.base_url: '%env(GENAI_BASE_URL)%'
+    llm.model: '%env(GENAI_MODEL)%'
 
 services:
     # default configuration for services in *this* file

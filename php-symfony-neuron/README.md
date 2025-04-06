@@ -51,9 +51,9 @@ The application consists of:
    APP_ENV=dev
    APP_SECRET=your_symfony_app_secret
    DATABASE_URL=sqlite:///%kernel.project_dir%/var/data.db
-   LLM_API_KEY=your_llm_api_key_here
-   LLM_BASE_URL=optional_custom_endpoint
-   LLM_MODEL=gpt-3.5-turbo
+   GENAI_API_KEY=your_GENAI_API_KEY_here
+   GENAI_BASE_URL=optional_custom_endpoint
+   GENAI_MODEL=gpt-4o-mini
    ```
 
 4. Set up the database:

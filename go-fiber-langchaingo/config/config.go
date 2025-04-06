@@ -39,8 +39,8 @@ func LoadConfig() (*Config, error) {
 	}
 
 	config.CongressAPIKey = os.Getenv("CONGRESS_API_KEY")
-	config.LLMAPIKey = os.Getenv("LLM_API_KEY")
-	config.LLMAPIURL = os.Getenv("LLM_API_URL")
+	config.LLMAPIKey = os.Getenv("GENAI_API_KEY")
+	config.LLMAPIURL = os.Getenv("GENAI_API_BASE_URL")
 
 	// Check for Cloud Foundry service bindings (VCAP_SERVICES)
 	if vcapServices := os.Getenv("VCAP_SERVICES"); vcapServices != "" {

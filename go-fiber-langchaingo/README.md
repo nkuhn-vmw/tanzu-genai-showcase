@@ -44,8 +44,8 @@ Edit the `.env` file to include your API keys:
 
 ```
 CONGRESS_API_KEY=your_congress_api_key
-LLM_API_KEY=your_llm_api_key
-LLM_API_URL=your_llm_api_url
+GENAI_API_KEY=your_GENAI_API_KEY
+GENAI_API_BASE_URL=your_GENAI_API_BASE_URL
 LLM=gpt-4o-mini
 ```
 
@@ -114,8 +114,8 @@ cf service-key congress-llm congress-llm-service-key
 Update your application's environment variables with the service key details:
 
 ```bash
-cf set-env congress-chatbot LLM_API_KEY "the-api-key-from-service-key"
-cf set-env congress-chatbot LLM_API_URL "the-url-from-service-key"
+cf set-env congress-chatbot GENAI_API_KEY "the-api-key-from-service-key"
+cf set-env congress-chatbot GENAI_API_BASE_URL "the-url-from-service-key"
 
 # Restart your application to apply changes
 cf restart congress-chatbot
