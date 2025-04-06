@@ -211,8 +211,6 @@ applications:
     USE_MOCK_DATA: false
     MCP_USE_STDIO: true
     MCP_SERVER_PATH: ./mcp-server-airbnb/dist/index.js
-  services:
-    - airbnb-assistant-llm
 ```
 
 ### Step 4: Deploy the Application
@@ -299,7 +297,7 @@ If you encounter errors connecting to the LLM provider:
 
 1. Check that your API key is correct in the `.env` file
 2. Verify that the API is accessible from your environment
-3. Try using a different model (e.g., gpt-3.5-turbo instead of gpt-4)
+3. Try using a different model
 4. Check your LLM provider's quota limits
 
 ### Cloud Foundry Deployment Issues

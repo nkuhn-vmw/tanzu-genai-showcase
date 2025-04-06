@@ -126,9 +126,9 @@ def get_llm_config():
 
     # Fallback to environment variables for local development
     return {
-        'api_key': os.getenv('LLM_API_KEY'),
-        'base_url': os.getenv('LLM_BASE_URL'),
-        'model': os.getenv('LLM_MODEL', 'gpt-4o-mini')
+        'api_key': os.getenv('GENAI_API_KEY'),
+        'base_url': os.getenv('GENAI_BASE_URL'),
+        'model': os.getenv('GENAI_MODEL', 'gpt-4o-mini')
     }
 
 LLM_CONFIG = get_llm_config()
