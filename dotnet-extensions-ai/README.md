@@ -69,14 +69,6 @@ The application is designed to be deployed to Tanzu Platform for Cloud Foundry:
 
 See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed instructions.
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
-
 ## Acknowledgments
 
 - Microsoft for Semantic Kernel
