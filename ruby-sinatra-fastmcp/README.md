@@ -4,7 +4,7 @@
 
 This project demonstrates a flight tracking chatbot built with Ruby, Sinatra, and FastMCP. The chatbot integrates with the AviationStack API to provide real-time flight information and status updates through Model Context Protocol (MCP) for AI-powered interactions.
 
-**New to MCP?** Check out our [Frequently Asked Questions](FAQ.md) to learn more about MCP servers, clients, and how they work together.
+**New to MCP?** Check out our [Frequently Asked Questions](docs/FAQ.md) to learn more about MCP servers, clients, and how they work together.
 
 ## Features
 
@@ -152,7 +152,7 @@ Alternatively, you can manually add the server configuration to Claude Desktop's
 Restart Claude Desktop to apply the changes.
 
 > [!NOTE]
-> For more details on the wrapper script, troubleshooting, design, and function of the MCP server, consult [this guide](CLAUDE.md).
+> For more details on the wrapper script, troubleshooting, design, and function of the MCP server, consult [this guide](docs/CLAUDE.md).
 
 ## Example Chat Interactions
 
@@ -193,7 +193,7 @@ chmod +x deploy.sh
 
 ### Important Note About Cloud Foundry Deployment
 
-When deployed to Cloud Foundry, this application functions as an MCP server only. Users will need an MCP client to interact with it conversationally. See the [FAQ](FAQ.md) for more information about MCP servers and clients.
+When deployed to Cloud Foundry, this application functions as an MCP server only. Users will need an MCP client to interact with it conversationally. See the [FAQ](docs/FAQ.md) for more information about MCP servers and clients.
 
 ## Resources
 
