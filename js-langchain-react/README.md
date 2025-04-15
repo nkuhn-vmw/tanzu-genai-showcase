@@ -8,7 +8,7 @@ This application is a news aggregation tool built with React and LangChain that 
 
 ## Architecture
 
-View the [detailed architecture documentation](ARCHITECTURE.md) for a comprehensive explanation of the application components and how they interact.
+View the [detailed architecture documentation](docs/ARCHITECTURE.md) for a comprehensive explanation of the application components and how they interact.
 
 ## Prerequisites
 
@@ -42,11 +42,11 @@ This creates optimized production files in the `build` directory.
 
 ## How to Run Locally
 
-Check the [development guide](DEVELOPMENT.md).
+Check the [development guide](docs/DEVELOPMENT.md).
 
 ## How to Run on Cloud Foundry
 
-Check the [deployment guide](DEPLOYMENT.md).
+Check the [deployment guide](docs/DEPLOYMENT.md).
 
 ## Tech Stack
 
