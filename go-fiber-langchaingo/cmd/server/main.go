@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
+	"runtime/debug"
+	"strings"
 	"syscall"
 
 	"github.com/gofiber/fiber/v2"
@@ -246,10 +249,72 @@ func main() {
 		},
 	})
 
-	// Use middleware
-	app.Use(logger.New())
-	app.Use(recover.New())
+	// Create logs directory if it doesn't exist
+	if _, err := os.Stat("logs"); os.IsNotExist(err) {
+		if err := os.Mkdir("logs", 0755); err != nil {
+			log.Fatalf("Failed to create logs directory: %v", err)
+		}
+	}
+
+	// Set up a log file for HTTP requests
+	logFile, err := os.OpenFile("logs/http.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to create log file: %v", err)
+	}
+
+	// Enhanced logger configuration with more details
+	app.Use(logger.New(logger.Config{
+		// Log format with extended details
+		Format:     "${time} | ${status} | ${latency} | ${method} ${path} | ${ip} | ${reqHeader:Content-Type} | ${reqHeader:User-Agent} | ${resBody} | ${error}\n",
+		TimeFormat: "2006-01-02 15:04:05",
+		TimeZone:   "Local",
+		// Output to both console and file
+		Output:     io.MultiWriter(os.Stdout, logFile),
+		// Log headers
+		Next: func(c *fiber.Ctx) bool {
+			// Skip logging for static files to reduce noise
+			return c.Path() == "/favicon.ico"
+		},
+	}))
+
+	// Set up custom recovery handler with detailed error logging
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			log.Printf("PANIC RECOVERED: %v\nStack Trace: %s\n", e, debug.Stack())
+		},
+	}))
+	
 	app.Use(cors.New())
+
+	// Add a middleware to log request and response bodies for API endpoints
+	app.Use(func(c *fiber.Ctx) error {
+		// Only log API requests
+		if strings.HasPrefix(c.Path(), "/api") {
+			// Log request
+			reqBody := string(c.Request().Body())
+			if reqBody != "" {
+				log.Printf("REQUEST BODY [%s %s]: %s", c.Method(), c.Path(), reqBody)
+			}
+
+			// Save original handler
+			err := c.Next()
+
+			// Log response body after handler has processed the request
+			if len(c.Response().Body()) > 0 {
+				// Truncate very long responses
+				respBody := string(c.Response().Body())
+				if len(respBody) > 1000 {
+					respBody = respBody[:1000] + "... [truncated]"
+				}
+				log.Printf("RESPONSE BODY [%s %s] [Status: %d]: %s", 
+					c.Method(), c.Path(), c.Response().StatusCode(), respBody)
+			}
+
+			return err
+		}
+		return c.Next()
+	})
 
 	// Register routes
 	h.RegisterRoutes(app)

@@ -26,6 +26,40 @@
             margin-right: auto;
             margin-left: 1rem;
         }
+        .loader-container {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+        .progress-bar {
+            height: 6px;
+            background-color: #e2e8f0;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -40,6 +74,17 @@
                 <div class="assistant-message">
                     Hello! I'm your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.
                 </div>
+            </div>
+            
+            <!-- Progress bar and loader -->
+            <div id="progress-container" class="hidden">
+                <div class="progress-bar">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+                <div class="loader-container">
+                    <div class="loader"></div>
+                </div>
+                <p class="text-center text-sm text-gray-500">Processing your request...</p>
             </div>
 
             <div class="flex space-x-2">
@@ -65,6 +110,48 @@
             const userInput = document.getElementById('user-input');
             const sendButton = document.getElementById('send-button');
             const clearButton = document.getElementById('clear-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBarFill = document.getElementById('progress-bar-fill');
+
+            // Function to toggle UI state during processing
+            function setProcessingState(isProcessing) {
+                if (isProcessing) {
+                    // Disable input and buttons
+                    userInput.disabled = true;
+                    sendButton.disabled = true;
+                    clearButton.disabled = true;
+                    
+                    // Add visual indication that buttons are disabled
+                    sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    clearButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    
+                    // Show progress indicators
+                    progressContainer.classList.remove('hidden');
+                    
+                    // Animate progress bar
+                    progressBarFill.style.width = '5%';
+                    setTimeout(() => { progressBarFill.style.width = '30%'; }, 500);
+                    setTimeout(() => { progressBarFill.style.width = '70%'; }, 1500);
+                } else {
+                    // Enable input and buttons
+                    userInput.disabled = false;
+                    sendButton.disabled = false;
+                    clearButton.disabled = false;
+                    
+                    // Remove visual indication
+                    sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    
+                    // Complete progress bar animation before hiding
+                    progressBarFill.style.width = '100%';
+                    
+                    // Hide progress indicators after a short delay
+                    setTimeout(() => {
+                        progressContainer.classList.add('hidden');
+                        progressBarFill.style.width = '0%';
+                    }, 300);
+                }
+            }
 
             // Function to add a message to the chat container
             function addMessage(content, isUser) {
@@ -78,6 +165,9 @@
             // Function to send a message to the API
             async function sendMessage(message) {
                 try {
+                    // Set UI to processing state
+                    setProcessingState(true);
+                    
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -95,12 +185,17 @@
                 } catch (error) {
                     console.error('Error sending message:', error);
                     addMessage('Sorry, I encountered an error. Please try again.', false);
+                } finally {
+                    // Reset UI processing state
+                    setProcessingState(false);
                 }
             }
 
             // Function to clear the chat history
             async function clearChat() {
                 try {
+                    setProcessingState(true);
+                    
                     const response = await fetch('/api/clear', {
                         method: 'POST',
                     });
@@ -114,6 +209,8 @@
                     addMessage('Hello! I\'m your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.', false);
                 } catch (error) {
                     console.error('Error clearing chat:', error);
+                } finally {
+                    setProcessingState(false);
                 }
             }
 
@@ -122,8 +219,8 @@
                 const message = userInput.value.trim();
                 if (message) {
                     addMessage(message, true);
-                    sendMessage(message);
                     userInput.value = '';
+                    sendMessage(message);
                 }
             });
 
@@ -133,8 +230,8 @@
                     const message = userInput.value.trim();
                     if (message) {
                         addMessage(message, true);
-                        sendMessage(message);
                         userInput.value = '';
+                        sendMessage(message);
                     }
                 }
             });
@@ -145,6 +242,8 @@
             // Load chat history on page load
             async function loadChatHistory() {
                 try {
+                    setProcessingState(true);
+                    
                     const response = await fetch('/api/history');
                     if (response.ok) {
                         const data = await response.json();
@@ -166,6 +265,8 @@
                     }
                 } catch (error) {
                     console.error('Error loading chat history:', error);
+                } finally {
+                    setProcessingState(false);
                 }
             }
 

@@ -122,8 +122,8 @@ func (c *LLMClient) GenerateResponse(ctx context.Context) (string, error) {
 	// Use options for a chat model
 	opts := []llms.CallOption{
 		llms.WithModel(model),
-		llms.WithTemperature(0.9),
-		llms.WithMaxTokens(2048),
+		llms.WithTemperature(0.3), // Lower temperature for more consistent, factual responses
+		llms.WithMaxTokens(8192),
 	}
 
 	// Use the Call method which takes a prompt string
