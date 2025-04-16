@@ -4,6 +4,7 @@ Response formatter for the movie crew.
 import logging
 from datetime import datetime
 from typing import List, Dict, Any
+from django.conf import settings
 
 # Get the logger
 logger = logging.getLogger('chatbot.movie_crew')
@@ -70,8 +71,17 @@ class ResponseFormatter:
             # Check if this is a current release (should have the flag we added)
             is_current = movie.get('is_current_release', False)
 
-            # Only show theater information for current releases
-            if is_current and theater_count > 0:
+            # Only show theater information for current releases AND in First Run mode
+            first_run_mode = any(term == "First Run" for term in query.split())  # Try to detect mode from query
+            
+            # Get the conversation mode if it's included in the movie object
+            conversation_mode = movie.get('conversation_mode', '')
+            if conversation_mode and conversation_mode == 'casual':
+                # In Casual mode, we don't show theater info regardless of current status
+                # Just show the movie info without theater notices
+                pass
+            elif is_current and theater_count > 0 and (first_run_mode or "casual" not in query.lower()):
+                # Only show theater info in First Run mode and if we have theaters
                 response += f"   🎬 Available at {theater_count} theater{'s' if theater_count != 1 else ''}.\n"
 
                 # Add showtimes for the first theater if available
@@ -80,9 +90,12 @@ class ResponseFormatter:
                     theater_name = first_theater.get('name', 'Unknown Theater')
                     showtimes = first_theater.get('showtimes', [])
                     
-                    # Show just first 3 showtimes
+                    # Get maximum showtimes to display from settings
+                    max_showtimes = getattr(settings, 'MAX_SHOWTIMES_PER_THEATER', 3)
+                    
+                    # Show limited number of showtimes based on configuration
                     showtime_strs = []
-                    for i, showtime in enumerate(showtimes[:3]):
+                    for i, showtime in enumerate(showtimes[:max_showtimes]):
                         time_str = showtime.get('start_time', '')
                         format_str = showtime.get('format', '')
                         # Extract just the time portion (HH:MM) if it's a full datetime
@@ -101,8 +114,8 @@ class ResponseFormatter:
                         response += f"   📅 {theater_name}: {', '.join(showtime_strs)}\n"
                     else:
                         response += f"   📅 {theater_name}: Call theater for showtimes\n"
-            elif not is_current:
-                # For older movies, don't show theater information
+            elif not is_current and (first_run_mode or "casual" not in query.lower()):
+                # For older movies in First Run mode, mention they're not in theaters
                 release_date = movie.get('release_date', '')
                 release_year = None
                 if release_date and len(release_date) >= 4:
@@ -115,8 +128,8 @@ class ResponseFormatter:
                     response += f"   📽️ This is a {release_year} release, not currently playing in theaters.\n"
                 else:
                     response += "   📽️ This movie is not currently playing in theaters.\n"
-            else:
-                # Current release but no theaters found
+            elif is_current and "casual" not in query.lower():
+                # Current release but no theaters found (First Run mode only)
                 response += "   ⚠️ No theater information available for this current release. You may need to check local theater websites for showtimes.\n"
 
             # Add a separator between movies

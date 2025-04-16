@@ -319,14 +319,9 @@ def send_message(request):
 
                 logger.debug(f"Conversation history preview: {conversation_history[-3:] if len(conversation_history) > 3 else conversation_history}")
 
-                # Adjust the query to indicate first run filter preference if in casual viewing mode
+                # Use the same query for both modes, but pass the mode flag to process_query
                 query_to_use = user_message_text
-                if not first_run_filter:
-                    # Add a context hint for casual viewing mode (no theaters/showtimes needed)
-                    query_to_use = f"{user_message_text} [CASUAL_MODE: Focus on recommendations only, no theater information needed]"
-                    logger.info(f"Using casual mode query: '{query_to_use[:50]}{'...' if len(query_to_use) > 50 else ''}'")
-                else:
-                    logger.info(f"Using first run mode query: '{query_to_use[:50]}{'...' if len(query_to_use) > 50 else ''}'")
+                logger.info(f"Using query: '{query_to_use[:50]}{'...' if len(query_to_use) > 50 else ''}' in {'casual' if not first_run_filter else 'first run'} mode")
 
                 # Track processing time
                 import time

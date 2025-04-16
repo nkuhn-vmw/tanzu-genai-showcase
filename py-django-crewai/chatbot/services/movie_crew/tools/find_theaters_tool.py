@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
+from django.conf import settings
 
 from ...location_service import LocationService
 from ...serp_service import SerpShowtimeService
@@ -304,12 +305,15 @@ class FindTheatersTool(BaseTool):
                     search_location = location if location and location.lower() != 'unknown' else user_coords['display_name']
                     logger.info(f"Searching for showtimes in location: {search_location}")
 
+                    # Get the search radius from settings or use default
+                    radius_miles = getattr(settings, 'THEATER_SEARCH_RADIUS_MILES', 25)
+                    
                     # For each movie, search for real showtimes
-                    logger.info(f"Searching for real showtimes for movie: {movie_title}")
+                    logger.info(f"Searching for real showtimes for movie: {movie_title} within {radius_miles} miles of {search_location}")
                     real_theaters_with_showtimes = showtime_service.search_showtimes(
                         movie_title=movie_title,
                         location=search_location,
-                        radius_miles=25
+                        radius_miles=radius_miles
                     )
 
                     # Validate that we have results specifically for this movie

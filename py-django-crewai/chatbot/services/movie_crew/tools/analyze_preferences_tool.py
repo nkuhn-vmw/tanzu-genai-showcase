@@ -63,6 +63,19 @@ class AnalyzePreferencesTool(BaseTool):
 
             # Get top movies
             for movie, score in scored_movies[:max_recommendations]:
+                # Ensure movie has both tmdb_id and id for compatibility
+                if 'id' in movie and not 'tmdb_id' in movie:
+                    movie['tmdb_id'] = movie['id']
+                    logger.info(f"Set tmdb_id from id for movie: {movie.get('title')}")
+                elif 'tmdb_id' in movie and not 'id' in movie:
+                    movie['id'] = movie['tmdb_id']
+                    logger.info(f"Set id from tmdb_id for movie: {movie.get('title')}")
+                
+                # Add TMDB URL if missing
+                if 'tmdb_id' in movie and not 'tmdb_url' in movie:
+                    movie['tmdb_url'] = f"https://www.themoviedb.org/movie/{movie['tmdb_id']}"
+                    logger.info(f"Added TMDB URL for movie: {movie.get('title')}")
+                    
                 # Include all original movie details in the recommendation
                 recommendations.append(movie)
 

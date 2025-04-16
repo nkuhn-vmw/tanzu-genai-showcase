@@ -59,6 +59,12 @@ window.renderTMDBGrid = function(movies, containerId, isFirstRunMode = true) {
         // Create the movie card
         const movieCard = document.createElement('div');
         movieCard.className = 'movie-card';
+        
+        // Create a simple div wrapper for the poster
+        const posterWrapper = document.createElement('div');
+        
+        // Add title as tooltip
+        posterWrapper.title = movie.title;
 
         // Add the poster image with error handling
         const posterImg = document.createElement('img');
@@ -71,8 +77,12 @@ window.renderTMDBGrid = function(movies, containerId, isFirstRunMode = true) {
             console.error(`Failed to load image for ${movie.title}`, posterUrl);
             this.src = 'https://via.placeholder.com/300x450?text=No+Poster';
         };
-
-        movieCard.appendChild(posterImg);
+        
+        // Add the image to the wrapper
+        posterWrapper.appendChild(posterImg);
+        
+        // Add the wrapper to the card
+        movieCard.appendChild(posterWrapper);
 
         // Log image URL for debugging
         console.log(`Movie: ${movie.title}, Image URL: ${posterUrl}`);

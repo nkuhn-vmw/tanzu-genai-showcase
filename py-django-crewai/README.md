@@ -53,13 +53,21 @@ The application consists of:
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file with your API keys (for local development only):
+4. Create a `.env` file with your API keys and configuration options (for local development only):
 
    ```bash
+   # Required API keys
    OPENAI_API_KEY=your_llm_api_key_here
    LLM_BASE_URL=optional_custom_endpoint
    LLM_MODEL=gpt-4o-mini
    TMDB_API_KEY=your_movie_db_api_key_here
+   
+   # Optional configuration parameters
+   MOVIE_RESULTS_LIMIT=5            # Number of movie results to return from search
+   MAX_RECOMMENDATIONS=3            # Maximum number of recommended movies to show
+   THEATER_SEARCH_RADIUS_MILES=25   # Radius in miles to search for theaters
+   DEFAULT_SEARCH_START_YEAR=1900   # Default start year for historical movie searches
+   MAX_SHOWTIMES_PER_THEATER=3      # Maximum number of showtimes to display per theater
    ```
 
 5. Run migrations:

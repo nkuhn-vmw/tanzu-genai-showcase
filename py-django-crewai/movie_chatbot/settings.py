@@ -149,6 +149,18 @@ TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 # SerpAPI Configuration for movie showtimes
 SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
+# Movie recommendation app configuration
+# Number of movie results to return from search/discover APIs
+MOVIE_RESULTS_LIMIT = int(os.getenv('MOVIE_RESULTS_LIMIT', '5'))
+# Maximum number of recommended movies to return to the user
+MAX_RECOMMENDATIONS = int(os.getenv('MAX_RECOMMENDATIONS', '3'))
+# Radius in miles to search for theaters
+THEATER_SEARCH_RADIUS_MILES = int(os.getenv('THEATER_SEARCH_RADIUS_MILES', '25'))
+# Default starting year for historical movie searches ("before X" queries)
+DEFAULT_SEARCH_START_YEAR = int(os.getenv('DEFAULT_SEARCH_START_YEAR', '1900'))
+# Maximum number of showtimes to display per theater
+MAX_SHOWTIMES_PER_THEATER = int(os.getenv('MAX_SHOWTIMES_PER_THEATER', '3'))
+
 # Enhanced Logging Configuration
 LOGGING = {
     'version': 1,

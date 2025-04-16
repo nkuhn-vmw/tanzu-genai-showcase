@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional, Union
 
 import tmdbsimple as tmdb
 from crewai import Task, Crew
+from django.conf import settings
 from langchain_openai import ChatOpenAI
 
 from .agents.movie_finder_agent import MovieFinderAgent
@@ -148,9 +149,12 @@ class MovieCrewManager:
             tools=[search_tool]
         )
 
+        # Get max recommendations count from settings
+        max_recommendations = getattr(settings, 'MAX_RECOMMENDATIONS', 3)
+        
         recommend_movies_task = Task(
-            description="Recommend the top 3 movies from the list that best match the user's preferences",
-            expected_output="A JSON list of the top 3 recommended movies with explanations",
+            description=f"Recommend the top {max_recommendations} movies from the list that best match the user's preferences",
+            expected_output=f"A JSON list of the top {max_recommendations} recommended movies with explanations",
             agent=recommender,
             tools=[analyze_tool]
         )
@@ -326,9 +330,15 @@ class MovieCrewManager:
 
                 # Use the filtered list for First Run mode
                 recommendations_to_use = current_movies if current_movies else recommendations
+                # Set conversation mode to first_run for each movie
+                for movie in recommendations_to_use:
+                    movie['conversation_mode'] = 'first_run'
             else:
                 # For Casual Viewing mode, use all recommendations
                 recommendations_to_use = recommendations
+                # Set conversation mode to casual for each movie
+                for movie in recommendations_to_use:
+                    movie['conversation_mode'] = 'casual'
 
             # Combine recommendations with theater data
             movies_with_theaters = self._combine_movies_and_theaters(recommendations_to_use, theaters_data)

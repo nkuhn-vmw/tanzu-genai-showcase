@@ -137,7 +137,7 @@ class TMDBService:
 
     def get_movie_images(self, movie_id) -> Dict[str, Any]:
         """
-        Get images for a movie.
+        Get images for a movie, filtering for English language when possible.
 
         Args:
             movie_id: TMDB movie ID
@@ -146,9 +146,30 @@ class TMDBService:
             Dictionary containing posters, backdrops, and logos
         """
         try:
-            # Use tmdbsimple library for this
+            # Use TMDb API to get images with language parameter
             movie = tmdb.Movies(movie_id)
+            
+            # First try to get English-language images specifically
+            images_en = movie.images(include_image_language="en")
+            
+            # If we got English images with posters, use them
+            if images_en and 'posters' in images_en and images_en['posters']:
+                logger.info(f"Using English language images for movie ID {movie_id}")
+                return images_en
+                
+            # Otherwise, get all images as fallback
             images = movie.images()
+            
+            # If we have multiple posters, try to filter for English ones
+            if 'posters' in images and images['posters']:
+                # Try to filter to only English language posters
+                en_posters = [p for p in images['posters'] if p.get('iso_639_1') == 'en']
+                
+                # If we found English posters, replace the full list with just those
+                if en_posters:
+                    logger.info(f"Filtered {len(images['posters'])} posters to {len(en_posters)} English ones for movie ID {movie_id}")
+                    images['posters'] = en_posters
+            
             return images
         except Exception as e:
             logger.error(f"Error getting movie images for ID {movie_id}: {str(e)}")
