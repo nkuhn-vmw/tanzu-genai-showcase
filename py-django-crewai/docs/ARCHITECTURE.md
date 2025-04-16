@@ -96,6 +96,11 @@ graph TD
    - **Recommendation Agent**: Ranks and selects the best movie options
    - **Theater Finder Agent**: Locates theaters and showtimes for recommended movies
 
+6. **CrewAI Tools**
+   - **SearchMoviesTool**: Pydantic-based tool for searching TMDb movies
+   - **AnalyzePreferencesTool**: Tool for analyzing movie preferences
+   - **FindTheatersTool**: Tool for finding theaters showing recommended movies
+
 6. **External Service Integrations**
    - The Movie Database (TMDb) API
    - (Mock) Theater/Location services
@@ -231,9 +236,9 @@ def get_llm_config():
 
     # Fallback to environment variables for local development
     return {
-        'api_key': os.getenv('GENAI_API_KEY'),
-        'base_url': os.getenv('GENAI_BASE_URL'),
-        'model': os.getenv('GENAI_MODEL', 'gpt-4o-mini')
+        'api_key': os.getenv('OPENAI_API_KEY'),
+        'base_url': os.getenv('LLM_BASE_URL'),
+        'model': os.getenv('LLM_MODEL', 'gpt-4o-mini')
     }
 ```
 

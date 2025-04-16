@@ -717,19 +717,29 @@ class MovieCrewManager:
             
             logger.info(f"Crew execution completed in {execution_time:.2f} seconds")
             logger.info(f"Result type: {type(result)}")
-            logger.debug(f"Raw result: {result[:500]}{'...' if result and len(result) > 500 else ''}")
+            
+            # Handle CrewOutput object - extract the raw output correctly
+            if hasattr(result, 'raw'):
+                result_text = result.raw
+                logger.debug(f"Raw result: {result_text[:500]}{'...' if result_text and len(result_text) > 500 else ''}")
+            elif hasattr(result, 'result'):
+                result_text = result.result
+                logger.debug(f"Raw result: {result_text[:500]}{'...' if result_text and len(result_text) > 500 else ''}")
+            else:
+                result_text = str(result)
+                logger.debug(f"Raw result (converted to string): {result_text[:500]}{'...' if result_text and len(result_text) > 500 else ''}")
                 
             # Save successful execution stats
             logger.info({
                 "event": "crew_execution_success",
                 "execution_time": execution_time,
                 "query_length": len(query) if query else 0,
-                "result_length": len(result) if result else 0
+                "result_length": len(result_text) if result_text else 0
             })
                 
-            # Additional check if result is None or not as expected
-            if result is None or not isinstance(result, str) or not result.strip():
-                logger.warning(f"Crew execution returned an invalid result: {result}")
+            # Additional check if result is None
+            if result is None:
+                logger.warning(f"Crew execution returned None")
                 return {
                     "response": f"I found some movie options for '{query}' but couldn't retrieve all the details. Here's what I can tell you.",
                     "movies": []
