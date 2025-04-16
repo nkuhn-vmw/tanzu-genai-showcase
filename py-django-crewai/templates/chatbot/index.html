@@ -16,7 +16,7 @@
             <div class="row align-items-center">
                 <div class="col">
                     <span class="netflix-logo">VIBEFLIX</span>
-                    <span class="ms-3 d-none d-md-inline">Movie Recommendations & Showtimes</span>
+                    <span class="ms-3 d-none d-md-inline">Recommendations and showtimes for movie enthusiasts</span>
                 </div>
                 <div class="col-auto">
                     <a href="{% url 'reset_conversation' %}" class="btn btn-outline-light btn-sm">
@@ -56,24 +56,23 @@
             <div class="tab-pane fade show active" id="first-run" role="tabpanel" aria-labelledby="first-run-tab">
                 <div class="row">
                     <div class="col-lg-8">
-                        <div class="chat-container" id="chatContainer">
-                            {% for message in messages %}
-                                <div class="message {% if message.sender == 'user' %}user-message{% else %}bot-message{% endif %}">
-                                    {{ message.content }}
-                                </div>
-                                <span class="message-time {% if message.sender == 'user' %}text-end{% endif %}">
-                                    {{ message.created_at|date:"g:i A" }}
-                                </span>
-                            {% endfor %}
-                            <!-- This script applies formatting to initial messages -->
-                            <script>
-                                document.addEventListener('DOMContentLoaded', function() {
-                                    // Format all bot messages already in the chat
-                                    formatMessagesInContainer('chatContainer');
-                                    formatMessagesInContainer('casualChatContainer');
-                                });
-                            </script>
+                <div class="chat-container" id="chatContainer">
+                    {% for message in first_run_messages %}
+                        <div class="message {% if message.sender == 'user' %}user-message{% else %}bot-message{% endif %}">
+                            {{ message.content }}
                         </div>
+                        <span class="message-time {% if message.sender == 'user' %}text-end{% endif %}">
+                            {{ message.created_at|date:"g:i A" }}
+                        </span>
+                    {% endfor %}
+                    <!-- This script applies formatting to initial messages for First Run tab -->
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Format all bot messages already in the chat
+                            formatMessagesInContainer('chatContainer');
+                        });
+                    </script>
+                </div>
 
                         <div class="processing-container" id="processingContainer">
                             <div class="progress mb-2">
@@ -90,9 +89,11 @@
                         </div>
 
                         <div class="mt-3">
-                            <button class="btn btn-sample" onclick="sendSampleQuestion('Show me action movies playing this weekend')">Action in theaters</button>
-                            <button class="btn btn-sample" onclick="sendSampleQuestion('I want to see a family movie with my kids')">Family movies</button>
-                            <button class="btn btn-sample" onclick="sendSampleQuestion('What are the best thriller movies playing now?')">Thrillers now playing</button>
+                            <button class="btn btn-sample" onclick="sendSampleQuestion('Show me action movies playing this weekend')">Action</button>
+                            <button class="btn btn-sample" onclick="sendSampleQuestion('What is a good comedy for a group night out this weekend')">Comedy</button>
+                            <button class="btn btn-sample" onclick="sendSampleQuestion('What thought-provoking documentary should I not miss this weekend?')">Documentary</button>
+                            <button class="btn btn-sample" onclick="sendSampleQuestion('I want to see a family movie with my kids')">Family</button>
+                            <button class="btn btn-sample" onclick="sendSampleQuestion('I love time travel - any sci-fi movies with that playing now?')">Science Fiction</button>
                         </div>
                     </div>
 
@@ -124,7 +125,21 @@
                 <div class="row">
                     <div class="col-lg-8">
                         <div class="chat-container" id="casualChatContainer">
-                            <!-- Messages will be mirrored from the main chat container -->
+                            {% for message in casual_messages %}
+                                <div class="message {% if message.sender == 'user' %}user-message{% else %}bot-message{% endif %}">
+                                    {{ message.content }}
+                                </div>
+                                <span class="message-time {% if message.sender == 'user' %}text-end{% endif %}">
+                                    {{ message.created_at|date:"g:i A" }}
+                                </span>
+                            {% endfor %}
+                            <!-- This script applies formatting to initial messages for Casual Viewing tab -->
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    // Format all bot messages already in the casual chat
+                                    formatMessagesInContainer('casualChatContainer');
+                                });
+                            </script>
                         </div>
 
                         <div class="processing-container" id="casualProcessingContainer">

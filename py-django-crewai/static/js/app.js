@@ -54,34 +54,26 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('activeTab', 'casual');
         // Hide location field when in Casual Viewing mode
         document.querySelector('.location-input-group').style.display = 'none';
-        // Mirror messages from main chat to casual chat
-        mirrorMessages();
     });
 
-    // Initialize with messages
-    mirrorMessages();
-
-    // Mirror messages from main chat to casual chat
-    function mirrorMessages() {
-        casualChatContainer.innerHTML = chatContainer.innerHTML;
-        casualChatContainer.scrollTop = casualChatContainer.scrollHeight;
-    }
-
-    // Scroll to bottom of chat on load
+    // Initial scroll to bottom of chat containers
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    casualChatContainer.scrollTop = casualChatContainer.scrollHeight;
 
-            // Handle sending messages
-            window.sendMessage = function(isFirstRun = true) {
-                // Get elements based on active mode
-                const activeInput = isFirstRun ? userInput : casualUserInput;
-                const activeButton = isFirstRun ? sendButton : casualSendButton;
-                const activeProcessingContainer = isFirstRun ? processingContainer : casualProcessingContainer;
-                const activeProgressBar = isFirstRun ? progressBar : casualProgressBar;
-                const activeProcessingMessage = isFirstRun ? processingMessage : casualProcessingMessage;
+    // Handle sending messages - each tab has its own conversation
+    window.sendMessage = function(isFirstRun = true) {
+        // Get elements based on active mode
+        const activeInput = isFirstRun ? userInput : casualUserInput;
+        const activeButton = isFirstRun ? sendButton : casualSendButton;
+        const activeContainer = isFirstRun ? chatContainer : casualChatContainer;
+        const activeProcessingContainer = isFirstRun ? processingContainer : casualProcessingContainer;
+        const activeProgressBar = isFirstRun ? progressBar : casualProgressBar;
+        const activeProcessingMessage = isFirstRun ? processingMessage : casualProcessingMessage;
 
-                const message = activeInput.value.trim();
-                // Use the single location input that's now in the header
-                const location = document.getElementById('locationInput').value.trim();
+        const message = activeInput.value.trim();
+        
+        // Only use location for First Run mode
+        const location = isFirstRun ? document.getElementById('locationInput').value.trim() : "";
 
         if (message) {
             // Disable input and button while processing
@@ -187,9 +179,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Focus input for next message
                     activeInput.focus();
-
-                    // Mirror messages to casual chat
-                    mirrorMessages();
                 }, 500);
             })
             .catch(error => {
@@ -212,9 +201,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Focus input for next message
                 activeInput.focus();
-
-                // Mirror messages to casual chat
-                mirrorMessages();
             });
         }
     };
@@ -223,10 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function appendMessage(text, sender, isFirstRun = true) {
         // Target the correct container
         const targetContainer = isFirstRun ? chatContainer : casualChatContainer;
-        
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender === 'user' ? 'user-message' : 'bot-message'}`;
-        
+
         // Apply formatting for bot messages, or set as plain text for user messages
         if (sender === 'bot') {
             messageDiv.innerHTML = formatMessageText(text);
@@ -244,31 +230,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Scroll to bottom of chat
         targetContainer.scrollTop = targetContainer.scrollHeight;
-        
-        // If this is the main chat and we're adding a message, update the casual chat too
-        if (isFirstRun && !document.getElementById('casual-viewing-tab').classList.contains('active')) {
-            mirrorMessages();
-        }
     }
 
     // Movie grid functions - using TMDB-style grid view
     window.updateMovieGrid = function(movies) {
         // First try to enhance movie posters with high-quality versions
         enhanceMoviePosters(movies, function(enhancedMovies) {
-            // Use our new TMDB-style grid renderer
-            renderTMDBGrid(enhancedMovies, 'movieGridContainer');
-            
+            // Use our new TMDB-style grid renderer with First Run mode
+            renderTMDBGrid(enhancedMovies, 'movieGridContainer', true);
+
             // Also update the theaters section since we've got new movies
             updateShowtimesSection(enhancedMovies);
         });
     }
-    
+
     // Update the casual movies view
     window.updateCasualMovies = function(movies) {
         // Enhance posters and then render
         enhanceMoviePosters(movies, function(enhancedMovies) {
-            // Use the same renderer for consistency
-            renderTMDBGrid(enhancedMovies, 'casualMovieContainer');
+            // Use the same renderer for consistency, but in Casual mode
+            renderTMDBGrid(enhancedMovies, 'casualMovieContainer', false);
         });
     }
 
@@ -277,6 +258,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const theatersContainer = document.getElementById('theatersContainer');
         const dateTabsContainer = document.getElementById('dateTabs');
 
+        // Count how many movies are current releases
+        const currentReleaseCount = movies.filter(movie => movie.is_current_release === true).length;
+        const moviesWithTheatersCount = movies.filter(movie =>
+            movie.is_current_release === true &&
+            movie.theaters &&
+            movie.theaters.length > 0
+        ).length;
+
         // Only display for current movies with theaters
         const currentMovies = movies.filter(movie =>
             movie.is_current_release === true &&
@@ -284,9 +273,18 @@ document.addEventListener('DOMContentLoaded', function() {
             movie.theaters.length > 0
         );
 
-        // If no current movies with theaters, show message
+        // Log information for debugging
+        console.log(`Total movies: ${movies.length}`);
+        console.log(`Current release movies: ${currentReleaseCount}`);
+        console.log(`Movies with theaters: ${moviesWithTheatersCount}`);
+
+        // If no current movies with theaters, show appropriate message
         if (currentMovies.length === 0) {
-            theatersContainer.innerHTML = '<p class="text-muted">No theaters near you are currently showing the recommended movies.</p>';
+            if (currentReleaseCount === 0) {
+                theatersContainer.innerHTML = '<p class="text-muted">No current release movies found. Try searching for movies currently playing in theaters.</p>';
+            } else {
+                theatersContainer.innerHTML = '<p class="text-muted">No theaters near you are currently showing the recommended movies.</p>';
+            }
             dateTabsContainer.innerHTML = '';
             return;
         }
@@ -346,13 +344,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         movies.forEach(movie => {
             if (movie.theaters) {
+                // Debug the theaters data structure
+                console.log(`Processing theaters for ${movie.title}:`, movie.theaters);
+
                 movie.theaters.forEach(theater => {
                     // If theater not in map yet, add it
                     if (!allTheaters.has(theater.name)) {
                         allTheaters.set(theater.name, {
                             name: theater.name,
                             address: theater.address,
-                            distance_miles: theater.distance_miles,
+                            distance_miles: theater.distance_miles || 5.0, // Default if distance not available
                             movies: {}
                         });
                     }
@@ -360,12 +361,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Add movie and its showtimes to this theater
                     const theaterEntry = allTheaters.get(theater.name);
 
-                    // Only process if the theater has showtimes for this movie
-                    if (theater.showtimes && theater.showtimes.length > 0) {
+                    // Check if the theater has showtimes array (new structure) or direct showtime data (old structure)
+                    let showtimesToProcess = [];
+                    if (Array.isArray(theater.showtimes)) {
+                        showtimesToProcess = theater.showtimes;
+                    } else if (theater.start_time) {
+                        // Legacy format - single showtime directly on theater object
+                        showtimesToProcess = [{
+                            start_time: theater.start_time,
+                            format: theater.format || 'Standard'
+                        }];
+                    }
+
+                    // Only process if we have showtimes to work with
+                    if (showtimesToProcess.length > 0) {
                         // Group showtimes by format (Standard, IMAX, 3D, etc.)
                         const showtimesByFormat = {};
 
-                        theater.showtimes.forEach(showtime => {
+                        showtimesToProcess.forEach(showtime => {
                             const format = showtime.format || 'Standard';
                             if (!showtimesByFormat[format]) {
                                 showtimesByFormat[format] = [];
@@ -377,12 +390,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
 
-                        // Add to theater's movies
-                        theaterEntry.movies[movie.title] = {
-                            id: movie.tmdb_id,
-                            title: movie.title,
-                            showtimesByFormat: showtimesByFormat
-                        };
+                        // Only add to theater's movies if we have actual showtimes
+                        if (Object.keys(showtimesByFormat).length > 0) {
+                            // Add to theater's movies
+                            theaterEntry.movies[movie.title] = {
+                                id: movie.tmdb_id,
+                                title: movie.title,
+                                showtimesByFormat: showtimesByFormat
+                            };
+                        }
                     }
                 });
             }
@@ -527,16 +543,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Try to get user location automatically
     function detectUserLocation() {
-        if (navigator.geolocation) {
-            processingMessage.textContent = "Detecting your location...";
-            processingContainer.style.display = 'block';
-            progressBar.style.width = '50%';
+        // Show the processing indicator
+        processingMessage.textContent = "Detecting your location...";
+        processingContainer.style.display = 'block';
+        progressBar.style.width = '50%';
 
+        console.log("Starting location detection");
+
+        // Function to hide the processing indicator
+        function hideProcessing(message = null) {
+            if (message) {
+                processingMessage.textContent = message;
+                setTimeout(() => {
+                    processingContainer.style.display = 'none';
+                }, 2000);
+            } else {
+                processingContainer.style.display = 'none';
+            }
+        }
+
+        // Function to set a default location
+        function useDefaultLocation() {
+            console.log("Using default location (Seattle)");
+            locationInput.value = "Seattle, WA";
+            hideProcessing("Using default location: Seattle, WA");
+        }
+
+        // Try to use the browser's geolocation API
+        if (navigator.geolocation) {
+            console.log("Geolocation API available, requesting position");
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     // Success - we have coordinates, now reverse geocode to get address
                     const latitude = position.coords.latitude;
                     const longitude = position.coords.longitude;
+                    console.log(`Got coordinates: ${latitude}, ${longitude}`);
 
                     // Use reverse geocoding to get readable location
                     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
@@ -544,33 +585,63 @@ document.addEventListener('DOMContentLoaded', function() {
                             'User-Agent': 'Movie Chatbot Application'
                         }
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        const locationName = data.display_name.split(',').slice(0, 3).join(',');
+                        console.log("Received geocoding response:", data);
+                        
+                        // Extract a reasonable location name
+                        let locationName;
+                        if (data.display_name) {
+                            // Get first three parts of the address
+                            locationName = data.display_name.split(',').slice(0, 3).join(',');
+                        } else if (data.address) {
+                            // Try to use city, state, country
+                            const address = data.address;
+                            const city = address.city || address.town || address.village || address.hamlet;
+                            const state = address.state || address.province;
+                            const country = address.country;
+                            
+                            if (city && state) {
+                                locationName = `${city}, ${state}`;
+                            } else if (city) {
+                                locationName = city;
+                            }
+                        }
 
+                        // If we have a location name, use it
                         if (locationName) {
+                            console.log(`Setting location to: ${locationName}`);
                             locationInput.value = locationName;
-                            processingMessage.textContent = `Location detected: ${locationName}`;
-                            setTimeout(() => {
-                                processingContainer.style.display = 'none';
-                            }, 2000);
+                            hideProcessing(`Location detected: ${locationName}`);
+                        } else {
+                            console.error("Could not parse location from response:", data);
+                            useDefaultLocation();
                         }
                     })
                     .catch(error => {
                         console.error("Error with reverse geocoding:", error);
-                        processingContainer.style.display = 'none';
+                        useDefaultLocation();
                     });
                 },
                 function(error) {
-                    console.error("Error detecting location:", error.message);
-                    processingContainer.style.display = 'none';
+                    console.error(`Geolocation error (${error.code}): ${error.message}`);
+                    useDefaultLocation();
                 },
                 {
-                    enableHighAccuracy: false,
-                    timeout: 5000,
-                    maximumAge: 0
+                    enableHighAccuracy: true, // Try for best accuracy
+                    timeout: 10000, // 10 second timeout
+                    maximumAge: 5 * 60 * 1000 // 5 minutes cache
                 }
             );
+        } else {
+            // Browser doesn't support geolocation
+            console.error("Geolocation not supported by this browser");
+            useDefaultLocation();
         }
     }
 

@@ -2,11 +2,19 @@ from django.db import models
 
 class Conversation(models.Model):
     """A conversation between a user and the movie chatbot."""
+    MODE_CHOICES = [
+        ('first_run', 'First Run Movies'),
+        ('casual', 'Casual Viewing'),
+    ]
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default='first_run', 
+                           help_text="The mode this conversation belongs to (First Run or Casual Viewing)")
     
     def __str__(self):
-        return f"Conversation {self.id} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
+        mode_str = 'First Run' if self.mode == 'first_run' else 'Casual'
+        return f"{mode_str} Conversation {self.id} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
 
 class Message(models.Model):
     """A message within a conversation."""

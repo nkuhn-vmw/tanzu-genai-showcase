@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from .models import Conversation, Message, MovieRecommendation, Theater, Showtime
-from .services.movie_crew import MovieCrewManager  # Import from the package now
+from .services.movie_crew import MovieCrewManager
 import json
 import logging
 import traceback
@@ -30,37 +30,64 @@ def get_client_ip(request):
 
 def index(request):
     """Render the chatbot interface."""
-    # Create a new conversation or get the most recent one
-    conversation_id = request.session.get('conversation_id')
-
-    if conversation_id:
+    # Track conversations for both modes
+    first_run_conversation_id = request.session.get('first_run_conversation_id')
+    casual_conversation_id = request.session.get('casual_conversation_id')
+    
+    # First Run mode conversation (default)
+    if first_run_conversation_id:
         try:
-            conversation = Conversation.objects.get(id=conversation_id)
+            first_run_conversation = Conversation.objects.get(id=first_run_conversation_id)
         except Conversation.DoesNotExist:
-            conversation = Conversation.objects.create()
-            request.session['conversation_id'] = conversation.id
+            first_run_conversation = Conversation.objects.create(mode='first_run')
+            request.session['first_run_conversation_id'] = first_run_conversation.id
     else:
-        conversation = Conversation.objects.create()
-        request.session['conversation_id'] = conversation.id
+        first_run_conversation = Conversation.objects.create(mode='first_run')
+        request.session['first_run_conversation_id'] = first_run_conversation.id
 
-    # Get messages for the conversation
-    messages = conversation.messages.all()
+    # Casual Viewing mode conversation
+    if casual_conversation_id:
+        try:
+            casual_conversation = Conversation.objects.get(id=casual_conversation_id)
+        except Conversation.DoesNotExist:
+            casual_conversation = Conversation.objects.create(mode='casual')
+            request.session['casual_conversation_id'] = casual_conversation.id
+    else:
+        casual_conversation = Conversation.objects.create(mode='casual')
+        request.session['casual_conversation_id'] = casual_conversation.id
 
-    # Get recommendations for the conversation
-    recommendations = conversation.recommendations.all()
+    # Get messages for both conversations
+    first_run_messages = first_run_conversation.messages.all()
+    casual_messages = casual_conversation.messages.all()
 
-    # If no messages yet, add a welcome message
-    if not messages:
+    # Get recommendations for both conversations
+    first_run_recommendations = first_run_conversation.recommendations.all()
+    casual_recommendations = casual_conversation.recommendations.all()
+
+    # Add welcome messages if needed for first run mode
+    if not first_run_messages:
         welcome_message = Message.objects.create(
-            conversation=conversation,
+            conversation=first_run_conversation,
             sender='bot',
-            content="Hello! I'm your movie chatbot assistant. Tell me what kind of movie you're in the mood for, and I can recommend options and show you where they're playing nearby. For example, you could say 'I want to see a thriller' or 'Show me family movies playing this weekend'."
+            content="Hello! I'm your movie assistant for finding films currently in theaters. Tell me what kind of movie you're in the mood for, and I can recommend options and show you where they're playing nearby. For example, you could say 'I want to see a thriller' or 'Show me family movies playing this weekend'."
         )
 
+    # Add welcome message for casual viewing mode
+    if not casual_messages:
+        casual_welcome_message = Message.objects.create(
+            conversation=casual_conversation,
+            sender='bot',
+            content="Welcome to Casual Viewing mode! Here I can recommend movies from any time period based on your preferences, not just those currently in theaters. Try asking for recommendations like 'Show me sci-fi movies with time travel' or 'Recommend comedies from the 2010s'."
+        )
+
+    # Pass both conversations to the template
     return render(request, 'chatbot/index.html', {
-        'conversation': conversation,
-        'messages': messages,
-        'recommendations': recommendations,
+        'first_run_conversation': first_run_conversation,
+        'casual_conversation': casual_conversation,
+        'first_run_messages': first_run_messages,
+        'casual_messages': casual_messages,
+        'first_run_recommendations': first_run_recommendations,
+        'casual_recommendations': casual_recommendations,
     })
 
 @csrf_exempt
@@ -69,17 +96,75 @@ def send_message(request):
     if request.method == 'POST':
         try:
             logger.info("=== Processing new chat message ===")
-            # Get conversation or create new one
-            conversation_id = request.session.get('conversation_id')
-
-            if not conversation_id:
-                logger.info("Creating new conversation")
-                conversation = Conversation.objects.create()
-                request.session['conversation_id'] = conversation.id
-                logger.info(f"New conversation created with ID: {conversation.id}")
+            
+            # Parse request data first to determine the mode
+            try:
+                raw_body = request.body.decode('utf-8')
+                try:
+                    data = json.loads(raw_body)
+                except json.JSONDecodeError:
+                    try:
+                        data = json.loads(raw_body.replace("'", '"'))
+                    except Exception:
+                        if raw_body.startswith('"') and raw_body.endswith('"'):
+                            data = {"message": raw_body.strip('"')}
+                        else:
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Invalid request format. Could not parse message.'
+                            }, status=400)
+                
+                # Extract first run filter preference to determine which conversation to use
+                first_run_filter = data.get('first_run_filter', True)
+                if isinstance(first_run_filter, str):
+                    first_run_filter = first_run_filter.lower() == 'true'
+                
+                logger.info(f"Message mode: {'First Run' if first_run_filter else 'Casual Viewing'}")
+            except Exception as parsing_error:
+                logger.error(f"Error parsing request: {str(parsing_error)}")
+                # Default to First Run mode if we can't determine from the request
+                first_run_filter = True
+                logger.info("Defaulting to First Run mode due to parsing error")
+            
+            # Get the appropriate conversation based on the mode
+            if first_run_filter:
+                conversation_id = request.session.get('first_run_conversation_id')
+                if not conversation_id:
+                    logger.info("Creating new First Run conversation")
+                    conversation = Conversation.objects.create(mode='first_run')
+                    request.session['first_run_conversation_id'] = conversation.id
+                    logger.info(f"New First Run conversation created with ID: {conversation.id}")
+                else:
+                    logger.info(f"Using existing First Run conversation with ID: {conversation_id}")
+                    try:
+                        conversation = Conversation.objects.get(id=conversation_id)
+                        # Set mode if it's not already set (for backwards compatibility)
+                        if conversation.mode != 'first_run':
+                            conversation.mode = 'first_run'
+                            conversation.save()
+                    except Conversation.DoesNotExist:
+                        # Create a new one if the stored ID doesn't exist
+                        conversation = Conversation.objects.create(mode='first_run')
+                        request.session['first_run_conversation_id'] = conversation.id
             else:
-                logger.info(f"Using existing conversation with ID: {conversation_id}")
-                conversation = Conversation.objects.get(id=conversation_id)
+                conversation_id = request.session.get('casual_conversation_id')
+                if not conversation_id:
+                    logger.info("Creating new Casual Viewing conversation")
+                    conversation = Conversation.objects.create(mode='casual')
+                    request.session['casual_conversation_id'] = conversation.id
+                    logger.info(f"New Casual Viewing conversation created with ID: {conversation.id}")
+                else:
+                    logger.info(f"Using existing Casual Viewing conversation with ID: {conversation_id}")
+                    try:
+                        conversation = Conversation.objects.get(id=conversation_id)
+                        # Set mode if it's not already set (for backwards compatibility)
+                        if conversation.mode != 'casual':
+                            conversation.mode = 'casual'
+                            conversation.save()
+                    except Conversation.DoesNotExist:
+                        # Create a new one if the stored ID doesn't exist
+                        conversation = Conversation.objects.create(mode='casual')
+                        request.session['casual_conversation_id'] = conversation.id
 
             # Robust JSON parsing with comprehensive logging
             try:
@@ -249,7 +334,8 @@ def send_message(request):
 
                 response_data = movie_crew_manager.process_query(
                     query=query_to_use,
-                    conversation_history=conversation_history
+                    conversation_history=conversation_history,
+                    first_run_mode=first_run_filter
                 )
 
                 processing_time = time.time() - start_time
@@ -397,6 +483,18 @@ def send_message(request):
                 # Fetch recent recommendations
                 recent_recs = conversation.recommendations.order_by('-created_at')[:5]
 
+                # Debug logging of theaters/showtimes
+                for rec in recent_recs:
+                    showtime_count = rec.showtimes.count()
+                    if showtime_count > 0:
+                        logger.info(f"Movie {rec.title} has {showtime_count} showtimes in database")
+                    else:
+                        logger.warning(f"Movie {rec.title} has NO showtimes in database")
+
+                # Check if this is a current year movie
+                from datetime import datetime
+                current_year = datetime.now().year
+
                 recommendations_data = [{
                     'id': rec.id,
                     'title': rec.title,
@@ -404,12 +502,17 @@ def send_message(request):
                     'poster_url': rec.poster_url,
                     'release_date': rec.release_date.isoformat() if rec.release_date else None,
                     'rating': float(rec.rating) if rec.rating else None,
-                    'is_current_release': any('now playing' in showtime.format.lower() for showtime in rec.showtimes.all()) if rec.showtimes.exists() else False,
+                    # Mark as current release if it's from current year or if it has showtimes
+                    'is_current_release': (rec.release_date and rec.release_date.year >= current_year - 1) or rec.showtimes.exists(),
+                    # Properly format theater data with all required fields
                     'theaters': [{
                         'name': showtime.theater.name,
                         'address': showtime.theater.address,
-                        'start_time': showtime.start_time.isoformat(),
-                        'format': showtime.format
+                        'distance_miles': 5.0,  # Default distance if not available
+                        'showtimes': [{
+                            'start_time': showtime.start_time.isoformat(),
+                            'format': showtime.format
+                        }]
                     } for showtime in rec.showtimes.all()]
                 } for rec in recent_recs]
 
@@ -441,7 +544,15 @@ def send_message(request):
     }, status=400)
 
 def reset_conversation(request):
-    """Reset the conversation and start a new one."""
+    """Reset the conversations and start new ones."""
+    # Reset both conversation types
+    if 'first_run_conversation_id' in request.session:
+        del request.session['first_run_conversation_id']
+    
+    if 'casual_conversation_id' in request.session:
+        del request.session['casual_conversation_id']
+        
+    # For backward compatibility - also remove the old format if it exists
     if 'conversation_id' in request.session:
         del request.session['conversation_id']
 

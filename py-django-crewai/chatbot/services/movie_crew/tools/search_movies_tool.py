@@ -22,6 +22,7 @@ class SearchMoviesTool(BaseTool):
     name: str = "search_movies_tool"
     description: str = "Search for movies based on user criteria."
     args_schema: type[SearchMoviesInput] = SearchMoviesInput
+    first_run_mode: bool = True  # Default to First Run mode (theater search)
 
     def _run(self, query: str = "") -> str:
         """
@@ -37,10 +38,73 @@ class SearchMoviesTool(BaseTool):
             # Use the query parameter if provided
             search_query = query if query else ""
 
-            # First, check for currently playing movies
+            # Import SerperAPI service if we're in First Run mode
+            if self.first_run_mode:
+                try:
+                    from django.conf import settings
+                    from ...serp_service import SerpShowtimeService
+
+                    # Check if SerperAPI key is available
+                    if hasattr(settings, 'SERPAPI_API_KEY') and settings.SERPAPI_API_KEY:
+                        logger.info("Using SerperAPI to search for movies currently in theaters")
+                        serp_service = SerpShowtimeService(api_key=settings.SERPAPI_API_KEY)
+
+                        # Extract genres or keywords from the query
+                        genre_keywords = []
+                        if "family" in search_query.lower():
+                            genre_keywords.append("family")
+                        if "action" in search_query.lower():
+                            genre_keywords.append("action")
+                        if "comedy" in search_query.lower():
+                            genre_keywords.append("comedy")
+                        if "thriller" in search_query.lower():
+                            genre_keywords.append("thriller")
+
+                        # Construct a more specific search query
+                        serp_query = search_query
+                        if genre_keywords:
+                            serp_query = f"{' '.join(genre_keywords)} movies in theaters"
+                        else:
+                            serp_query = "movies currently in theaters"
+
+                        logger.info(f"Searching SerperAPI with query: {serp_query}")
+
+                        # Search for movies currently in theaters
+                        now_playing_results = serp_service.search_movies_in_theaters(query=serp_query)
+
+                        if now_playing_results and len(now_playing_results) > 0:
+                            logger.info(f"Found {len(now_playing_results)} movies currently in theaters via SerperAPI")
+
+                            # Process SerperAPI results
+                            movies = []
+                            for movie in now_playing_results[:5]:  # Limit to top 5
+                                # Create a movie dictionary from SerperAPI results
+                                movies.append(self._create_movie_dict(
+                                    title=movie.get('title', 'Unknown Title'),
+                                    overview=movie.get('description', ''),
+                                    release_date=movie.get('release_date', ''),
+                                    poster_url=movie.get('thumbnail', ''),
+                                    tmdb_id=movie.get('id'),  # May need to search TMDB to get this
+                                    rating=movie.get('rating', 0),
+                                    is_current_release=True  # SerperAPI only returns current releases
+                                ))
+
+                            # If we found movies via SerperAPI, return immediately
+                            if movies:
+                                return json.dumps(movies)
+                except Exception as serp_error:
+                    logger.error(f"Error using SerperAPI to search for movies: {str(serp_error)}")
+                    # Continue with TMDB search as fallback
+
+            # Check for currently playing movies in TMDB (as fallback or for casual viewing)
             search_for_now_playing = any(term in search_query.lower() for term in
                                         ['now playing', 'playing now', 'current', 'in theaters', 'theaters now',
                                         'showing now', 'showing at', 'playing at', 'weekend', 'this week'])
+
+            # Always prioritize now_playing search in First Run mode
+            if self.first_run_mode:
+                search_for_now_playing = True
+                logger.info("Forcing now_playing search in First Run mode")
 
             # Check if looking for specific genres
             genre_terms = {
@@ -126,8 +190,8 @@ class SearchMoviesTool(BaseTool):
                             # Mark as current release if it's from this year or last year
                             is_current_release = release_year is not None and release_year >= (current_year - 1)
 
-                            # Create movie dictionary
-                            movies.append(self._create_movie_dict(
+                            # Create movie dictionary with both ID fields for compatibility
+                            movie_dict = self._create_movie_dict(
                                 title=title,
                                 overview=overview,
                                 release_date=release_date,
@@ -135,7 +199,21 @@ class SearchMoviesTool(BaseTool):
                                 tmdb_id=movie_id,
                                 rating=movie.get('vote_average', 0),
                                 is_current_release=is_current_release
-                            ))
+                            )
+                            
+                            # Ensure both id and tmdb_id fields are present for compatibility
+                            movie_dict['id'] = movie_id
+                            
+                            # Add additional poster size options
+                            if poster_path:
+                                movie_dict['poster_urls'] = {
+                                    'small': f"https://image.tmdb.org/t/p/w200{poster_path}",
+                                    'medium': f"https://image.tmdb.org/t/p/w500{poster_path}",
+                                    'large': f"https://image.tmdb.org/t/p/w780{poster_path}",
+                                    'original': f"https://image.tmdb.org/t/p/original{poster_path}"
+                                }
+                            
+                            movies.append(movie_dict)
                 except Exception as e:
                     logger.error(f"Error fetching now playing movies: {str(e)}")
 
@@ -159,17 +237,44 @@ class SearchMoviesTool(BaseTool):
                         overview = movie.get('overview', '')
                         release_date = movie.get('release_date', '')
                         poster_path = movie.get('poster_path', '')
-                        poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else ""
+                        poster_url = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else ""
 
-                        # Create movie dictionary
-                        movies.append(self._create_movie_dict(
+                        # Get movie release year for determining if it's a current release
+                        release_year = None
+                        if release_date and len(release_date) >= 4:
+                            try:
+                                release_year = int(release_date[:4])
+                            except:
+                                pass
+
+                        # Mark as current release if it's from this year or last year
+                        current_year = datetime.now().year
+                        is_current_release = release_year is not None and release_year >= (current_year - 1)
+
+                        # Create movie dictionary with both ID fields for compatibility
+                        movie_dict = self._create_movie_dict(
                             title=title,
                             overview=overview,
                             release_date=release_date,
                             poster_url=poster_url,
                             tmdb_id=movie_id,
-                            rating=movie.get('vote_average', 0)
-                        ))
+                            rating=movie.get('vote_average', 0),
+                            is_current_release=is_current_release
+                        )
+                        
+                        # Ensure both id and tmdb_id fields are present for compatibility
+                        movie_dict['id'] = movie_id
+                        
+                        # Add additional poster size options
+                        if poster_path:
+                            movie_dict['poster_urls'] = {
+                                'small': f"https://image.tmdb.org/t/p/w200{poster_path}",
+                                'medium': f"https://image.tmdb.org/t/p/w500{poster_path}",
+                                'large': f"https://image.tmdb.org/t/p/w780{poster_path}",
+                                'original': f"https://image.tmdb.org/t/p/original{poster_path}"
+                            }
+                        
+                        movies.append(movie_dict)
 
             # If still no movies and we have genres, try discover API
             if not movies and genres:
@@ -186,17 +291,44 @@ class SearchMoviesTool(BaseTool):
                             overview = movie.get('overview', '')
                             release_date = movie.get('release_date', '')
                             poster_path = movie.get('poster_path', '')
-                            poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else ""
+                            poster_url = f"https://image.tmdb.org/t/p/original{poster_path}" if poster_path else ""
 
-                            # Create movie dictionary
-                            movies.append(self._create_movie_dict(
+                            # Get movie release year for determining if it's a current release
+                            release_year = None
+                            if release_date and len(release_date) >= 4:
+                                try:
+                                    release_year = int(release_date[:4])
+                                except:
+                                    pass
+
+                            # Mark as current release if it's from this year or last year
+                            current_year = datetime.now().year
+                            is_current_release = release_year is not None and release_year >= (current_year - 1)
+
+                            # Create movie dictionary with both ID fields for compatibility
+                            movie_dict = self._create_movie_dict(
                                 title=title,
                                 overview=overview,
                                 release_date=release_date,
                                 poster_url=poster_url,
                                 tmdb_id=movie_id,
-                                rating=movie.get('vote_average', 0)
-                            ))
+                                rating=movie.get('vote_average', 0),
+                                is_current_release=is_current_release
+                            )
+                            
+                            # Ensure both id and tmdb_id fields are present for compatibility
+                            movie_dict['id'] = movie_id
+                            
+                            # Add additional poster size options
+                            if poster_path:
+                                movie_dict['poster_urls'] = {
+                                    'small': f"https://image.tmdb.org/t/p/w200{poster_path}",
+                                    'medium': f"https://image.tmdb.org/t/p/w500{poster_path}",
+                                    'large': f"https://image.tmdb.org/t/p/w780{poster_path}",
+                                    'original': f"https://image.tmdb.org/t/p/original{poster_path}"
+                                }
+                            
+                            movies.append(movie_dict)
                 except Exception as e:
                     logger.error(f"Error with discover API: {str(e)}")
 

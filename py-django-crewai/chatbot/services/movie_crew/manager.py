@@ -81,7 +81,7 @@ class MovieCrewManager:
         return ChatOpenAI(**config)
 
     @LoggingMiddleware.log_method_call
-    def process_query(self, query: str, conversation_history: List[Dict[str, str]]) -> Dict[str, Any]:
+    def process_query(self, query: str, conversation_history: List[Dict[str, str]], first_run_mode: bool = True) -> Dict[str, Any]:
         """
         Process a user query and return movie recommendations.
 
@@ -126,14 +126,17 @@ class MovieCrewManager:
                 "movies": []
             }
 
-        # Create tools for each task
+        # Create tools for each task, passing the mode
         search_tool = SearchMoviesTool()
+        search_tool.first_run_mode = first_run_mode  # Set the mode
         analyze_tool = AnalyzePreferencesTool()
-        
+
         # Set up the theater finder tool with location
         theater_finder_tool = FindTheatersTool(user_location=self.user_location)
         theater_finder_tool.user_ip = self.user_ip
-        
+
+        logger.info(f"Created SearchMoviesTool with first_run_mode: {first_run_mode}")
+
         # Set up the image enhancement tool
         enhance_images_tool = EnhanceMovieImagesTool(tmdb_api_key=self.tmdb_api_key)
 
@@ -159,12 +162,23 @@ class MovieCrewManager:
             tools=[theater_finder_tool]
         )
 
-        # Create the crew
-        crew = Crew(
-            agents=[movie_finder, recommender, theater_finder],
-            tasks=[find_movies_task, recommend_movies_task, find_theaters_task],
-            verbose=True
-        )
+        # Create the crew based on the mode
+        if first_run_mode:
+            # For First Run mode (theater-based recommendations), include all agents and tasks
+            crew = Crew(
+                agents=[movie_finder, recommender, theater_finder],
+                tasks=[find_movies_task, recommend_movies_task, find_theaters_task],
+                verbose=True
+            )
+            logger.info("Created crew for First Run mode (including theater search)")
+        else:
+            # For Casual Viewing mode, skip the theater finder
+            crew = Crew(
+                agents=[movie_finder, recommender],
+                tasks=[find_movies_task, recommend_movies_task],
+                verbose=True
+            )
+            logger.info("Created crew for Casual Viewing mode (skipping theater search)")
 
         # Debug log the task structure
         logger.info(f"Task definitions: {[t.description for t in crew.tasks]}")
@@ -242,28 +256,49 @@ class MovieCrewManager:
 
                 return output
 
-            # Extract outputs using the safe function
-            find_theaters_output = safe_extract_task_output(find_theaters_task, "Theater")
+            # Extract recommendation output
             recommend_movies_output = safe_extract_task_output(recommend_movies_task, "Recommendation")
-
-            # Parse outputs using the JsonParser utility
-            theaters_data = JsonParser.parse_json_output(find_theaters_output)
             recommendations = JsonParser.parse_json_output(recommend_movies_output)
-            
+
+            # Process theaters data only in First Run mode
+            theaters_data = []
+            if first_run_mode:
+                try:
+                    # Extract theater output in First Run mode
+                    find_theaters_output = safe_extract_task_output(find_theaters_task, "Theater")
+                    theaters_data = JsonParser.parse_json_output(find_theaters_output)
+                    logger.info(f"Processed theater data in First Run mode: {len(theaters_data)} theaters found")
+                except Exception as theater_error:
+                    logger.error(f"Error processing theater data: {str(theater_error)}")
+                    logger.exception(theater_error)
+                    theaters_data = []
+            else:
+                logger.info("Skipping theater data processing in Casual Viewing mode")
+
+            # Ensure proper TMDB IDs are set on all recommendations
+            for movie in recommendations:
+                if 'tmdb_id' not in movie and 'id' in movie:
+                    movie['tmdb_id'] = movie['id']
+                    logger.info(f"Fixed TMDB ID for movie {movie.get('title')}")
+
             # Enhance movie data with high-quality images from TMDB
             if recommendations and self.tmdb_api_key:
                 try:
+                    import time
+                    enhancement_start = time.time()
+                    
                     # Convert recommendations to JSON string for the tool
                     recommendations_json = json.dumps(recommendations)
-                    
+
                     # Run the enhancement tool
                     enhanced_json = enhance_images_tool._run(recommendations_json)
-                    
+
                     # Parse the enhanced data
                     enhanced_recommendations = JsonParser.parse_json_output(enhanced_json)
-                    
+
+                    enhancement_duration = time.time() - enhancement_start
                     if enhanced_recommendations:
-                        logger.info(f"Successfully enhanced {len(enhanced_recommendations)} movies with images")
+                        logger.info(f"Successfully enhanced {len(enhanced_recommendations)} movies with images in {enhancement_duration:.2f} seconds")
                         recommendations = enhanced_recommendations
                     else:
                         logger.warning("Movie image enhancement returned empty results")
@@ -274,11 +309,29 @@ class MovieCrewManager:
             else:
                 logger.info("Skipping image enhancement: No recommendations or TMDB API key")
 
-            # Process recommendations for current releases
+            # Process and filter recommendations for current releases
             self._process_current_releases(recommendations)
 
+            # For First Run mode, only include current releases
+            if first_run_mode:
+                current_movies = [movie for movie in recommendations if movie.get('is_current_release', False)]
+                logger.info(f"Filtered to {len(current_movies)} current release movies for First Run mode")
+
+                if not current_movies and recommendations:
+                    # If we have recommendations but none are current releases, add a note
+                    logger.warning("No current release movies found, but have other recommendations")
+                    if len(recommendations) > 0:
+                        # Add a note to the first movie explaining the situation
+                        recommendations[0]['note'] = "Note: This movie is not currently playing in theaters, but matches your preferences."
+
+                # Use the filtered list for First Run mode
+                recommendations_to_use = current_movies if current_movies else recommendations
+            else:
+                # For Casual Viewing mode, use all recommendations
+                recommendations_to_use = recommendations
+
             # Combine recommendations with theater data
-            movies_with_theaters = self._combine_movies_and_theaters(recommendations, theaters_data)
+            movies_with_theaters = self._combine_movies_and_theaters(recommendations_to_use, theaters_data)
 
             # Generate response
             if not movies_with_theaters:
@@ -352,28 +405,73 @@ class MovieCrewManager:
             Combined list of movies with theater information
         """
         movies_with_theaters = []
+        # Start with debug info
+        logger.info(f"Combining {len(recommendations)} movies with {len(theaters_data)} theaters")
 
+        # Improved theater mapping - ensures each movie gets only its relevant theaters
+        theaters_by_movie_id = {}
+        
+        # Process theater data with better validation
+        for theater in theaters_data:
+            if not isinstance(theater, dict):
+                logger.warning(f"Skipping invalid theater entry (not a dictionary)")
+                continue
+                
+            movie_id = theater.get("movie_id")
+            if movie_id is None:
+                logger.warning(f"Theater missing movie_id: {theater.get('name', 'Unknown')}")
+                continue
+                
+            # More validation of theater data integrity
+            if not theater.get("name"):
+                logger.warning(f"Theater missing name for movie_id {movie_id}")
+                continue
+                
+            # Ensure showtimes are valid
+            if not theater.get("showtimes") or not isinstance(theater.get("showtimes"), list):
+                logger.warning(f"Theater {theater.get('name')} has no valid showtimes for movie_id {movie_id}")
+                continue
+                
+            # Only add theaters with actual showtimes
+            if len(theater.get("showtimes", [])) == 0:
+                logger.warning(f"Theater {theater.get('name')} has empty showtimes list for movie_id {movie_id}")
+                continue
+                
+            # Initialize the list for this movie_id if needed
+            if movie_id not in theaters_by_movie_id:
+                theaters_by_movie_id[movie_id] = []
+                
+            # Add theater to the appropriate movie list
+            theaters_by_movie_id[movie_id].append(theater)
+            logger.info(f"Added theater '{theater.get('name')}' with {len(theater.get('showtimes', []))} showtimes to movie_id {movie_id}")
+
+        # Process each movie
         for movie in recommendations:
             if not isinstance(movie, dict):
                 logger.error(f"Movie is not a dictionary: {movie}")
                 continue
 
-            movie_theaters = []
-            for theater in theaters_data:
-                if not isinstance(theater, dict):
-                    logger.error(f"Theater is not a dictionary: {theater}")
-                    continue
+            # Get movie's TMDB ID - checking both possible field names
+            movie_tmdb_id = movie.get("tmdb_id")
+            if movie_tmdb_id is None and "id" in movie:
+                movie_tmdb_id = movie.get("id")
+                logger.info(f"Using 'id' field as TMDB ID for movie '{movie.get('title')}'")
+            
+            if movie_tmdb_id is None:
+                logger.warning(f"Movie missing TMDB ID: {movie.get('title', 'Unknown')}")
+                movie_theaters = []
+            else:
+                # Get theaters for this specific movie
+                movie_theaters = theaters_by_movie_id.get(movie_tmdb_id, [])
+            
+            # Log for debugging purposes
+            if movie_theaters:
+                logger.info(f"Movie '{movie.get('title')}' has {len(movie_theaters)} theaters with showtimes")
+            else:
+                logger.info(f"Movie '{movie.get('title')}' has no theaters with showtimes")
 
-                # Safe get operations with default values
-                theater_movie_id = theater.get("movie_id") if isinstance(theater, dict) else None
-                movie_tmdb_id = movie.get("tmdb_id") if isinstance(movie, dict) else None
-
-                if theater_movie_id == movie_tmdb_id:
-                    movie_theaters.append(theater)
-
-            # Safe dictionary unpacking
-            if isinstance(movie, dict):
-                movie_with_theaters = {**movie, "theaters": movie_theaters}
-                movies_with_theaters.append(movie_with_theaters)
+            # Create movie with theaters
+            movie_with_theaters = {**movie, "theaters": movie_theaters}
+            movies_with_theaters.append(movie_with_theaters)
 
         return movies_with_theaters

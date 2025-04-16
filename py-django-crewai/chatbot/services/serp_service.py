@@ -23,6 +23,67 @@ class SerpShowtimeService:
         """
         self.api_key = api_key
 
+    def search_movies_in_theaters(self, query: str = "", location: str = "United States") -> List[Dict[str, Any]]:
+        """Search for movies currently playing in theaters matching the query.
+
+        Args:
+            query: Query to search for (e.g., "family movies", "action")
+            location: Location to search in (default: "United States")
+
+        Returns:
+            List of movies currently playing in theaters
+        """
+        try:
+            logger.info(f"Searching for movies in theaters matching '{query}' in {location}")
+
+            # Construct parameters for SerpAPI
+            params = {
+                "engine": "google_movies",
+                "q": query if query else "movies in theaters now",
+                "location": location,
+                "hl": "en",
+                "gl": "us",
+                "api_key": self.api_key
+            }
+
+            # Execute the search
+            search = GoogleSearch(params)
+            results = search.get_dict()
+
+            # Process and format the results
+            movies = []
+
+            # Check if we have any results
+            if 'movies_results' not in results:
+                logger.warning("No movies found in SerpAPI results")
+                return []
+
+            # Process each movie in the results
+            for movie_data in results.get('movies_results', []):
+                movie = {
+                    "title": movie_data.get('title', 'Unknown Title'),
+                    "description": movie_data.get('description', ''),
+                    "thumbnail": movie_data.get('thumbnail', ''),
+                    "rating": movie_data.get('rating', 0),
+                    "year": movie_data.get('year'),
+                    "release_date": movie_data.get('release_date', ''),
+                    "genres": movie_data.get('genres', []),
+                    "id": None  # We'll need to look up the TMDB ID separately
+                }
+
+                # If we have a year, construct a release date if it's missing
+                if not movie.get('release_date') and movie.get('year'):
+                    movie['release_date'] = f"{movie.get('year')}-01-01"
+
+                movies.append(movie)
+
+            logger.info(f"Found {len(movies)} movies matching '{query}' in theaters")
+            return movies
+
+        except Exception as e:
+            logger.error(f"Error searching for movies in theaters: {str(e)}")
+            return []
+
     def search_showtimes(self, movie_title: str, location: str, radius_miles: int = 25) -> List[Dict[str, Any]]:
         """Search for movie showtimes for a specific movie in a location.
 
@@ -34,6 +95,9 @@ class SerpShowtimeService:
         Returns:
             List of theater dictionaries with showtimes
         """
+        # Add performance measurement
+        import time
+        start_time = time.time()
         try:
             logger.info(f"Searching showtimes for '{movie_title}' in {location}")
 
@@ -83,6 +147,32 @@ class SerpShowtimeService:
         Returns:
             List of theater dictionaries with formatted showtimes
         """
+        # For debugging, log the raw results structure
+        if results:
+            # Safely extract and log keys at the top level
+            result_keys = list(results.keys()) if isinstance(results, dict) else []
+            logger.debug(f"SerpAPI result keys: {result_keys}")
+
+            # Log if we have showtimes data
+            has_showtimes = 'showtimes' in results
+            logger.debug(f"Results contain showtimes data: {has_showtimes}")
+
+            # If debug level, log more details about structure
+            if logger.isEnabledFor(logging.DEBUG) and has_showtimes:
+                try:
+                    sample_theater = results.get('showtimes', [])[0] if results.get('showtimes') else None
+                    if sample_theater:
+                        theater_keys = list(sample_theater.keys())
+                        logger.debug(f"Sample theater keys: {theater_keys}")
+
+                        # Check if movies exist
+                        if 'movies' in sample_theater:
+                            sample_movie = sample_theater.get('movies', [])[0] if sample_theater.get('movies') else None
+                            if sample_movie:
+                                movie_keys = list(sample_movie.keys())
+                                logger.debug(f"Sample movie keys: {movie_keys}")
+                except Exception as debug_error:
+                    logger.debug(f"Error during debug logging: {str(debug_error)}")
         theaters = []
 
         try:

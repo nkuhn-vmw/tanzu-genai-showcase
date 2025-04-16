@@ -3,21 +3,28 @@
  */
 
 // Enhanced movie grid rendering function
-window.renderTMDBGrid = function(movies, containerId) {
+window.renderTMDBGrid = function(movies, containerId, isFirstRunMode = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    // Clear container but don't add an extra title (the HTML already has h4 headers)
     container.innerHTML = '';
 
     // If no movies to display
     if (!movies || movies.length === 0) {
-        container.innerHTML = '<p class="text-muted">No movies match your criteria. Try another search.</p>';
+        container.innerHTML += '<p class="text-muted">No movies match your criteria. Try another search.</p>';
         return;
     }
+    
+    // Debug info
+    console.log(`Rendering ${movies.length} movies to ${containerId}`);
 
-    // Create a grid container
-    const movieGrid = document.createElement('div');
-    movieGrid.className = 'movie-grid';
+    // Create a horizontal scrollable slider container
+    const movieContainer = document.createElement('div');
+    movieContainer.className = 'movie-container';
+
+    const movieSlider = document.createElement('div');
+    movieSlider.className = 'movie-slider';
 
     // Create a card for each movie
     movies.forEach(movie => {
@@ -35,7 +42,7 @@ window.renderTMDBGrid = function(movies, containerId) {
         // Get the best poster URL available or use a placeholder
         // Check for enhanced poster URLs first
         let posterUrl = '';
-        
+
         // If we have poster URLs at different sizes, use the appropriate one
         if (movie.poster_urls && movie.poster_urls.large) {
             posterUrl = movie.poster_urls.large;
@@ -51,45 +58,40 @@ window.renderTMDBGrid = function(movies, containerId) {
 
         // Create the movie card
         const movieCard = document.createElement('div');
-        movieCard.className = 'movie-grid-card';
+        movieCard.className = 'movie-card';
 
-        // Add "Now Playing" badge if it's a current release
-        if (movie.is_current_release) {
-            const badge = document.createElement('div');
-            badge.className = 'movie-grid-badge';
-            badge.textContent = 'Now Playing';
-            movieCard.appendChild(badge);
-        }
-
-        // Add the poster image
+        // Add the poster image with error handling
         const posterImg = document.createElement('img');
         posterImg.src = posterUrl;
         posterImg.alt = `${movie.title} poster`;
         posterImg.loading = 'lazy'; // Lazy load images
+
+        // Add error handler to use a placeholder if image fails to load
+        posterImg.onerror = function() {
+            console.error(`Failed to load image for ${movie.title}`, posterUrl);
+            this.src = 'https://via.placeholder.com/300x450?text=No+Poster';
+        };
+
         movieCard.appendChild(posterImg);
+
+        // Log image URL for debugging
+        console.log(`Movie: ${movie.title}, Image URL: ${posterUrl}`);
 
         // Add movie info section
         const infoDiv = document.createElement('div');
-        infoDiv.className = 'movie-grid-info';
+        infoDiv.className = 'movie-info';
 
         // Add title
         const titleDiv = document.createElement('div');
-        titleDiv.className = 'movie-grid-title';
-        titleDiv.textContent = movie.title;
+        titleDiv.className = 'movie-title';
+        // Add year to title if available
+        titleDiv.textContent = releaseYear ? `${movie.title} (${releaseYear})` : movie.title;
         infoDiv.appendChild(titleDiv);
-
-        // Add year if available
-        if (releaseYear) {
-            const yearDiv = document.createElement('div');
-            yearDiv.className = 'movie-grid-year';
-            yearDiv.textContent = releaseYear;
-            infoDiv.appendChild(yearDiv);
-        }
 
         // Add rating stars if available
         if (movie.rating) {
             const ratingDiv = document.createElement('div');
-            ratingDiv.className = 'movie-grid-rating';
+            ratingDiv.className = 'movie-rating';
 
             // Calculate rating stars (0-10 scale to 0-5 scale)
             const ratingStars = Math.round(movie.rating / 2);
@@ -100,17 +102,17 @@ window.renderTMDBGrid = function(movies, containerId) {
         // Add movie explanation or description with word limit
         if (movie.explanation || movie.overview) {
             const descDiv = document.createElement('div');
-            descDiv.className = 'movie-grid-description';
-            
+            descDiv.className = 'movie-overview';
+
             // Get the description text, preferring explanation over overview
             let descriptionText = movie.explanation || movie.overview || '';
-            
+
             // Limit to 30 words and add ellipsis if needed
             const words = descriptionText.split(/\s+/);
             if (words.length > 30) {
                 descriptionText = words.slice(0, 30).join(' ') + '...';
             }
-            
+
             descDiv.textContent = descriptionText;
             infoDiv.appendChild(descDiv);
         }
@@ -118,54 +120,91 @@ window.renderTMDBGrid = function(movies, containerId) {
         // Add info div to card
         movieCard.appendChild(infoDiv);
 
-        // Add the card to the grid
-        movieGrid.appendChild(movieCard);
+        // Add the card to the slider
+        movieSlider.appendChild(movieCard);
     });
 
-    // Add the grid to the container
-    container.appendChild(movieGrid);
+    // Add the slider to the movie container
+    movieContainer.appendChild(movieSlider);
+
+    // Add the movie container to the main container
+    container.appendChild(movieContainer);
 };
 
-// Helper function to fetch high-quality images for movies
+// Helper function to process movie posters - no API calls needed as our backend already handles this
 window.enhanceMoviePosters = function(movies, callback) {
-    let enhancedMovies = [...movies]; // Create a copy to modify
-    let pendingRequests = 0;
-    let allRequestsComplete = false;
+    // Validate input
+    if (!movies || !Array.isArray(movies) || movies.length === 0) {
+        console.warn("No movies to enhance posters for");
+        callback(movies || []);
+        return;
+    }
 
-    // Process each movie to get better poster images
+    // Create a deep copy to avoid modifying the original
+    let enhancedMovies;
+    try {
+        enhancedMovies = JSON.parse(JSON.stringify(movies));
+        console.log(`Successfully cloned ${enhancedMovies.length} movies for poster enhancement`);
+    } catch (e) {
+        console.error("Error cloning movies:", e);
+        callback(movies); // Use original if clone fails
+        return;
+    }
+    
+    console.log("Processing movie posters for:", enhancedMovies.map(m => m.title).join(', '));
+    
+    // Process each movie to ensure it has proper poster and ID formats
     enhancedMovies.forEach((movie, index) => {
-        // Only process movies that have a TMDB ID
-        if (movie.tmdb_id) {
-            pendingRequests++;
-
-            // Define API endpoint for movie details
-            const endpoint = `https://api.themoviedb.org/3/movie/${movie.tmdb_id}?api_key=YOUR_API_KEY&append_to_response=images`;
-
-            // Simulate API call - in a real implementation, this would be a fetch request
-            // Here we'll just simulate a success response after a short delay
-            setTimeout(() => {
-                pendingRequests--;
-
-                // Enhance the poster URL with a higher quality version if available
-                // This is just for simulation - in a real implementation, you'd use data from the API response
-                if (movie.poster_url && movie.poster_url.includes('image.tmdb.org')) {
-                    // Replace w500 with original for higher quality
-                    enhancedMovies[index].poster_url = movie.poster_url.replace('/w500/', '/original/');
-                }
-
-                // Check if all requests are complete
-                if (pendingRequests === 0 && allRequestsComplete) {
-                    callback(enhancedMovies);
-                }
-            }, 100);
+        // Verify movie object integrity
+        if (!movie) {
+            console.error(`Movie at index ${index} is undefined or null`);
+            return;
+        }
+        
+        console.log(`Processing movie: ${movie.title || 'Unknown'}, ID: ${movie.id || movie.tmdb_id || 'None'}`);
+        // Make sure both id and tmdb_id are set for compatibility
+        if (movie.id && !movie.tmdb_id) {
+            movie.tmdb_id = movie.id;
+            console.log(`Set tmdb_id from id for movie: ${movie.title}`);
+        } else if (movie.tmdb_id && !movie.id) {
+            movie.id = movie.tmdb_id;
+            console.log(`Set id from tmdb_id for movie: ${movie.title}`);
+        }
+        
+        // If poster_url is missing but we have poster_urls, use one of those
+        if (!movie.poster_url && movie.poster_urls) {
+            if (movie.poster_urls.original) {
+                movie.poster_url = movie.poster_urls.original;
+            } else if (movie.poster_urls.large) {
+                movie.poster_url = movie.poster_urls.large;
+            } else if (movie.poster_urls.medium) {
+                movie.poster_url = movie.poster_urls.medium;
+            }
+            console.log(`Used alternative poster_url for movie: ${movie.title}`);
+        }
+        
+        // If poster URL contains 'w500', upgrade to original resolution
+        if (movie.poster_url && movie.poster_url.includes('/w500/')) {
+            movie.poster_url = movie.poster_url.replace('/w500/', '/original/');
+            console.log(`Upgraded poster quality for movie: ${movie.title}`);
+        }
+        
+        // If no poster_url exists, but we have a backdrop_url, use that instead
+        if (!movie.poster_url && movie.backdrop_url) {
+            movie.poster_url = movie.backdrop_url;
+            console.log(`Used backdrop as poster for movie: ${movie.title}`);
+        }
+        
+        // Ensure we have a valid poster URL for the UI
+        if (!movie.poster_url) {
+            movie.poster_url = 'https://via.placeholder.com/300x450?text=No+Poster';
+            console.log(`Using placeholder image for movie: ${movie.title}`);
         }
     });
-
-    // Mark all requests as initiated
-    allRequestsComplete = true;
-
-    // If no requests were made, call the callback immediately
-    if (pendingRequests === 0) {
+    
+    // Call the callback immediately with our processed movies
+    setTimeout(() => {
+        console.log("Enhanced posters processing completed");
         callback(enhancedMovies);
-    }
+    }, 0);
 };

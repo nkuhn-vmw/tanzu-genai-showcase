@@ -75,29 +75,32 @@ class ResponseFormatter:
                 response += f"   🎬 Available at {theater_count} theater{'s' if theater_count != 1 else ''}.\n"
 
                 # Add showtimes for the first theater if available
-                if 'showtimes' in theaters[0] and theaters[0]['showtimes']:
+                if theaters[0].get('showtimes') and len(theaters[0]['showtimes']) > 0:
                     first_theater = theaters[0]
                     theater_name = first_theater.get('name', 'Unknown Theater')
                     showtimes = first_theater.get('showtimes', [])
-                    if showtimes:
-                        # Show just first 3 showtimes
-                        showtime_strs = []
-                        for i, showtime in enumerate(showtimes[:3]):
-                            time_str = showtime.get('start_time', '')
-                            format_str = showtime.get('format', '')
-                            # Extract just the time portion (HH:MM) if it's a full datetime
-                            if time_str and len(time_str) > 10:
-                                try:
-                                    dt = datetime.fromisoformat(time_str.replace(' ', 'T'))
-                                    time_only = dt.strftime("%H:%M")  # 24-hour format
-                                    showtime_strs.append(f"{time_only} ({format_str})" if format_str else time_only)
-                                except:
-                                    showtime_strs.append(time_str)
-                            else:
+                    
+                    # Show just first 3 showtimes
+                    showtime_strs = []
+                    for i, showtime in enumerate(showtimes[:3]):
+                        time_str = showtime.get('start_time', '')
+                        format_str = showtime.get('format', '')
+                        # Extract just the time portion (HH:MM) if it's a full datetime
+                        if time_str and len(time_str) > 10:
+                            try:
+                                dt = datetime.fromisoformat(time_str.replace(' ', 'T').replace('Z', '+00:00'))
+                                time_only = dt.strftime("%H:%M")  # 24-hour format as requested
+                                showtime_strs.append(f"{time_only} ({format_str})" if format_str else time_only)
+                            except Exception as e:
+                                logger.warning(f"Error parsing datetime '{time_str}': {str(e)}")
                                 showtime_strs.append(time_str)
+                        else:
+                            showtime_strs.append(time_str)
 
-                        if showtime_strs:
-                            response += f"   📅 {theater_name}: {', '.join(showtime_strs)}\n"
+                    if showtime_strs:
+                        response += f"   📅 {theater_name}: {', '.join(showtime_strs)}\n"
+                    else:
+                        response += f"   📅 {theater_name}: Call theater for showtimes\n"
             elif not is_current:
                 # For older movies, don't show theater information
                 release_date = movie.get('release_date', '')
@@ -109,11 +112,12 @@ class ResponseFormatter:
                         pass
 
                 if release_year:
-                    response += f"   📽️ This is an older release from {release_year}, not currently in theaters.\n"
+                    response += f"   📽️ This is a {release_year} release, not currently playing in theaters.\n"
                 else:
                     response += "   📽️ This movie is not currently playing in theaters.\n"
             else:
-                response += "   ⚠️ No theater information available for this movie.\n"
+                # Current release but no theaters found
+                response += "   ⚠️ No theater information available for this current release. You may need to check local theater websites for showtimes.\n"
 
             # Add a separator between movies
             response += "\n"
