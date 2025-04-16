@@ -7,8 +7,26 @@ from .services.movie_crew import MovieCrewManager
 import json
 import logging
 import traceback
+from datetime import datetime
 
 logger = logging.getLogger('chatbot')
+
+def get_client_ip(request):
+    """Extract the client's IP address from the request."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        # X-Forwarded-For can be a comma-separated list of IPs
+        # The first one is the client's IP
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        # If no X-Forwarded-For header, use REMOTE_ADDR
+        ip = request.META.get('REMOTE_ADDR', '')
+        
+    # Strip port if present
+    if ':' in ip:
+        ip = ip.split(':')[0]
+        
+    return ip
 
 def index(request):
     """Render the chatbot interface."""
@@ -119,7 +137,7 @@ def send_message(request):
 
                 logger.info(f"Processed user message: {user_message_text}")
 
-                # Extract location with multiple keys
+                # Extract location with multiple keys and improved handling
                 location = (
                     data.get('location') or
                     data.get('city') or
@@ -127,9 +145,15 @@ def send_message(request):
                     request.session.get('user_location') or
                     'Unknown'
                 )
+                # Store location in session for future use
                 request.session['user_location'] = location
-                logger.info(f"User location: {location}")
-
+                
+                # Log location details
+                if location and location.lower() != 'unknown':
+                    logger.info(f"User provided location: {location}")
+                else:
+                    logger.info("No user location provided, using default")
+                    
             except Exception as parsing_error:
                 logger.error(f"Comprehensive parsing error: {str(parsing_error)}")
                 logger.error(traceback.format_exc())
@@ -169,6 +193,10 @@ def send_message(request):
                 logger.info(f"TMDb API key configured: {'Yes' if settings.TMDB_API_KEY else 'No'}")
                 logger.info(f"User location: {location}")
 
+                # Get client IP address for geolocation
+                client_ip = get_client_ip(request)
+                logger.info(f"Client IP: {client_ip}")
+                
                 movie_crew_manager = MovieCrewManager(
                     api_key=settings.LLM_CONFIG['api_key'],
                     base_url=settings.LLM_CONFIG.get('base_url'),
@@ -176,6 +204,9 @@ def send_message(request):
                     tmdb_api_key=settings.TMDB_API_KEY,
                     user_location=location
                 )
+                
+                # Set the user's IP for geolocation fallback
+                movie_crew_manager.user_ip = client_ip
                 logger.info("Movie crew manager initialized successfully")
             except Exception as init_error:
                 logger.error(f"Error initializing movie crew manager: {str(init_error)}")
@@ -283,10 +314,13 @@ def send_message(request):
                     theaters_count = 0
                     showtimes_count = 0
 
-                    # Save associated theaters and showtimes
-                    if 'theaters' in movie_data and movie_data['theaters']:
+                    # Check if this is a current release movie before processing theaters
+                    is_current_release = movie_data.get('is_current_release', False)
+                    
+                    # Save associated theaters and showtimes - only for current releases
+                    if is_current_release and 'theaters' in movie_data and movie_data['theaters']:
                         theaters_data = movie_data['theaters']
-                        logger.debug(f"Found {len(theaters_data)} theaters for movie: {movie.title}")
+                        logger.debug(f"Found {len(theaters_data)} theaters for current movie: {movie.title}")
 
                         for theater_index, theater_data in enumerate(theaters_data):
                             logger.debug(f"Processing theater {theater_index+1}/{len(theaters_data)}: {theater_data.get('name', 'Unknown')}")
@@ -313,13 +347,29 @@ def send_message(request):
                                 logger.debug(f"Found {len(showtime_data_list)} showtimes for theater: {theater.name}")
 
                                 for showtime_data in showtime_data_list:
+                                    # Try to parse the start time
+                                    try:
+                                        start_time_str = showtime_data.get('start_time', '')
+                                        if start_time_str:
+                                            start_time = datetime.fromisoformat(start_time_str.replace(' ', 'T'))
+                                        else:
+                                            continue
+                                    except (ValueError, TypeError):
+                                        continue
+
+                                    # Create or update showtime
                                     Showtime.objects.create(
                                         movie=movie,
                                         theater=theater,
-                                        start_time=showtime_data.get('start_time'),
-                                        format=showtime_data.get('format', '')
+                                        start_time=start_time,
+                                        format=showtime_data.get('format', 'Standard')
                                     )
                                     showtimes_count += 1
+                    else:
+                        if not is_current_release:
+                            logger.info(f"Movie '{movie.title}' is not a current release, skipping theaters and showtimes")
+                        else:
+                            logger.debug(f"No theaters found for movie: {movie.title}")
 
                     logger.info(f"Movie '{movie.title}' saved with {theaters_count} theaters and {showtimes_count} showtimes")
 

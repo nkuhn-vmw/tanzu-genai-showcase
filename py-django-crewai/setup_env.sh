@@ -1,7 +1,7 @@
 #!/bin/bash
-# Script to set up the development environment for the Airbnb Assistant
+# Script to set up the development environment for the Movie Chatbot
 
-echo "Setting up environment for Airbnb Assistant..."
+echo "Setting up environment for Movie Chatbot..."
 
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
@@ -25,7 +25,7 @@ pip install --upgrade pip
 
 # Install application and dependencies
 echo "Installing application and dependencies..."
-pip install -e .
+pip install -r requirements.txt
 
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then

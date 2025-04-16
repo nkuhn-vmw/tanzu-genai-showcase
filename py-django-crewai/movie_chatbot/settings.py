@@ -136,6 +136,9 @@ LLM_CONFIG = get_llm_config()
 # The Movie Database API Key (for movie data)
 TMDB_API_KEY = os.getenv('TMDB_API_KEY')
 
+# SerpAPI Configuration for movie showtimes
+SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
+
 # Enhanced Logging Configuration
 LOGGING = {
     'version': 1,
