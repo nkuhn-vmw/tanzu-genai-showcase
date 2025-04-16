@@ -1,0 +1,357 @@
+:root {
+    --netflix-red: #E50914;
+    --netflix-dark: #141414;
+    --netflix-black: #000000;
+    --netflix-gray: #303030;
+    --netflix-light-gray: #6D6D6D;
+    --netflix-text: #FFFFFF;
+    --netflix-highlight: #F5F5F1;
+}
+
+body {
+    background-color: var(--netflix-black);
+    color: var(--netflix-text);
+    font-family: 'Netflix Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.header {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--netflix-gray);
+}
+
+.netflix-logo {
+    color: var(--netflix-red);
+    font-weight: bold;
+    font-size: 1.8rem;
+    letter-spacing: -1px;
+}
+
+/* Tab styling */
+.nav-tabs {
+    border-bottom: 1px solid var(--netflix-gray);
+}
+
+.nav-tabs .nav-link {
+    color: var(--netflix-light-gray);
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    padding: 0.75rem 1.5rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--netflix-text);
+    border-bottom-color: var(--netflix-light-gray);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--netflix-text);
+    background-color: transparent;
+    border-bottom-color: var(--netflix-red);
+}
+
+/* Chatbot styling */
+.chat-container {
+    height: 60vh;
+    overflow-y: auto;
+    border: 1px solid var(--netflix-gray);
+    border-radius: 0.5rem;
+    background-color: var(--netflix-dark);
+    padding: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--netflix-light-gray) var(--netflix-dark);
+}
+
+.chat-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+    background: var(--netflix-dark);
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background-color: var(--netflix-light-gray);
+    border-radius: 20px;
+}
+
+.message {
+    margin-bottom: 1rem;
+    max-width: 80%;
+    clear: both;
+}
+
+.user-message {
+    float: right;
+    background-color: var(--netflix-red);
+    color: white;
+    border-radius: 1rem 1rem 0 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.bot-message {
+    float: left;
+    background-color: var(--netflix-gray);
+    color: var(--netflix-text);
+    border-radius: 1rem 1rem 1rem 0;
+    padding: 0.75rem 1rem;
+    white-space: pre-line;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: var(--netflix-light-gray);
+    margin-top: 0.25rem;
+    clear: both;
+    display: block;
+}
+
+/* Input styling */
+.input-group .form-control {
+    background-color: var(--netflix-gray);
+    border: 1px solid var(--netflix-light-gray);
+    color: var(--netflix-text);
+}
+
+.input-group .form-control::placeholder {
+    color: var(--netflix-light-gray);
+}
+
+.input-group .input-group-text {
+    background-color: var(--netflix-gray);
+    border: 1px solid var(--netflix-light-gray);
+    color: var(--netflix-light-gray);
+}
+
+.btn-netflix {
+    background-color: var(--netflix-red);
+    border-color: var(--netflix-red);
+    color: white;
+}
+
+.btn-netflix:hover {
+    background-color: #f40612;
+    border-color: #f40612;
+    color: white;
+}
+
+/* Movie grid styling */
+.movie-container {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.movie-slider {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 1rem 0;
+    scrollbar-width: none;
+}
+
+.movie-slider::-webkit-scrollbar {
+    display: none;
+}
+
+.movie-card {
+    flex: 0 0 auto;
+    width: 200px;
+    margin-right: 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.movie-card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.movie-card img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+}
+
+.movie-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+    padding: 1rem;
+    color: white;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.movie-card:hover .movie-info {
+    transform: translateY(0);
+}
+
+.movie-title {
+    font-weight: bold;
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.movie-overview {
+    font-size: 0.8rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.movie-rating {
+    color: #FFD700;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.now-playing-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--netflix-red);
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    z-index: 5;
+}
+
+/* Theater and showtime styling */
+.theater-section {
+    background-color: var(--netflix-dark);
+    border: 1px solid var(--netflix-gray);
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.theater-header {
+    background-color: var(--netflix-gray);
+    padding: 0.75rem 1rem;
+    color: var(--netflix-text);
+}
+
+.theater-body {
+    padding: 1rem;
+}
+
+.showtime-badge {
+    background-color: var(--netflix-dark);
+    border: 1px solid var(--netflix-light-gray);
+    color: var(--netflix-text);
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.showtime-badge.imax {
+    border-color: #0091EA;
+    color: #0091EA;
+}
+
+.showtime-badge.threed {
+    border-color: #00C853;
+    color: #00C853;
+}
+
+/* Processing container */
+.processing-container {
+    display: none;
+    margin-bottom: 1rem;
+}
+
+.progress {
+    height: 0.5rem;
+    background-color: var(--netflix-gray);
+}
+
+.progress-bar {
+    background-color: var(--netflix-red);
+}
+
+/* Sample question buttons */
+.btn-sample {
+    background-color: var(--netflix-gray);
+    border: 1px solid var(--netflix-light-gray);
+    color: var(--netflix-text);
+    font-size: 0.85rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.btn-sample:hover {
+    background-color: var(--netflix-light-gray);
+    color: var(--netflix-text);
+}
+
+/* Date tabs */
+.date-tabs {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    scrollbar-width: none;
+}
+
+.date-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.date-tab {
+    flex: 0 0 auto;
+    padding: 0.5rem 1rem;
+    margin-right: 0.5rem;
+    background-color: var(--netflix-gray);
+    color: var(--netflix-text);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    border: none;
+    text-align: center;
+    min-width: 80px;
+}
+
+.date-tab.active {
+    background-color: var(--netflix-red);
+    color: white;
+}
+
+/* Location input in header area */
+.location-input-group {
+    margin-top: 0.5rem;
+    max-width: 280px;
+    float: right;
+}
+
+.location-input-group .input-group-text {
+    background-color: var(--netflix-dark);
+    border-color: var(--netflix-gray);
+    color: var(--netflix-red);
+}
+
+.location-input-group .form-control {
+    background-color: var(--netflix-dark);
+    border-color: var(--netflix-gray);
+    color: var(--netflix-text);
+}
+
+.location-input-group .form-control::placeholder {
+    color: var(--netflix-light-gray);
+    font-size: 0.9rem;
+}

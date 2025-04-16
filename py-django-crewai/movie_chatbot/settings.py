@@ -4,13 +4,23 @@ Django settings for movie_chatbot project.
 
 import os
 import json
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 import cfenv
 
-# Load environment variables from .env file (for local development)
-load_dotenv()
+# Configure logging early
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Force loading environment variables from .env file (for local development)
+env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+if os.path.isfile(env_file):
+    logger.info(f"Loading environment variables from {env_file}")
+    load_dotenv(env_file, override=True)
+else:
+    logger.warning(f"No .env file found at {env_file}, using existing environment variables.")
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent

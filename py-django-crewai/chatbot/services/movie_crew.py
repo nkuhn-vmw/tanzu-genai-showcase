@@ -311,6 +311,53 @@ class FindTheatersTool(BaseTool):
             logger.error(f"Error checking movie showtimes: {str(e)}")
             return False
 
+    def _format_serpapi_showtimes(self, serp_theaters, movie_title, movie_id) -> List[Dict[str, Any]]:
+        """Format SerperAPI showtime results into our standardized format.
+
+        Args:
+            serp_theaters: List of theaters from SerperAPI
+            movie_title: Title of the movie
+            movie_id: TMDB ID of the movie
+
+        Returns:
+            List of formatted theater dictionaries with showtimes
+        """
+        formatted_theaters = []
+
+        try:
+            for theater in serp_theaters:
+                # Create the theater entry with all available information
+                theater_entry = {
+                    "movie_id": movie_id,
+                    "name": theater.get('name', 'Unknown Theater'),
+                    "address": theater.get('address', ''),
+                    "latitude": theater.get('latitude'),
+                    "longitude": theater.get('longitude'),
+                    "distance_miles": theater.get('distance_miles', 0),
+                    "showtimes": []
+                }
+
+                # Extract showtimes from the SerperAPI response
+                showtimes = theater.get('showtimes', [])
+                for showtime in showtimes:
+                    # Ensure we have a start time
+                    if 'start_time' in showtime:
+                        theater_entry['showtimes'].append({
+                            "start_time": showtime['start_time'],
+                            "format": showtime.get('format', 'Standard')
+                        })
+
+                # Only add theaters that have showtimes
+                if theater_entry['showtimes']:
+                    formatted_theaters.append(theater_entry)
+
+            logger.info(f"Formatted {len(formatted_theaters)} theaters with showtimes for {movie_title}")
+            return formatted_theaters
+
+        except Exception as e:
+            logger.error(f"Error formatting SerperAPI showtimes: {str(e)}")
+            return []
+
     def _run(self, movie_recommendations_json: str = "") -> str:
         """Find theaters showing the recommended movies near the user's location."""
         try:
@@ -408,30 +455,22 @@ class FindTheatersTool(BaseTool):
                         if real_theaters_with_showtimes:
                             logger.info(f"Found {len(real_theaters_with_showtimes)} theaters with real showtimes for {movie_title}")
 
-                            # Validate each theater has this specific movie
+                            # Process and add valid theaters using the helper method
+                            valid_theaters = []
                             for theater in real_theaters_with_showtimes:
-                                # Verify this theater actually has the movie - the SerpAPI service should already
-                                # have filtered for the movie, but let's double-check
+                                # Verify this theater actually has the movie
                                 if self._theater_has_movie_showtimes(theater, movie_title):
                                     logger.info(f"Confirmed theater {theater['name']} is showing {movie_title}")
-
-                                    # Add validated theater with its showtimes
-                                    theater_results.append({
-                                        "movie_id": movie_id,
-                                        "name": theater['name'],
-                                        "address": theater['address'],
-                                        "latitude": theater['latitude'],
-                                        "longitude": theater['longitude'],
-                                        "distance_miles": theater.get('distance_miles', 0),
-                                        "showtimes": theater['showtimes']
-                                    })
-
-                                    # Add to the count of theaters we found for this movie
                                     movie_theaters.append(theater)
+                                    valid_theaters.append(theater)
                                 else:
                                     logger.warning(f"Theater {theater['name']} returned by SerpAPI but doesn't appear to have showtimes for {movie_title}")
 
-                            logger.info(f"Validated {len(movie_theaters)} theaters are actually showing {movie_title}")
+                            # Format and add the validated theaters
+                            formatted_theaters = self._format_serpapi_showtimes(valid_theaters, movie_title, movie_id)
+                            theater_results.extend(formatted_theaters)
+
+                            logger.info(f"Validated and formatted {len(formatted_theaters)} theaters showing {movie_title}")
 
                             # Skip adding the selected theaters for this movie as we have real data
                             continue
@@ -631,6 +670,9 @@ class MovieCrewManager:
 
                 movies = []
 
+                # Get current year for determining if a movie is a current release
+                current_year = datetime.now().year
+
                 # If looking for now playing movies
                 if search_for_now_playing:
                     try:
@@ -651,7 +693,36 @@ class MovieCrewManager:
                                 overview = movie.get('overview', '')
                                 release_date = movie.get('release_date', '')
                                 poster_path = movie.get('poster_path', '')
-                                poster_url = f"https://image.tmdb.org/t/p/w500{poster_path}" if poster_path else ""
+                                # Get full-size poster image using the dedicated images endpoint
+                                poster_url = ""
+
+                                # First try to get the poster from the poster_path (basic method)
+                                if poster_path:
+                                    poster_url = f"https://image.tmdb.org/t/p/original{poster_path}"
+
+                                    # Also try to get additional images using the movie images endpoint
+                                    try:
+                                        movie_details = tmdb.Movies(movie_id)
+                                        images = movie_details.images()
+
+                                        # If we have additional posters, use the first one at original size
+                                        if images and 'posters' in images and images['posters']:
+                                            best_poster = images['posters'][0]  # Use first poster (usually the best)
+                                            poster_url = f"https://image.tmdb.org/t/p/original{best_poster['file_path']}"
+                                            logger.info(f"Using high-quality poster from images endpoint for movie: {title}")
+                                    except Exception as poster_error:
+                                        logger.warning(f"Could not fetch additional images, using standard poster: {str(poster_error)}")
+
+                                # Get movie release year
+                                release_year = None
+                                if release_date and len(release_date) >= 4:
+                                    try:
+                                        release_year = int(release_date[:4])
+                                    except:
+                                        pass
+
+                                # Mark as current release if it's from this year or last year
+                                is_current_release = release_year is not None and release_year >= (current_year - 1)
 
                                 movies.append({
                                     "title": title,
@@ -659,7 +730,8 @@ class MovieCrewManager:
                                     "release_date": release_date,
                                     "poster_url": poster_url,
                                     "tmdb_id": movie_id,
-                                    "rating": movie.get('vote_average', 0)
+                                    "rating": movie.get('vote_average', 0),
+                                    "is_current_release": is_current_release
                                 })
                     except Exception as e:
                         logger.error(f"Error fetching now playing movies: {str(e)}")
@@ -988,14 +1060,14 @@ class MovieCrewManager:
                             recommendations = []
                     else:
                         recommendations = []
-                        
+
                 # Check which movies are current/first-run vs older movies
                 # We'll use release date to determine if a movie is current
                 current_year = datetime.now().year
                 for movie in recommendations:
                     if not isinstance(movie, dict):
                         continue
-                        
+
                     # Parse release date to determine if it's a current movie
                     release_date = movie.get('release_date', '')
                     release_year = None
@@ -1004,20 +1076,20 @@ class MovieCrewManager:
                             release_year = int(release_date[:4])
                         except ValueError:
                             pass
-                            
+
                     # Movies from current year or previous year are considered "current"
                     is_current = False
                     if release_year and (release_year >= current_year - 1):
                         is_current = True
-                        
+
                     # Set a flag on each movie
                     movie['is_current_release'] = is_current
-                    
+
                     # For older movies, set an empty theaters list to prevent showtimes lookup
                     if not is_current:
                         movie['theaters'] = []
                         logger.info(f"Movie '{movie.get('title')}' is an older release ({release_year}), skipping theater lookup")
-                
+
             except Exception as e:
                 logger.error(f"Error parsing recommendations: {str(e)}")
                 recommendations = []
@@ -1456,7 +1528,7 @@ class MovieCrewManager:
 
             # Check if this is a current release (should have the flag we added)
             is_current = movie.get('is_current_release', False)
-            
+
             # Only show theater information for current releases
             if is_current and theater_count > 0:
                 response += f"   🎬 Available at {theater_count} theater{'s' if theater_count != 1 else ''}.\n"
@@ -1494,7 +1566,7 @@ class MovieCrewManager:
                         release_year = release_date[:4]
                     except:
                         pass
-                
+
                 if release_year:
                     response += f"   📽️ This is an older release from {release_year}, not currently in theaters.\n"
                 else:

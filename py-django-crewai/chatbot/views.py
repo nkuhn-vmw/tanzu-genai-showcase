@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from .models import Conversation, Message, MovieRecommendation, Theater, Showtime
-from .services.movie_crew import MovieCrewManager
+from .services.movie_crew import MovieCrewManager  # Import from the package now
 import json
 import logging
 import traceback
@@ -21,11 +21,11 @@ def get_client_ip(request):
     else:
         # If no X-Forwarded-For header, use REMOTE_ADDR
         ip = request.META.get('REMOTE_ADDR', '')
-        
+
     # Strip port if present
     if ':' in ip:
         ip = ip.split(':')[0]
-        
+
     return ip
 
 def index(request):
@@ -147,13 +147,20 @@ def send_message(request):
                 )
                 # Store location in session for future use
                 request.session['user_location'] = location
-                
+
+                # Extract first run filter preference (default to True for first run movie mode)
+                first_run_filter = data.get('first_run_filter', True)
+                # Convert string representation to boolean if needed
+                if isinstance(first_run_filter, str):
+                    first_run_filter = first_run_filter.lower() == 'true'
+                logger.info(f"First run filter: {first_run_filter}")
+
                 # Log location details
                 if location and location.lower() != 'unknown':
                     logger.info(f"User provided location: {location}")
                 else:
                     logger.info("No user location provided, using default")
-                    
+
             except Exception as parsing_error:
                 logger.error(f"Comprehensive parsing error: {str(parsing_error)}")
                 logger.error(traceback.format_exc())
@@ -196,17 +203,15 @@ def send_message(request):
                 # Get client IP address for geolocation
                 client_ip = get_client_ip(request)
                 logger.info(f"Client IP: {client_ip}")
-                
+
                 movie_crew_manager = MovieCrewManager(
                     api_key=settings.LLM_CONFIG['api_key'],
                     base_url=settings.LLM_CONFIG.get('base_url'),
                     model=settings.LLM_CONFIG.get('model', 'gpt-4o-mini'),
                     tmdb_api_key=settings.TMDB_API_KEY,
-                    user_location=location
+                    user_location=location,
+                    user_ip=client_ip  # Pass the IP directly in constructor
                 )
-                
-                # Set the user's IP for geolocation fallback
-                movie_crew_manager.user_ip = client_ip
                 logger.info("Movie crew manager initialized successfully")
             except Exception as init_error:
                 logger.error(f"Error initializing movie crew manager: {str(init_error)}")
@@ -229,14 +234,21 @@ def send_message(request):
 
                 logger.debug(f"Conversation history preview: {conversation_history[-3:] if len(conversation_history) > 3 else conversation_history}")
 
-                logger.info(f"Sending query to movie_crew_manager: '{user_message_text[:50]}{'...' if len(user_message_text) > 50 else ''}'")
+                # Adjust the query to indicate first run filter preference if in casual viewing mode
+                query_to_use = user_message_text
+                if not first_run_filter:
+                    # Add a context hint for casual viewing mode (no theaters/showtimes needed)
+                    query_to_use = f"{user_message_text} [CASUAL_MODE: Focus on recommendations only, no theater information needed]"
+                    logger.info(f"Using casual mode query: '{query_to_use[:50]}{'...' if len(query_to_use) > 50 else ''}'")
+                else:
+                    logger.info(f"Using first run mode query: '{query_to_use[:50]}{'...' if len(query_to_use) > 50 else ''}'")
 
                 # Track processing time
                 import time
                 start_time = time.time()
 
                 response_data = movie_crew_manager.process_query(
-                    query=user_message_text,
+                    query=query_to_use,
                     conversation_history=conversation_history
                 )
 
@@ -316,9 +328,9 @@ def send_message(request):
 
                     # Check if this is a current release movie before processing theaters
                     is_current_release = movie_data.get('is_current_release', False)
-                    
-                    # Save associated theaters and showtimes - only for current releases
-                    if is_current_release and 'theaters' in movie_data and movie_data['theaters']:
+
+                    # Save associated theaters and showtimes - only for current releases and in first run mode
+                    if first_run_filter and is_current_release and 'theaters' in movie_data and movie_data['theaters']:
                         theaters_data = movie_data['theaters']
                         logger.debug(f"Found {len(theaters_data)} theaters for current movie: {movie.title}")
 
@@ -366,7 +378,9 @@ def send_message(request):
                                     )
                                     showtimes_count += 1
                     else:
-                        if not is_current_release:
+                        if not first_run_filter:
+                            logger.info(f"Movie '{movie.title}' processed in casual viewing mode, skipping theaters and showtimes")
+                        elif not is_current_release:
                             logger.info(f"Movie '{movie.title}' is not a current release, skipping theaters and showtimes")
                         else:
                             logger.debug(f"No theaters found for movie: {movie.title}")
@@ -390,6 +404,7 @@ def send_message(request):
                     'poster_url': rec.poster_url,
                     'release_date': rec.release_date.isoformat() if rec.release_date else None,
                     'rating': float(rec.rating) if rec.rating else None,
+                    'is_current_release': any('now playing' in showtime.format.lower() for showtime in rec.showtimes.all()) if rec.showtimes.exists() else False,
                     'theaters': [{
                         'name': showtime.theater.name,
                         'address': showtime.theater.address,
