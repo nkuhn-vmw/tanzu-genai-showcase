@@ -183,6 +183,19 @@
     </div>
 
     <script>
+        // Make sample question function available globally
+        function sendSampleQuestion(question) {
+            // Wait for DOM to be ready
+            setTimeout(() => {
+                const userInput = document.getElementById('userInput');
+                userInput.value = question;
+                // Focus the input to show the user the text was added
+                userInput.focus();
+                // Send the message
+                window.sendMessage();
+            }, 0);
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const chatContainer = document.getElementById('chatContainer');
             const userInput = document.getElementById('userInput');
@@ -194,7 +207,7 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
             // Handle sending messages
-            function sendMessage() {
+            window.sendMessage = function() {
                 const message = userInput.value.trim();
                 if (message) {
                     // Disable input and button while processing

@@ -5,7 +5,7 @@ whitenoise==6.9.0
 gunicorn==23.0.0
 
 # CrewAI and dependencies
-crewai==0.108.0
+crewai==0.114.0
 langchain==0.3.22
 langchain-openai==0.3.12
 pydantic==2.11.2

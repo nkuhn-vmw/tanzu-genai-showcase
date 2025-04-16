@@ -7,7 +7,7 @@ This example demonstrates a movie booking chatbot built with Django and CrewAI t
 ## Features
 
 - Conversational interface to find movies based on interests or topics
-  - transacts the TMDB API (signup for a free account [here](https://www.themoviedb.org/signup))
+  - transacts the TMDB API (sign-up for a free account [here](https://www.themoviedb.org/signup))
 - Recommends top 3 movie choices based on user preferences
 - Shows where movies are playing nearby and available show times
 - Uses CrewAI to coordinate multiple AI agents working together
@@ -56,7 +56,7 @@ The application consists of:
 4. Create a `.env` file with your API keys (for local development only):
 
    ```bash
-   LLM_API_KEY=your_llm_api_key_here
+   OPENAI_API_KEY=your_llm_api_key_here
    LLM_BASE_URL=optional_custom_endpoint
    LLM_MODEL=gpt-4o-mini
    TMDB_API_KEY=your_movie_db_api_key_here

@@ -27,10 +27,6 @@ pip install --upgrade pip
 echo "Installing application and dependencies..."
 pip install -e .
 
-# Install specific dependencies directly
-echo "Ensuring all required packages are installed..."
-pip install requests pyramid agno sqlalchemy alembic pyramid_mako waitress python-dotenv cfenv openai
-
 # Create .env file if it doesn't exist
 if [ ! -f ".env" ]; then
     echo "Creating example .env file (please update with your own values)..."
