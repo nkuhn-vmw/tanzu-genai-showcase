@@ -29,25 +29,31 @@ The application consists of:
 
 ## Prerequisites
 
-- PHP 8.1+ and Composer
+- PHP 8.3+ and Composer
 - Cloud Foundry CLI
 - Access to Tanzu Platform for Cloud Foundry with GenAI tile installed
 
 ## Local Development
 
 1. Clone the repository:
-   ```
+
+   ```bash
    git clone https://github.com/cf-toolsuite/tanzu-genai-showcase
    cd tanzu-genai-showcase/php-symfony-neuron
    ```
 
 2. Install dependencies:
-   ```
+
+   > [!IMPORTANT]
+   > Please follow the [Setup Guide](./docs/SETUP.md), if you haven't yet installed: PHP (and its required extensions), Composer, and/or Symfony.
+
+   ```bash
    composer install
    ```
 
 3. Create a `.env.local` file with your API keys (for local development only):
-   ```
+
+   ```bash
    APP_ENV=dev
    APP_SECRET=your_symfony_app_secret
    DATABASE_URL=sqlite:///%kernel.project_dir%/var/data.db
@@ -57,13 +63,15 @@ The application consists of:
    ```
 
 4. Set up the database:
-   ```
+
+   ```bash
    php bin/console doctrine:database:create
    php bin/console doctrine:schema:create
    ```
 
 5. Start the development server:
-   ```
+
+   ```bash
    symfony server:start
    ```
 
@@ -71,7 +79,7 @@ The application consists of:
 
 ## Building for Production
 
-```
+```bash
 composer install --optimize-autoloader --no-dev
 APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
 ```
@@ -79,17 +87,20 @@ APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear
 ## Deploying to Tanzu Platform for Cloud Foundry
 
 1. Login to your Cloud Foundry instance:
-   ```
+
+   ```bash
    cf login -a API_ENDPOINT
    ```
 
 2. Deploy the application:
-   ```
+
+   ```bash
    cf push
    ```
 
 3. Bind to a GenAI service instance:
-   ```
+
+   ```bash
    cf create-service genai-service standard my-llm-service
    cf bind-service company-research my-llm-service
    cf restage company-research
