@@ -14,7 +14,7 @@ Each subdirectory in this repository represents a different tech stack implement
 * [Java + Spring AI + Model Context Protocol + Vaadin](./java-spring-ai-mcp/README.md) - A flight tracking chatbot that provides real-time flight information through a natural language interface.
 * [JavaScript + LangChain + React](./js-langchain-react/README.md) - A news aggregation application that searches for articles and generates concise summaries.
 * [PHP + Symfony + Neuron](./php-symfony-neuron/README.md) - A company research application that gathers financial data and generates reports.
-* [Python + Django + CrewAI](./py-django-crewai/README.md) - A movie booking chatbot that coordinates multiple AI agents to find movies and nearby show times.
+* [Python + Django + CrewAI](./py-django-crewai/README.md) - A movie chatbot that coordinates multiple AI agents to find movies and nearby show times.
 * [Ruby + Sinatra + FastMCP](./ruby-sinatra-fastmcp/README.md) - A flight tracking chatbot with a modern web UI and AI integration that provides real-time flight information.
 
 ## Getting Started
