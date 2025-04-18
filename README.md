@@ -6,16 +6,18 @@ This repository contains multiple examples of applications that can be deployed 
 
 Each subdirectory in this repository represents a different tech stack implementation showcasing how to integrate with GenAI LLM services. These examples cover a variety of use cases, from chatbots and recommendation systems to research assistants and event discovery applications.
 
-## Samples
+# Project Samples
 
-* [.NET with Microsoft.Extensions.AI and Semantic Kernel](./dotnet-extensions-ai/README.md) - A transportation mode recommendation bot that helps users choose the best way to travel between locations.
-* [Go + Fiber + LangChainGo](./go-fiber-langchaingo/README.md) - A chatbot that interacts with the Congress.gov API to provide information about bills, amendments, and more.
-* [Java + Spring Boot + LangGraph + Model Context Protocol + Angular](./java-spring-langgraph-mcp-angular/README.md) - An event recommendation chatbot that suggests events based on user preferences and location.
-* [Java + Spring AI + Model Context Protocol + Vaadin](./java-spring-ai-mcp/README.md) - A flight tracking chatbot that provides real-time flight information through a natural language interface.
-* [JavaScript + LangChain + React](./js-langchain-react/README.md) - A news aggregation application that searches for articles and generates concise summaries.
-* [PHP + Symfony + Neuron](./php-symfony-neuron/README.md) - A company research application that gathers financial data and generates reports.
-* [Python + Django + CrewAI](./py-django-crewai/README.md) - A movie chatbot that coordinates multiple AI agents to find movies and nearby show times.
-* [Ruby + Sinatra + FastMCP](./ruby-sinatra-fastmcp/README.md) - A flight tracking chatbot with a modern web UI and AI integration that provides real-time flight information.
+| Icon | Description | Languages and Frameworks |
+|------|-------------|--------------------------|
+| [![🚗](https://img.shields.io/badge/-Transportation-blue?style=flat-square&logo=dotnet)](./dotnet-extensions-ai/README.md) | A transportation mode recommendation bot that helps users choose the best way to travel between locations. | .NET, Microsoft.Extensions.AI, Semantic Kernel |
+| [![🏛️](https://img.shields.io/badge/-Congress_API-blue?style=flat-square&logo=go)](./go-fiber-langchaingo/README.md) | A chatbot that interacts with the Congress.gov API to provide information about bills, amendments, and more. | Go, Fiber, LangChainGo |
+| [![🎭](https://img.shields.io/badge/-Event_Recommendations-blue?style=flat-square&logo=java)](./java-spring-langgraph-mcp-angular/README.md) | An event recommendation chatbot that suggests events based on user preferences and location. | Java, Spring Boot, LangGraph, Model Context Protocol, Angular |
+| [![✈️](https://img.shields.io/badge/-Flight_Tracking-blue?style=flat-square&logo=java)](./java-spring-ai-mcp/README.md) | A flight tracking chatbot that provides real-time flight information through a natural language interface. | Java, Spring AI, Model Context Protocol, Vaadin |
+| [![📰](https://img.shields.io/badge/-News_Aggregator-blue?style=flat-square&logo=javascript)](./js-langchain-react/README.md) | A news aggregation application that searches for articles and generates concise summaries. | JavaScript, LangChain, React |
+| [![💼](https://img.shields.io/badge/-Company_Research-blue?style=flat-square&logo=php)](./php-symfony-neuron/README.md) | A company research application that gathers financial data and generates reports. | PHP, Symfony, Neuron |
+| [![🎬](https://img.shields.io/badge/-Movie_Agent-blue?style=flat-square&logo=python)](./py-django-crewai/README.md) | A movie chatbot that coordinates multiple AI agents to find movies and nearby show times. | Python, Django, CrewAI |
+| [![✈️](https://img.shields.io/badge/-Flight_Info-blue?style=flat-square&logo=ruby)](./ruby-sinatra-fastmcp/README.md) | A flight tracking chatbot with a modern web UI and AI integration that provides real-time flight information. | Ruby, Sinatra, FastMCP |
 
 ## Getting Started
 
