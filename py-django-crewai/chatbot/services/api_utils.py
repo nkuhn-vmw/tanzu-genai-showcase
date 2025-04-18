@@ -103,7 +103,7 @@ class APIRequestHandler:
                     logger.warning(f"Rate limit detected, will retry with backoff (attempt {attempt+1}/{max_retries+1})")
                     # Use a longer delay for rate limit errors
                     time.sleep(backoff_factor * (4 ** (attempt)))
-                    
+
                     # If this was the last attempt, re-raise the exception
                     if attempt == max_retries:
                         logger.error(f"API request failed after {max_retries+1} attempts due to rate limiting")

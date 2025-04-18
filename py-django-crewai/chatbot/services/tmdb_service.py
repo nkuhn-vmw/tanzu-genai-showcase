@@ -74,12 +74,12 @@ class TMDBService:
         elapsed_time = time.time() - start_time
         logger.info(f"Sequential enhancement completed in {elapsed_time:.2f} seconds")
         return result_movies
-    
+
     # Keeping this for backward compatibility, but it redirects to sequential processing
     def enhance_movies_parallel(self, movies: List[Dict[str, Any]], max_workers: int = 3) -> List[Dict[str, Any]]:
         """
         Legacy method - now redirects to sequential processing to avoid race conditions.
-        
+
         Args:
             movies: List of movie dictionaries to enhance
             max_workers: No longer used

@@ -230,7 +230,7 @@ func main() {
         });
     </script>
 </body>
-</html>`;
+</html>`
 			if err := os.WriteFile("public/index.html", []byte(indexHTML), 0644); err != nil {
 				log.Fatalf("Failed to create index.html: %v", err)
 			}
@@ -269,7 +269,7 @@ func main() {
 		TimeFormat: "2006-01-02 15:04:05",
 		TimeZone:   "Local",
 		// Output to both console and file
-		Output:     io.MultiWriter(os.Stdout, logFile),
+		Output: io.MultiWriter(os.Stdout, logFile),
 		// Log headers
 		Next: func(c *fiber.Ctx) bool {
 			// Skip logging for static files to reduce noise
@@ -284,7 +284,7 @@ func main() {
 			log.Printf("PANIC RECOVERED: %v\nStack Trace: %s\n", e, debug.Stack())
 		},
 	}))
-	
+
 	app.Use(cors.New())
 
 	// Add a middleware to log request and response bodies for API endpoints
@@ -307,7 +307,7 @@ func main() {
 				if len(respBody) > 1000 {
 					respBody = respBody[:1000] + "... [truncated]"
 				}
-				log.Printf("RESPONSE BODY [%s %s] [Status: %d]: %s", 
+				log.Printf("RESPONSE BODY [%s %s] [Status: %d]: %s",
 					c.Method(), c.Path(), c.Response().StatusCode(), respBody)
 			}
 

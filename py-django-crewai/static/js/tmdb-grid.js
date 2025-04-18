@@ -59,14 +59,14 @@ window.renderTMDBGrid = function(movies, containerId, isFirstRunMode = true) {
         // Create the movie card with data attributes and click handler
         const movieCard = document.createElement('div');
         movieCard.className = 'movie-card';
-        
+
         // Use a consistent movie ID approach - always use string IDs
         const movieId = String(movie.id || movie.tmdb_id || '');
-        
+
         // Set data attributes using consistent string ID
         movieCard.setAttribute('data-movie-id', movieId);
         movieCard.setAttribute('data-movie-title', movie.title || '');
-        
+
         // Use consistent ID for click handler
         movieCard.onclick = function() {
             console.log(`Movie card clicked: ${movie.title} (ID: ${movieId})`);
@@ -180,7 +180,7 @@ window.enhanceMoviePosters = function(movies, callback) {
         }
 
         console.log(`Processing movie: ${movie.title || 'Unknown'}, ID: ${movie.id || movie.tmdb_id || 'None'}`);
-        
+
         // Ensure consistent ID handling - convert all IDs to strings
         if (movie.id) {
             movie.id = String(movie.id);
@@ -188,7 +188,7 @@ window.enhanceMoviePosters = function(movies, callback) {
         if (movie.tmdb_id) {
             movie.tmdb_id = String(movie.tmdb_id);
         }
-        
+
         // Make sure both id and tmdb_id are set for compatibility
         if (movie.id && !movie.tmdb_id) {
             movie.tmdb_id = movie.id;
@@ -203,7 +203,7 @@ window.enhanceMoviePosters = function(movies, callback) {
             movie.tmdb_id = placeholderId;
             console.warn(`No ID found for movie: ${movie.title}, using placeholder: ${placeholderId}`);
         }
-        
+
         // Log the final IDs for debugging
         console.log(`Final movie IDs - id: ${movie.id}, tmdb_id: ${movie.tmdb_id}`);
 

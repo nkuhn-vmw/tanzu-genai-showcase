@@ -643,7 +643,7 @@ def get_theaters(request, movie_id):
 
     try:
         logger.info(f"=== Fetching theaters for movie ID: {movie_id} ===")
-        
+
         # Get the movie from the database
         try:
             movie = MovieRecommendation.objects.get(id=movie_id)
@@ -654,62 +654,62 @@ def get_theaters(request, movie_id):
                 'status': 'error',
                 'message': f'Movie with ID {movie_id} not found'
             }, status=404)
-        
+
         # Get client IP and location for potential geolocation
         client_ip = get_client_ip(request)
         user_location = request.session.get('user_location', 'Unknown')
         timezone_str = request.session.get('user_timezone', 'America/Los_Angeles')
-        
+
         # Check if we already have theaters and showtimes for this movie
         existing_showtimes = movie.showtimes.count()
         logger.info(f"Movie has {existing_showtimes} existing showtimes in database")
-        
+
         theater_data = []
-        
+
         if existing_showtimes > 0:
             # If we already have showtimes, use them
             logger.info(f"Using existing theater data for {movie.title}")
-            
+
             # Group showtimes by theater
             theater_map = {}
             for showtime in movie.showtimes.all():
                 theater_name = showtime.theater.name
-                
+
                 # Create theater entry if not exists
                 if theater_name not in theater_map:
                     distance_miles = showtime.theater.distance_miles if hasattr(showtime.theater, 'distance_miles') else 10.0
-                    
+
                     theater_map[theater_name] = {
                         'name': theater_name,
                         'address': showtime.theater.address,
                         'distance_miles': distance_miles,
                         'showtimes': []
                     }
-                
+
                 # Add showtimes to the theater
                 theater_map[theater_name]['showtimes'].append({
                     'start_time': showtime.start_time.isoformat(),
                     'format': showtime.format
                 })
-            
+
             # Convert theater map to list sorted by distance
             for _, theater in sorted(theater_map.items(), key=lambda x: x[1].get('distance_miles', float('inf'))):
                 theater_data.append(theater)
-            
+
             logger.info(f"Returning {len(theater_data)} theaters with existing showtimes")
         else:
             # No existing showtimes, we might want to fetch them from SerpAPI
             # This would be a more complex implementation requiring access to the MovieCrewManager
             # For now, we'll return an empty list
             logger.warning(f"No existing showtimes for movie {movie.title}, returning empty theater list")
-        
+
         return JsonResponse({
             'status': 'success',
             'movie_id': movie_id,
             'movie_title': movie.title,
             'theaters': theater_data
         })
-    
+
     except Exception as e:
         logger.error(f"Error fetching theaters: {str(e)}")
         logger.error(traceback.format_exc())

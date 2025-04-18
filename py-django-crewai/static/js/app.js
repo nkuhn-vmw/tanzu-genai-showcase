@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Define the API URL
     const SEND_MESSAGE_URL = '/send-message/';
-    
+
     // Main chat elements (First Run)
     const chatContainer = document.getElementById('chatContainer');
     const userInput = document.getElementById('userInput');
@@ -290,16 +290,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log("========= UPDATING SHOWTIMES SECTION =========");
         console.log("Raw movies received:", movies);
-        
+
         // Check for theaters in each movie - with detailed logging
         movies.forEach(movie => {
             // Convert IDs to strings for consistent handling
             if (movie.id) movie.id = String(movie.id);
             if (movie.tmdb_id) movie.tmdb_id = String(movie.tmdb_id);
-            
+
             const theaterCount = movie.theaters?.length || 0;
             console.log(`Movie '${movie.title}' (ID: ${movie.id || movie.tmdb_id}) has ${theaterCount} theaters`);
-            
+
             if (theaterCount > 0) {
                 console.log(`First theater: ${movie.theaters[0].name} with ${movie.theaters[0].showtimes?.length || 0} showtimes`);
             }
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Store movies in global variable so they can be accessed by the handleMovieClick function
         window.currentMovies = currentMovies;
-        
+
         // Debug log the movies we're storing globally
         console.log(`Storing ${currentMovies.length} movies in window.currentMovies:`);
         currentMovies.forEach(movie => {
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Initially hide date tabs
         dateTabsContainer.style.display = 'none';
-        
+
         if (currentMovies.length === 0) {
             // If no current movies with theaters, show appropriate message
             if (currentReleaseCount === 0) {
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Show instruction message to select a movie first
             theatersContainer.innerHTML = '<p class="text-center text-muted mt-3"><i class="bi bi-hand-index-thumb"></i> Click on a movie above to see available theaters and showtimes</p>';
-            
+
             // Generate date tabs for current day + 3 more days (4 total)
             dateTabsContainer.innerHTML = '';
             const dates = [];
@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 dateTabsContainer.appendChild(tabButton);
             }
-            
+
             // Ensure we're not showing any theaters until a movie is selected
             if (!window.selectedMovieId) {
                 theatersContainer.innerHTML = '<p class="text-center text-muted mt-3"><i class="bi bi-hand-index-thumb"></i> Click on a movie above to see available theaters and showtimes</p>';
@@ -413,12 +413,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Always use the current window.selectedMovie rather than the passed in movies parameter
         // This ensures we're always using the latest selected movie
         const movie = window.selectedMovie;
-        
+
         console.log(`displayShowtimesForDate for movie: ${movie.title} and date index: ${dateIndex}`);
-        
+
         // Debug the selected movie data
         console.log(`Processing theaters for selected movie: ${movie.title}`, movie);
-        
+
         if (!movie.theaters || movie.theaters.length === 0) {
             theatersContainer.innerHTML = `
                 <p class="text-muted">No theaters are currently showing "${movie.title}". Please check back later or select a different movie.</p>
@@ -428,13 +428,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Map to hold theaters with showtimes for the selected date
         const theatersByName = new Map();
-        
+
         // Get today's date and the selected date
         const today = new Date();
         const selectedDate = new Date(today);
         selectedDate.setDate(today.getDate() + dateIndex);
         const selectedDateStr = selectedDate.toISOString().split('T')[0];
-        
+
         console.log(`Filtering showtimes for date: ${selectedDateStr}`);
 
         // Process each theater for the selected movie
@@ -442,18 +442,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!theater.name || !theater.showtimes || !Array.isArray(theater.showtimes)) {
                 return; // Skip invalid theaters
             }
-            
+
             // Filter showtimes for the selected date
             const showtimesForDate = theater.showtimes.filter(showtime => {
                 if (!showtime.start_time) return false;
                 const date = new Date(showtime.start_time);
                 return date.toISOString().split('T')[0] === selectedDateStr;
             });
-            
+
             if (showtimesForDate.length === 0) {
                 return; // Skip theaters with no showtimes on selected date
             }
-            
+
             // Create or get theater entry
             if (!theatersByName.has(theater.name)) {
                 theatersByName.set(theater.name, {
@@ -463,9 +463,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     showtimesByFormat: {}
                 });
             }
-            
+
             const theaterEntry = theatersByName.get(theater.name);
-            
+
             // Group showtimes by format
             showtimesForDate.forEach(showtime => {
                 const format = showtime.format || 'Standard';
@@ -475,11 +475,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 theaterEntry.showtimesByFormat[format].push(showtime.start_time);
             });
         });
-        
+
         // Convert to array and sort by distance
         const theatersArray = Array.from(theatersByName.values())
             .sort((a, b) => (a.distance_miles || 0) - (b.distance_miles || 0));
-        
+
         console.log(`Found ${theatersArray.length} theaters with showtimes for ${movie.title} on the selected date`);
 
         // If no theaters found for the selected date
@@ -563,10 +563,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle movie card clicks
     window.handleMovieClick = function(movieId, movieTitle) {
         console.log(`Movie clicked: ${movieTitle} (ID: ${movieId})`);
-        
+
         // Debug log to trace what's happening
         console.log(`Previous selected movie: ${window.selectedMovieTitle} (ID: ${window.selectedMovieId})`);
-        
+
         // If this is the same movie already selected, don't do anything
         if (window.selectedMovieId === movieId) {
             console.log("Same movie clicked - no update needed");
@@ -590,28 +590,28 @@ document.addEventListener('DOMContentLoaded', function() {
         // Improved movie finding - convert IDs to strings for reliable comparison
         const stringMovieId = String(movieId);
         console.log(`Looking for movie with stringified ID: ${stringMovieId}`);
-        
+
         // Log all movies and their IDs to debug the matching issue
         window.currentMovies.forEach(movie => {
             console.log(`Checking movie: ${movie.title} - id: ${movie.id}, tmdb_id: ${movie.tmdb_id}`);
         });
-        
+
         // Find movie with more robust ID matching
-        const selectedMovie = window.currentMovies.find(movie => 
-            String(movie.id) === stringMovieId || 
+        const selectedMovie = window.currentMovies.find(movie =>
+            String(movie.id) === stringMovieId ||
             String(movie.tmdb_id) === stringMovieId
         );
-        
+
         if (!selectedMovie) {
             console.error(`Movie with ID ${movieId} not found in current movies`);
             return;
         }
-        
+
         // Create a fresh copy of the selected movie to avoid reference issues
         window.selectedMovie = JSON.parse(JSON.stringify(selectedMovie));
-        
+
         console.log(`New selected movie: ${window.selectedMovie.title}`, window.selectedMovie);
-        
+
         // Check if the movie has theaters
         if (!selectedMovie.theaters || selectedMovie.theaters.length === 0) {
             // No theaters available for this movie
@@ -619,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
             theatersContainer.innerHTML = `
                 <p class="text-muted">No theaters are currently showing "${movieTitle}". Please check back later or select a different movie.</p>
             `;
-            
+
             // Hide date tabs
             const dateTabs = document.getElementById('dateTabs');
             if (dateTabs) {
@@ -627,25 +627,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             return;
         }
-        
+
         // Always rebuild date tabs to ensure fresh event listeners that reference the current selected movie
         rebuildDateTabs();
-        
+
         // Display theaters for the selected movie and first date (Today)
         displayShowtimesForDate(null, 0); // Pass null to force using window.selectedMovie
     };
-    
+
     // Function to rebuild date tabs with fresh event listeners
     function rebuildDateTabs() {
         const dateTabs = document.getElementById('dateTabs');
         if (!dateTabs) return;
-        
+
         // Clear existing tabs
         dateTabs.innerHTML = '';
-        
+
         // Generate date tabs for current day + 3 more days (4 total)
         const today = new Date();
-        
+
         for (let i = 0; i < 4; i++) {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
@@ -675,7 +675,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Add active class to clicked tab
                     this.classList.add('active');
-                    
+
                     console.log(`Date tab clicked: ${dateIndex} for movie: ${window.selectedMovieTitle}`);
 
                     // Update showtimes display for this date
@@ -686,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             dateTabs.appendChild(tabButton);
         }
-        
+
         // Show date tabs
         dateTabs.style.display = 'flex';
     }

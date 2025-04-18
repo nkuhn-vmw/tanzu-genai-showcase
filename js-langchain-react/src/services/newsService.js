@@ -5,7 +5,7 @@ import axios from 'axios';
  * if we're accessing the app from localhost on the React dev server port
  */
 function isLocalDevelopment() {
-  return window.location.hostname === 'localhost' && 
+  return window.location.hostname === 'localhost' &&
          (window.location.port === '3000' || window.location.port === '3002');
 }
 

@@ -465,7 +465,7 @@ class MovieCrewManager:
                     movie_id = theater.get("movie_id")
                     movie_title = theater.get("movie_title")
                     theater_with_movie_ids.append(f"{theater.get('name', 'Unknown')}: movie_id={movie_id}, movie_title={movie_title}")
-            
+
             logger.info(f"Theater data sample: {theater_with_movie_ids}")
 
         # First pass: Process theater data and organize by both movie ID and title
@@ -518,11 +518,11 @@ class MovieCrewManager:
         recommendation_ids = set(str(m.get("tmdb_id") or m.get("id", "")) for m in recommendations if isinstance(m, dict))
         logger.info(f"Theater movie IDs found: {theater_movie_ids}")
         logger.info(f"Recommendation movie IDs: {recommendation_ids}")
-        
+
         # Log theater distribution for debugging
         for movie_id, theaters in theaters_by_movie_id.items():
             logger.info(f"Movie ID {movie_id} has {len(theaters)} theaters with showtimes")
-        
+
         for movie_title, theaters in theaters_by_movie_title.items():
             logger.info(f"Movie title '{movie_title}' has {len(theaters)} theaters with showtimes")
 
@@ -539,7 +539,7 @@ class MovieCrewManager:
                 # Update the movie's tmdb_id field for consistency
                 movie["tmdb_id"] = movie_tmdb_id
                 logger.info(f"Set tmdb_id from id for movie: {movie.get('title')}")
-            
+
             movie_title = movie.get("title")
             movie_theaters = []
 
@@ -560,14 +560,14 @@ class MovieCrewManager:
                                 break
                         except (ValueError, TypeError):
                             continue
-            
+
             # If no theaters found by ID, try matching by title
             if not movie_theaters and movie_title:
                 title_theaters = theaters_by_movie_title.get(movie_title, [])
                 if title_theaters:
                     logger.info(f"Found {len(title_theaters)} theaters for movie title '{movie_title}'")
                     movie_theaters = title_theaters
-                    
+
                     # Update the theater data with the correct movie_id for future reference
                     if movie_tmdb_id:
                         for theater in movie_theaters:

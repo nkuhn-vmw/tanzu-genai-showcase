@@ -14,7 +14,7 @@ function App() {
     setLoading(true);
     setError(null);
     setSearchPerformed(true);
-    
+
     try {
       const result = await searchNews(topic);
       setArticles(result.articles);
@@ -34,15 +34,15 @@ function App() {
       </header>
       <main className="App-main">
         <NewsSearch onSearch={handleSearch} />
-        
+
         {loading && <div className="loading">Loading news articles...</div>}
-        
+
         {error && <div className="error">{error}</div>}
-        
+
         {!loading && !error && searchPerformed && articles.length === 0 && (
           <div className="no-results">No articles found. Try a different topic.</div>
         )}
-        
+
         {!loading && !error && articles.length > 0 && (
           <NewsList articles={articles} />
         )}
