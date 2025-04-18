@@ -45,13 +45,13 @@ class ReportController extends AbstractController
     {
         try {
             $filePath = $exportService->exportToPdf($report);
-            
+
             $response = new BinaryFileResponse($filePath);
             $response->setContentDisposition(
                 ResponseHeaderBag::DISPOSITION_ATTACHMENT,
                 'report_' . $report->getCompany()->getName() . '.pdf'
             );
-            
+
             return $response;
         } catch (\Exception $e) {
             $this->addFlash('error', 'Failed to generate PDF: ' . $e->getMessage());
@@ -64,16 +64,35 @@ class ReportController extends AbstractController
     {
         try {
             $filePath = $exportService->exportToExcel($report);
-            
+
             $response = new BinaryFileResponse($filePath);
             $response->setContentDisposition(
                 ResponseHeaderBag::DISPOSITION_ATTACHMENT,
                 'report_' . $report->getCompany()->getName() . '.xlsx'
             );
-            
+
             return $response;
         } catch (\Exception $e) {
             $this->addFlash('error', 'Failed to generate Excel file: ' . $e->getMessage());
+            return $this->redirectToRoute('report_show', ['id' => $report->getId()]);
+        }
+    }
+
+    #[Route('/{id}/export/word', name: 'report_export_word', methods: ['GET'])]
+    public function exportWord(ResearchReport $report, ReportExportService $exportService): Response
+    {
+        try {
+            $filePath = $exportService->exportToWord($report);
+
+            $response = new BinaryFileResponse($filePath);
+            $response->setContentDisposition(
+                ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                'report_' . $report->getCompany()->getName() . '.docx'
+            );
+
+            return $response;
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Failed to generate Word document: ' . $e->getMessage());
             return $this->redirectToRoute('report_show', ['id' => $report->getId()]);
         }
     }
@@ -85,12 +104,12 @@ class ReportController extends AbstractController
             $companyId = $report->getCompany()->getId();
             $entityManager->remove($report);
             $entityManager->flush();
-            
+
             $this->addFlash('success', 'Report deleted successfully.');
-            
+
             return $this->redirectToRoute('company_reports', ['id' => $companyId]);
         }
-        
+
         return $this->redirectToRoute('report_show', ['id' => $report->getId()]);
     }
 
@@ -99,11 +118,11 @@ class ReportController extends AbstractController
     {
         $searchTerm = $request->query->get('term');
         $results = [];
-        
+
         if ($searchTerm) {
             $results = $reportRepository->findBySearchTerm($searchTerm);
         }
-        
+
         return $this->render('report/search.html.twig', [
             'searchTerm' => $searchTerm,
             'results' => $results,

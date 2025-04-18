@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Search Companies{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-4">Company Search</h1>
+            
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {{ form_start(form) }}
+                    <div class="row">
+                        <div class="col-md-10">
+                            {{ form_widget(form.searchTerm) }}
+                            {{ form_errors(form.searchTerm) }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form_widget(form.search) }}
+                        </div>
+                    </div>
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if results is defined and results|length > 0 %}
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h2>Search Results ({{ results|length }})</h2>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Ticker</th>
+                                <th>Industry</th>
+                                <th>Sector</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for company in results %}
+                                <tr>
+                                    <td>{{ company.name }}</td>
+                                    <td>{{ company.tickerSymbol }}</td>
+                                    <td>{{ company.industry }}</td>
+                                    <td>{{ company.sector }}</td>
+                                    <td>
+                                        <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-sm btn-info">Details</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% elseif results is defined and results|length == 0 %}
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    No companies found matching your search criteria.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

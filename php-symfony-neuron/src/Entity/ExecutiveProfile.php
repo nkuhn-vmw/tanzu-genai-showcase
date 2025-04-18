@@ -35,10 +35,10 @@ class ExecutiveProfile
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $achievements = null;
-    
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $leadership = null;
-    
+
     #[ORM\Column(type: 'datetime_immutable')]
     private ?\DateTimeImmutable $createdAt = null;
 

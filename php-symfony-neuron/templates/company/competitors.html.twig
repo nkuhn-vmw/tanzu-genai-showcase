@@ -1,0 +1,277 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - Competitors{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ company.name }} - Competitor Analysis</h1>
+        <div>
+            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Company
+            </a>
+        </div>
+    </div>
+    
+    {% if competitorAnalyses is empty %}
+        <div class="alert alert-info">
+            <p>No competitor analysis is available for this company yet.</p>
+            <hr>
+            <p class="mb-0">Competitor analysis can be generated using AI or added manually with industry insights.</p>
+        </div>
+        
+        <div class="text-center my-5">
+            <button class="btn btn-primary" id="generateCompetitors">
+                <i class="fas fa-robot"></i> Generate Competitor Analysis with AI
+            </button>
+        </div>
+    {% else %}
+        <!-- Market Position Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Market Position</h5>
+                <div class="btn-group">
+                    <a href="#" class="btn btn-sm btn-outline-primary" id="exportCompetitorsPdf">
+                        <i class="far fa-file-pdf"></i> Export to PDF
+                    </a>
+                    <a href="#" class="btn btn-sm btn-outline-success" id="exportCompetitorsExcel">
+                        <i class="far fa-file-excel"></i> Export to Excel
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h6>Industry: {{ company.industry }}</h6>
+                        <p>{{ competitorAnalyses|first.industryOverview|u.truncate(200, '...') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Market Position</h6>
+                        <p>{{ competitorAnalyses|first.marketPosition|u.truncate(200, '...') }}</p>
+                    </div>
+                </div>
+                
+                <!-- Market Share Chart -->
+                <div class="mb-4">
+                    <h6>Market Share</h6>
+                    <div style="height: 350px;">
+                        <canvas id="marketShareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Competitive Landscape -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Competitive Landscape</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Competitor</th>
+                                <th>Market Share</th>
+                                <th>Strengths</th>
+                                <th>Weaknesses</th>
+                                <th>Threat Level</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for analysis in competitorAnalyses %}
+                                {% for competitor in analysis.competitors %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ competitor.name }}</strong>
+                                            {% if competitor.website %}
+                                                <br><small><a href="{{ competitor.website }}" target="_blank">{{ competitor.website }}</a></small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ competitor.marketShare|number_format(1) }}%</td>
+                                        <td>
+                                            <ul class="mb-0 ps-3">
+                                                {% for strength in competitor.strengths|split(',') %}
+                                                    <li>{{ strength|trim }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            <ul class="mb-0 ps-3">
+                                                {% for weakness in competitor.weaknesses|split(',') %}
+                                                    <li>{{ weakness|trim }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            {% set badgeClass = "bg-success" %}
+                                            {% if competitor.threatLevel == "Medium" %}
+                                                {% set badgeClass = "bg-warning" %}
+                                            {% elseif competitor.threatLevel == "High" %}
+                                                {% set badgeClass = "bg-danger" %}
+                                            {% endif %}
+                                            
+                                            <span class="badge {{ badgeClass }}">{{ competitor.threatLevel }}</span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SWOT Analysis -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">SWOT Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-success h-100">
+                            <div class="card-header bg-success text-white">Strengths</div>
+                            <div class="card-body">
+                                <ul>
+                                    {% for strength in competitorAnalyses|first.swotStrengths|split('\n') %}
+                                        {% if strength|trim is not empty %}
+                                            <li>{{ strength|trim }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger text-white">Weaknesses</div>
+                            <div class="card-body">
+                                <ul>
+                                    {% for weakness in competitorAnalyses|first.swotWeaknesses|split('\n') %}
+                                        {% if weakness|trim is not empty %}
+                                            <li>{{ weakness|trim }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-info h-100">
+                            <div class="card-header bg-info text-white">Opportunities</div>
+                            <div class="card-body">
+                                <ul>
+                                    {% for opportunity in competitorAnalyses|first.swotOpportunities|split('\n') %}
+                                        {% if opportunity|trim is not empty %}
+                                            <li>{{ opportunity|trim }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card border-warning h-100">
+                            <div class="card-header bg-warning text-dark">Threats</div>
+                            <div class="card-body">
+                                <ul>
+                                    {% for threat in competitorAnalyses|first.swotThreats|split('\n') %}
+                                        {% if threat|trim is not empty %}
+                                            <li>{{ threat|trim }}</li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="{{ asset('js/charts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Export buttons
+        const exportPdfBtn = document.getElementById('exportCompetitorsPdf');
+        const exportExcelBtn = document.getElementById('exportCompetitorsExcel');
+        
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('PDF export functionality will be implemented here');
+            });
+        }
+        
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('Excel export functionality will be implemented here');
+            });
+        }
+        
+        // Generate button
+        const generateBtn = document.getElementById('generateCompetitors');
+        
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function() {
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Analysis...';
+                
+                // Make AJAX request to generate competitor analysis
+                fetch('{{ path('company_generate_competitors', {'id': company.id}) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload(); // Reload page to show new data
+                    } else {
+                        alert('Error: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-robot"></i> Generate Competitor Analysis with AI';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while generating competitor analysis');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-robot"></i> Generate Competitor Analysis with AI';
+                });
+            });
+        }
+        
+        // Initialize market share chart if it exists
+        {% if competitorAnalyses is defined and competitorAnalyses is not empty %}
+            // Prepare market share data
+            const marketShareData = [
+                { name: "{{ company.name }}", share: {{ competitorAnalyses|first.companyMarketShare|default(25) }} },
+                {% for competitor in competitorAnalyses|first.competitors|default([]) %}
+                { name: "{{ competitor.name }}", share: {{ competitor.marketShare|default(10) }} }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+            
+            // Initialize the market share chart
+            const marketShareChart = document.getElementById('marketShareChart');
+            if (marketShareChart) {
+                window.FinancialCharts.createMarketShareChart('marketShareChart', marketShareData, { title: 'Market Share Analysis' });
+            }
+        {% endif %}
+    });
+</script>
+{% endblock %}
+{% endblock %}

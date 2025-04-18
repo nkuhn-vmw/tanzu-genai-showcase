@@ -1,0 +1,124 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }}{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    {% for message in app.flashes('success') %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ company.name }}</h1>
+        <div>
+            <a href="{{ path('company_index') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+            <a href="{{ path('company_edit', {'id': company.id}) }}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Company Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Ticker Symbol:</div>
+                        <div class="col-md-9">{{ company.tickerSymbol }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Industry:</div>
+                        <div class="col-md-9">{{ company.industry }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Sector:</div>
+                        <div class="col-md-9">{{ company.sector }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Headquarters:</div>
+                        <div class="col-md-9">{{ company.headquarters }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Founded:</div>
+                        <div class="col-md-9">{{ company.foundedYear }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Employees:</div>
+                        <div class="col-md-9">{{ company.employees|number_format }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Website:</div>
+                        <div class="col-md-9">
+                            <a href="{{ company.website }}" target="_blank" rel="noopener noreferrer">{{ company.website }}</a>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Last Updated:</div>
+                        <div class="col-md-9">{{ company.updatedAt ? company.updatedAt|date('Y-m-d H:i') : 'N/A' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Description</h5>
+                </div>
+                <div class="card-body">
+                    <p>{{ company.description|nl2br }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Research & Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <a href="{{ path('company_financial', {'id': company.id}) }}" class="d-flex justify-content-between align-items-center text-decoration-none">
+                                <span>Financial Data</span>
+                                <span class="badge bg-primary rounded-pill">{{ company.financialData|length }}</span>
+                            </a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{{ path('company_leadership', {'id': company.id}) }}" class="d-flex justify-content-between align-items-center text-decoration-none">
+                                <span>Leadership Profiles</span>
+                                <span class="badge bg-primary rounded-pill">{{ company.executiveProfiles|length }}</span>
+                            </a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{{ path('company_competitors', {'id': company.id}) }}" class="d-flex justify-content-between align-items-center text-decoration-none">
+                                <span>Competitor Analysis</span>
+                                <span class="badge bg-primary rounded-pill">{{ company.competitorAnalyses|length }}</span>
+                            </a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{{ path('company_reports', {'id': company.id}) }}" class="d-flex justify-content-between align-items-center text-decoration-none">
+                                <span>Research Reports</span>
+                                <span class="badge bg-primary rounded-pill">{{ company.researchReports|length }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <form method="post" action="{{ path('company_delete', {'id': company.id}) }}" onsubmit="return confirm('Are you sure you want to delete this company?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ company.id) }}">
+                <button class="btn btn-danger w-100">
+                    <i class="fas fa-trash-alt"></i> Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,324 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - Financial Data{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ company.name }} - Financial Data</h1>
+        <div>
+            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Company
+            </a>
+        </div>
+    </div>
+    
+    {% if financialData is empty %}
+        <div class="alert alert-info">
+            <p>No financial data available for this company yet.</p>
+            <hr>
+            <p class="mb-0">Financial data is typically added automatically through scheduled data imports or can be generated using AI.</p>
+        </div>
+        
+        <div class="text-center my-5">
+            <button class="btn btn-primary" id="generateFinancialData">
+                <i class="fas fa-robot"></i> Generate Financial Data with AI
+            </button>
+        </div>
+    {% else %}
+        <!-- Financial Overview Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Financial Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary mb-1">${{ financialData|last.revenue|number_format }}</h3>
+                                <p class="text-muted mb-0">Annual Revenue</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary mb-1">${{ financialData|last.netIncome|number_format }}</h3>
+                                <p class="text-muted mb-0">Net Income</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary mb-1">${{ financialData|last.totalAssets|number_format }}</h3>
+                                <p class="text-muted mb-0">Total Assets</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card border-0 bg-light">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary mb-1">${{ financialData|last.marketCap|number_format }}</h3>
+                                <p class="text-muted mb-0">Market Cap</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Revenue Chart -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Revenue Trend</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quarterly Results -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Quarterly Results</h5>
+                <div class="btn-group">
+                    <a href="#" class="btn btn-sm btn-outline-primary" id="exportPdf">
+                        <i class="far fa-file-pdf"></i> Export to PDF
+                    </a>
+                    <a href="#" class="btn btn-sm btn-outline-success" id="exportExcel">
+                        <i class="far fa-file-excel"></i> Export to Excel
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Quarter</th>
+                                <th>Revenue</th>
+                                <th>Net Income</th>
+                                <th>EPS</th>
+                                <th>EBITDA</th>
+                                <th>Profit Margin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in financialData %}
+                                <tr>
+                                    <td>{{ data.fiscalQuarter }} {{ data.fiscalYear }}</td>
+                                    <td>${{ data.revenue|number_format }}</td>
+                                    <td>${{ data.netIncome|number_format }}</td>
+                                    <td>${{ data.eps|number_format(2) }}</td>
+                                    <td>${{ data.ebitda|number_format }}</td>
+                                    <td>{{ (data.profitMargin * 100)|number_format(2) }}%</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Profit Margin Chart -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Profit Margins</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="profitMarginChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Market Share Chart -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Market Share</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="marketShareChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Financial Metrics -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Key Metrics</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>P/E Ratio</span>
+                                <span class="badge bg-primary rounded-pill">{{ financialData|last.peRatio|number_format(2) }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Dividend Yield</span>
+                                <span class="badge bg-primary rounded-pill">{{ (financialData|last.dividendYield * 100)|number_format(2) }}%</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Return on Equity</span>
+                                <span class="badge bg-primary rounded-pill">{{ (financialData|last.roe * 100)|number_format(2) }}%</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Debt to Equity</span>
+                                <span class="badge bg-primary rounded-pill">{{ financialData|last.debtToEquity|number_format(2) }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Current Ratio</span>
+                                <span class="badge bg-primary rounded-pill">{{ financialData|last.currentRatio|number_format(2) }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Balance Sheet Highlights</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Total Assets</span>
+                                <span>${{ financialData|last.totalAssets|number_format }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Total Liabilities</span>
+                                <span>${{ financialData|last.totalLiabilities|number_format }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Shareholder Equity</span>
+                                <span>${{ financialData|last.shareholderEquity|number_format }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Cash & Equivalents</span>
+                                <span>${{ financialData|last.cashAndEquivalents|number_format }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Long-term Debt</span>
+                                <span>${{ financialData|last.longTermDebt|number_format }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="{{ asset('js/charts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize export buttons
+        const exportPdfBtn = document.getElementById('exportPdf');
+        const exportExcelBtn = document.getElementById('exportExcel');
+        
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('PDF export functionality will be implemented here');
+            });
+        }
+        
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('Excel export functionality will be implemented here');
+            });
+        }
+        
+        // Initialize AI generation button
+        const generateBtn = document.getElementById('generateFinancialData');
+        
+        if (generateBtn) {
+            generateBtn.addEventListener('click', function() {
+                const btn = this;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Data...';
+                
+                // Make AJAX request to generate financial data
+                fetch('{{ path('company_generate_financial', {'id': company.id}) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        window.location.reload(); // Reload page to show new data
+                    } else {
+                        alert('Error: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-robot"></i> Generate Financial Data with AI';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while generating financial data');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-robot"></i> Generate Financial Data with AI';
+                });
+            });
+        }
+        
+        // Initialize charts with data from the financial data
+        {% if financialData is defined and financialData is not empty %}
+            // Prepare revenue chart data
+            const revenueData = [
+                {% for data in financialData %}
+                {
+                    period: "{{ data.fiscalQuarter }} {{ data.fiscalYear }}",
+                    revenue: {{ data.revenue }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+            
+            // Prepare profit margin chart data
+            const marginData = [
+                {% for data in financialData %}
+                {
+                    period: "{{ data.fiscalQuarter }} {{ data.fiscalYear }}",
+                    grossMargin: {{ data.grossMargin|default(0) }},
+                    operatingMargin: {{ data.operatingMargin|default(0) }},
+                    netMargin: {{ data.profitMargin|default(0) }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+            
+            // Prepare market share data (sample data for now)
+            const marketShareData = [
+                { name: "{{ company.name }}", share: 35 },
+                { name: "Competitor A", share: 25 },
+                { name: "Competitor B", share: 20 },
+                { name: "Competitor C", share: 15 },
+                { name: "Others", share: 5 }
+            ];
+            
+            // Initialize the charts
+            window.FinancialCharts.createRevenueChart('revenueChart', revenueData, { title: 'Quarterly Revenue' });
+            window.FinancialCharts.createProfitMarginChart('profitMarginChart', marginData, { title: 'Profit Margins' });
+            window.FinancialCharts.createMarketShareChart('marketShareChart', marketShareData, { title: 'Market Share Analysis' });
+        {% endif %}
+    });
+</script>
+{% endblock %}
+{% endblock %}

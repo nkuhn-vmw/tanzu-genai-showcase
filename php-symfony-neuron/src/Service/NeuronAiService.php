@@ -319,11 +319,11 @@ class NeuronAiService
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response');
             }
-            
+
             // Add metadata
             $data['reportType'] = $reportType;
             $data['generatedBy'] = 'Neuron AI';
-            
+
             return $data;
         } catch (\Exception $e) {
             // If JSON parsing fails, return a structured error response
