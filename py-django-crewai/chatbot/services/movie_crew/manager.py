@@ -3,6 +3,7 @@ Manager for the movie recommendation crew.
 """
 import logging
 import json
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Union
 
@@ -35,7 +36,8 @@ class MovieCrewManager:
         model: str = "gpt-4o-mini",
         tmdb_api_key: Optional[str] = None,
         user_location: Optional[str] = None,
-        user_ip: Optional[str] = None
+        user_ip: Optional[str] = None,
+        timezone: Optional[str] = None
     ):
         """
         Initialize the MovieCrewManager.
@@ -47,6 +49,7 @@ class MovieCrewManager:
             tmdb_api_key: API key for The Movie Database (TMDb)
             user_location: Optional user location string
             user_ip: Optional user IP address for geolocation
+            timezone: Optional user timezone string (e.g., 'America/Los_Angeles')
         """
         self.api_key = api_key
         self.base_url = base_url
@@ -54,6 +57,7 @@ class MovieCrewManager:
         self.tmdb_api_key = tmdb_api_key
         self.user_location = user_location
         self.user_ip = user_ip
+        self.timezone = timezone
 
         # Configure TMDb API if key is provided
         if tmdb_api_key:
@@ -132,9 +136,10 @@ class MovieCrewManager:
         search_tool.first_run_mode = first_run_mode  # Set the mode
         analyze_tool = AnalyzePreferencesTool()
 
-        # Set up the theater finder tool with location
+        # Set up the theater finder tool with location and timezone
         theater_finder_tool = FindTheatersTool(user_location=self.user_location)
         theater_finder_tool.user_ip = self.user_ip
+        theater_finder_tool.timezone = self.timezone
 
         logger.info(f"Created SearchMoviesTool with first_run_mode: {first_run_mode}")
 
@@ -151,7 +156,7 @@ class MovieCrewManager:
 
         # Get max recommendations count from settings
         max_recommendations = getattr(settings, 'MAX_RECOMMENDATIONS', 3)
-        
+
         recommend_movies_task = Task(
             description=f"Recommend the top {max_recommendations} movies from the list that best match the user's preferences",
             expected_output=f"A JSON list of the top {max_recommendations} recommended movies with explanations",
@@ -270,8 +275,38 @@ class MovieCrewManager:
                 try:
                     # Extract theater output in First Run mode
                     find_theaters_output = safe_extract_task_output(find_theaters_task, "Theater")
+
+                    # Add extra logging for debugging
+                    logger.debug(f"Raw theater data preview: {find_theaters_output[:1000]}")
+
+                    # Attempt to parse the JSON with our improved error handling
                     theaters_data = JsonParser.parse_json_output(find_theaters_output)
-                    logger.info(f"Processed theater data in First Run mode: {len(theaters_data)} theaters found")
+
+                    # Check if we got valid data
+                    if theaters_data:
+                        logger.info(f"Processed theater data in First Run mode: {len(theaters_data)} theaters found")
+                    else:
+                        # If no theaters were parsed, try a more aggressive approach
+                        logger.warning("Initial JSON parsing failed, attempting manual JSON repair")
+
+                        # Check if the output looks like an array with an obvious syntax error
+                        if find_theaters_output.startswith('[') and find_theaters_output.endswith(']'):
+                            try:
+                                # Try to manually correct some common JSON issues
+                                fixed_json = find_theaters_output
+                                # Replace any trailing commas before closing brackets
+                                fixed_json = re.sub(r',\s*}', '}', fixed_json)
+                                fixed_json = re.sub(r',\s*]', ']', fixed_json)
+
+                                # Try parsing with the fixed JSON
+                                theaters_data = json.loads(fixed_json)
+                                logger.info(f"Successfully recovered theater data through manual JSON repair: {len(theaters_data)} theaters")
+                            except Exception as repair_error:
+                                logger.error(f"Manual JSON repair failed: {str(repair_error)}")
+                                theaters_data = []
+                        else:
+                            logger.warning("Theater data doesn't appear to be a valid JSON array")
+                            theaters_data = []
                 except Exception as theater_error:
                     logger.error(f"Error processing theater data: {str(theater_error)}")
                     logger.exception(theater_error)
@@ -290,7 +325,7 @@ class MovieCrewManager:
                 try:
                     import time
                     enhancement_start = time.time()
-                    
+
                     # Convert recommendations to JSON string for the tool
                     recommendations_json = json.dumps(recommendations)
 
@@ -420,40 +455,76 @@ class MovieCrewManager:
 
         # Improved theater mapping - ensures each movie gets only its relevant theaters
         theaters_by_movie_id = {}
-        
-        # Process theater data with better validation
+        theaters_by_movie_title = {}
+
+        # Debug log the theaters data for inspection
+        theater_with_movie_ids = []
+        if theaters_data:
+            for idx, theater in enumerate(theaters_data[:3]):  # Log first 3 for brevity
+                if isinstance(theater, dict):
+                    movie_id = theater.get("movie_id")
+                    movie_title = theater.get("movie_title")
+                    theater_with_movie_ids.append(f"{theater.get('name', 'Unknown')}: movie_id={movie_id}, movie_title={movie_title}")
+            
+            logger.info(f"Theater data sample: {theater_with_movie_ids}")
+
+        # First pass: Process theater data and organize by both movie ID and title
         for theater in theaters_data:
             if not isinstance(theater, dict):
                 logger.warning(f"Skipping invalid theater entry (not a dictionary)")
                 continue
-                
+
+            # Get movie ID and title from theater data
             movie_id = theater.get("movie_id")
-            if movie_id is None:
-                logger.warning(f"Theater missing movie_id: {theater.get('name', 'Unknown')}")
+            movie_title = theater.get("movie_title")
+
+            # Skip theaters without proper identification
+            if movie_id is None and movie_title is None:
+                logger.warning(f"Theater missing both movie_id and movie_title: {theater.get('name', 'Unknown')}")
                 continue
-                
-            # More validation of theater data integrity
+
+            # Validate theater has a name
             if not theater.get("name"):
                 logger.warning(f"Theater missing name for movie_id {movie_id}")
                 continue
-                
+
             # Ensure showtimes are valid
             if not theater.get("showtimes") or not isinstance(theater.get("showtimes"), list):
                 logger.warning(f"Theater {theater.get('name')} has no valid showtimes for movie_id {movie_id}")
                 continue
-                
+
             # Only add theaters with actual showtimes
             if len(theater.get("showtimes", [])) == 0:
                 logger.warning(f"Theater {theater.get('name')} has empty showtimes list for movie_id {movie_id}")
                 continue
-                
-            # Initialize the list for this movie_id if needed
-            if movie_id not in theaters_by_movie_id:
-                theaters_by_movie_id[movie_id] = []
-                
-            # Add theater to the appropriate movie list
-            theaters_by_movie_id[movie_id].append(theater)
-            logger.info(f"Added theater '{theater.get('name')}' with {len(theater.get('showtimes', []))} showtimes to movie_id {movie_id}")
+
+            # Add to ID-based lookup if we have a movie_id
+            if movie_id is not None:
+                movie_id_str = str(movie_id)  # Convert to string for consistent lookup
+                if movie_id_str not in theaters_by_movie_id:
+                    theaters_by_movie_id[movie_id_str] = []
+                theaters_by_movie_id[movie_id_str].append(theater)
+                logger.info(f"Added theater '{theater.get('name')}' with {len(theater.get('showtimes', []))} showtimes to movie_id {movie_id}")
+
+            # Also add to title-based lookup for backup matching
+            if movie_title is not None:
+                if movie_title not in theaters_by_movie_title:
+                    theaters_by_movie_title[movie_title] = []
+                theaters_by_movie_title[movie_title].append(theater)
+                logger.info(f"Added theater '{theater.get('name')}' with {len(theater.get('showtimes', []))} showtimes to movie '{movie_title}'")
+
+        # Debug log all IDs in theaters data vs. recommendations
+        theater_movie_ids = set(str(t.get("movie_id")) for t in theaters_data if isinstance(t, dict) and t.get("movie_id") is not None)
+        recommendation_ids = set(str(m.get("tmdb_id") or m.get("id", "")) for m in recommendations if isinstance(m, dict))
+        logger.info(f"Theater movie IDs found: {theater_movie_ids}")
+        logger.info(f"Recommendation movie IDs: {recommendation_ids}")
+        
+        # Log theater distribution for debugging
+        for movie_id, theaters in theaters_by_movie_id.items():
+            logger.info(f"Movie ID {movie_id} has {len(theaters)} theaters with showtimes")
+        
+        for movie_title, theaters in theaters_by_movie_title.items():
+            logger.info(f"Movie title '{movie_title}' has {len(theaters)} theaters with showtimes")
 
         # Process each movie
         for movie in recommendations:
@@ -465,23 +536,57 @@ class MovieCrewManager:
             movie_tmdb_id = movie.get("tmdb_id")
             if movie_tmdb_id is None and "id" in movie:
                 movie_tmdb_id = movie.get("id")
-                logger.info(f"Using 'id' field as TMDB ID for movie '{movie.get('title')}'")
+                # Update the movie's tmdb_id field for consistency
+                movie["tmdb_id"] = movie_tmdb_id
+                logger.info(f"Set tmdb_id from id for movie: {movie.get('title')}")
             
-            if movie_tmdb_id is None:
-                logger.warning(f"Movie missing TMDB ID: {movie.get('title', 'Unknown')}")
-                movie_theaters = []
-            else:
-                # Get theaters for this specific movie
-                movie_theaters = theaters_by_movie_id.get(movie_tmdb_id, [])
+            movie_title = movie.get("title")
+            movie_theaters = []
+
+            # First try to get theaters by movie ID (ensure string comparisons)
+            if movie_tmdb_id is not None:
+                movie_id_str = str(movie_tmdb_id)
+                movie_theaters = theaters_by_movie_id.get(movie_id_str, [])
+                if movie_theaters:
+                    logger.info(f"Found {len(movie_theaters)} theaters for movie ID {movie_tmdb_id}")
+                else:
+                    # Try looking up by integer movie ID if string matching failed
+                    # This handles cases where IDs might be stored as integers in one place and strings in another
+                    for id_key, theaters in theaters_by_movie_id.items():
+                        try:
+                            if int(id_key) == int(movie_tmdb_id):
+                                movie_theaters = theaters
+                                logger.info(f"Found {len(theaters)} theaters for movie ID {movie_tmdb_id} using integer comparison")
+                                break
+                        except (ValueError, TypeError):
+                            continue
             
-            # Log for debugging purposes
+            # If no theaters found by ID, try matching by title
+            if not movie_theaters and movie_title:
+                title_theaters = theaters_by_movie_title.get(movie_title, [])
+                if title_theaters:
+                    logger.info(f"Found {len(title_theaters)} theaters for movie title '{movie_title}'")
+                    movie_theaters = title_theaters
+                    
+                    # Update the theater data with the correct movie_id for future reference
+                    if movie_tmdb_id:
+                        for theater in movie_theaters:
+                            theater["movie_id"] = movie_tmdb_id
+                            logger.info(f"Updated theater {theater.get('name')} with movie_id {movie_tmdb_id}")
+
+            # Log theater assignment results
             if movie_theaters:
-                logger.info(f"Movie '{movie.get('title')}' has {len(movie_theaters)} theaters with showtimes")
+                logger.info(f"Movie '{movie.get('title')}' (ID: {movie_tmdb_id}) assigned {len(movie_theaters)} theaters with showtimes")
             else:
-                logger.info(f"Movie '{movie.get('title')}' has no theaters with showtimes")
+                logger.info(f"Movie '{movie.get('title')}' (ID: {movie_tmdb_id}) has no theaters with showtimes")
 
             # Create movie with theaters
             movie_with_theaters = {**movie, "theaters": movie_theaters}
             movies_with_theaters.append(movie_with_theaters)
+
+            # Log the number of theaters assigned to this movie for clarity
+            theater_count = len(movie_theaters)
+            if theater_count > 0:
+                logger.info(f"Successfully assigned {theater_count} theaters to movie '{movie_title}' (ID: {movie_tmdb_id})")
 
         return movies_with_theaters

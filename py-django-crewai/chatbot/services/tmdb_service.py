@@ -9,6 +9,8 @@ import time
 import requests
 from urllib.parse import urljoin
 
+from .api_utils import APIRequestHandler
+
 logger = logging.getLogger('chatbot.tmdb_service')
 
 class TMDBService:
@@ -36,54 +38,61 @@ class TMDBService:
         tmdb.API_KEY = api_key
         self.session = requests.Session()
 
-    def enhance_movies_parallel(self, movies: List[Dict[str, Any]], max_workers: int = 3) -> List[Dict[str, Any]]:
+    def enhance_movies_sequential(self, movies: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Enhance multiple movies in parallel to improve performance.
+        Enhance multiple movies sequentially to ensure consistent processing order.
 
         Args:
             movies: List of movie dictionaries to enhance
-            max_workers: Maximum number of parallel workers
 
         Returns:
             List of enhanced movie dictionaries
         """
         start_time = time.time()
-        logger.info(f"Starting parallel enhancement of {len(movies)} movies")
+        logger.info(f"Starting sequential enhancement of {len(movies)} movies")
 
         # Handle empty list case
         if not movies:
             return []
 
         # Create a copy to avoid modifying the original
-        result_movies = movies.copy()
+        result_movies = []
 
-        # Use ThreadPoolExecutor for parallel processing
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Create a mapping of futures to their index in the movies list
-            future_to_index = {
-                executor.submit(self.enhance_movie_data, movie): i
-                for i, movie in enumerate(movies)
-            }
-
-            # Process completed futures as they complete
-            for future in concurrent.futures.as_completed(future_to_index):
-                index = future_to_index[future]
-                try:
-                    # Get the result and update the corresponding movie
-                    enhanced_movie = future.result()
-                    result_movies[index] = enhanced_movie
-                    logger.info(f"Enhanced movie {enhanced_movie.get('title', 'Unknown')} in parallel")
-                except Exception as e:
-                    logger.error(f"Error enhancing movie at index {index}: {str(e)}")
-                    # Keep the original movie data on error (already in result_movies)
+        # Process each movie sequentially
+        for idx, movie in enumerate(movies):
+            try:
+                logger.info(f"Enhancing movie {idx+1}/{len(movies)}: {movie.get('title', 'Unknown')}")
+                enhanced_movie = self.enhance_movie_data(movie)
+                result_movies.append(enhanced_movie)
+                logger.info(f"Successfully enhanced movie {enhanced_movie.get('title', 'Unknown')}")
+            except Exception as e:
+                logger.error(f"Error enhancing movie at index {idx}: {str(e)}")
+                # Add the original movie on error
+                result_movies.append(movie)
+                logger.info(f"Added original movie data for {movie.get('title', 'Unknown')} due to enhancement error")
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Parallel enhancement completed in {elapsed_time:.2f} seconds")
+        logger.info(f"Sequential enhancement completed in {elapsed_time:.2f} seconds")
         return result_movies
+    
+    # Keeping this for backward compatibility, but it redirects to sequential processing
+    def enhance_movies_parallel(self, movies: List[Dict[str, Any]], max_workers: int = 3) -> List[Dict[str, Any]]:
+        """
+        Legacy method - now redirects to sequential processing to avoid race conditions.
+        
+        Args:
+            movies: List of movie dictionaries to enhance
+            max_workers: No longer used
+
+        Returns:
+            List of enhanced movie dictionaries
+        """
+        logger.warning("enhance_movies_parallel is deprecated - using sequential processing instead")
+        return self.enhance_movies_sequential(movies)
 
     def _make_request(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Make a request to the TMDb API.
+        Make a request to the TMDb API with retry and timeout handling.
 
         Args:
             endpoint: API endpoint to request
@@ -93,7 +102,7 @@ class TMDBService:
             Response data as dictionary
 
         Raises:
-            Exception: If the request fails
+            Exception: If the request fails after retries
         """
         # Ensure endpoint doesn't start with a slash
         if endpoint.startswith('/'):
@@ -107,14 +116,19 @@ class TMDBService:
         if params:
             request_params.update(params)
 
-        try:
+        def make_tmdb_request(*args, **kwargs):
             response = self.session.get(url, params=request_params)
             response.raise_for_status()  # Raise exception for 4XX/5XX status codes
             return response.json()
+
+        try:
+            # Use our retry mechanism to make the request
+            return APIRequestHandler.make_request(make_tmdb_request)
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error making request to TMDB API: {str(e)}")
+            logger.error(f"Error making request to TMDB API after retries: {str(e)}")
             logger.exception(e)
-            raise
+            # Return empty dict instead of raising to avoid breaking the application
+            return {}
 
     def get_movie_details(self, movie_id) -> Dict[str, Any]:
         """
@@ -148,28 +162,28 @@ class TMDBService:
         try:
             # Use TMDb API to get images with language parameter
             movie = tmdb.Movies(movie_id)
-            
+
             # First try to get English-language images specifically
             images_en = movie.images(include_image_language="en")
-            
+
             # If we got English images with posters, use them
             if images_en and 'posters' in images_en and images_en['posters']:
                 logger.info(f"Using English language images for movie ID {movie_id}")
                 return images_en
-                
+
             # Otherwise, get all images as fallback
             images = movie.images()
-            
+
             # If we have multiple posters, try to filter for English ones
             if 'posters' in images and images['posters']:
                 # Try to filter to only English language posters
                 en_posters = [p for p in images['posters'] if p.get('iso_639_1') == 'en']
-                
+
                 # If we found English posters, replace the full list with just those
                 if en_posters:
                     logger.info(f"Filtered {len(images['posters'])} posters to {len(en_posters)} English ones for movie ID {movie_id}")
                     images['posters'] = en_posters
-            
+
             return images
         except Exception as e:
             logger.error(f"Error getting movie images for ID {movie_id}: {str(e)}")

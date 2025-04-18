@@ -1,6 +1,9 @@
 // Main application JavaScript for Movie Chatbot
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Define the API URL
+    const SEND_MESSAGE_URL = '/send-message/';
+    
     // Main chat elements (First Run)
     const chatContainer = document.getElementById('chatContainer');
     const userInput = document.getElementById('userInput');
@@ -9,6 +12,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('progressBar');
     const processingMessage = document.getElementById('processingMessage');
     const locationInput = document.getElementById('locationInput');
+
+    // Theater elements
+    const dateTabs = document.getElementById('dateTabs');
+    const theatersContainer = document.getElementById('theatersContainer');
+    const showtimesSection = document.getElementById('showtimesSection');
+
+    // Initially hide date tabs until a movie is selected
+    if (dateTabs) {
+        dateTabs.style.display = 'none';
+    }
+
+    // Global variables
+    window.selectedMovieId = null;
+    window.selectedMovieTitle = null;
+    window.userTimezone = null; // Store user timezone
 
     // Casual viewing elements
     const casualChatContainer = document.getElementById('casualChatContainer');
@@ -71,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const activeProcessingMessage = isFirstRun ? processingMessage : casualProcessingMessage;
 
         const message = activeInput.value.trim();
-        
+
         // Only use location for First Run mode
         const location = isFirstRun ? document.getElementById('locationInput').value.trim() : "";
 
@@ -128,6 +146,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add location if provided
             if (location) {
                 requestData.location = location;
+            }
+
+            // Add timezone information if available (for showtime conversions)
+            if (window.userTimezone) {
+                requestData.timezone = window.userTimezone;
+                console.log(`Sending timezone with request: ${window.userTimezone}`);
             }
 
             // Send to server
@@ -257,6 +281,29 @@ document.addEventListener('DOMContentLoaded', function() {
     window.updateShowtimesSection = function(movies) {
         const theatersContainer = document.getElementById('theatersContainer');
         const dateTabsContainer = document.getElementById('dateTabs');
+        const showtimesSection = document.getElementById('showtimesSection');
+
+        // Reset selected movie when getting new recommendations
+        window.selectedMovieId = null;
+        window.selectedMovieTitle = null;
+        window.selectedMovie = null;
+
+        console.log("========= UPDATING SHOWTIMES SECTION =========");
+        console.log("Raw movies received:", movies);
+        
+        // Check for theaters in each movie - with detailed logging
+        movies.forEach(movie => {
+            // Convert IDs to strings for consistent handling
+            if (movie.id) movie.id = String(movie.id);
+            if (movie.tmdb_id) movie.tmdb_id = String(movie.tmdb_id);
+            
+            const theaterCount = movie.theaters?.length || 0;
+            console.log(`Movie '${movie.title}' (ID: ${movie.id || movie.tmdb_id}) has ${theaterCount} theaters`);
+            
+            if (theaterCount > 0) {
+                console.log(`First theater: ${movie.theaters[0].name} with ${movie.theaters[0].showtimes?.length || 0} showtimes`);
+            }
+        });
 
         // Count how many movies are current releases
         const currentReleaseCount = movies.filter(movie => movie.is_current_release === true).length;
@@ -273,65 +320,81 @@ document.addEventListener('DOMContentLoaded', function() {
             movie.theaters.length > 0
         );
 
+        // Store movies in global variable so they can be accessed by the handleMovieClick function
+        window.currentMovies = currentMovies;
+        
+        // Debug log the movies we're storing globally
+        console.log(`Storing ${currentMovies.length} movies in window.currentMovies:`);
+        currentMovies.forEach(movie => {
+            console.log(`- ${movie.title} (ID: ${movie.id || movie.tmdb_id}) - ${movie.theaters?.length || 0} theaters`);
+        });
+
         // Log information for debugging
         console.log(`Total movies: ${movies.length}`);
         console.log(`Current release movies: ${currentReleaseCount}`);
         console.log(`Movies with theaters: ${moviesWithTheatersCount}`);
 
-        // If no current movies with theaters, show appropriate message
+        // Initially hide date tabs
+        dateTabsContainer.style.display = 'none';
+        
         if (currentMovies.length === 0) {
+            // If no current movies with theaters, show appropriate message
             if (currentReleaseCount === 0) {
                 theatersContainer.innerHTML = '<p class="text-muted">No current release movies found. Try searching for movies currently playing in theaters.</p>';
             } else {
                 theatersContainer.innerHTML = '<p class="text-muted">No theaters near you are currently showing the recommended movies.</p>';
             }
             dateTabsContainer.innerHTML = '';
-            return;
-        }
+        } else {
+            // Show instruction message to select a movie first
+            theatersContainer.innerHTML = '<p class="text-center text-muted mt-3"><i class="bi bi-hand-index-thumb"></i> Click on a movie above to see available theaters and showtimes</p>';
+            
+            // Generate date tabs for current day + 3 more days (4 total)
+            dateTabsContainer.innerHTML = '';
+            const dates = [];
+            const today = new Date();
 
-        // Generate date tabs for the next 7 days
-        dateTabsContainer.innerHTML = '';
-        const dates = [];
-        const today = new Date();
+            for (let i = 0; i < 4; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() + i);
+                dates.push(date);
 
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i);
-            dates.push(date);
+                // Format day name and date
+                const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-            // Format day name and date
-            const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
-            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                // Create tab button
+                const tabButton = document.createElement('button');
+                tabButton.type = 'button';
+                tabButton.className = `date-tab ${i === 0 ? 'active' : ''}`;
+                tabButton.setAttribute('data-date-index', i);
+                tabButton.innerHTML = `
+                    <div class="small">${dayName}</div>
+                    <div>${dateStr}</div>
+                `;
 
-            // Create tab button
-            const tabButton = document.createElement('button');
-            tabButton.type = 'button';
-            tabButton.className = `date-tab ${i === 0 ? 'active' : ''}`;
-            tabButton.setAttribute('data-date-index', i);
-            tabButton.innerHTML = `
-                <div class="small">${dayName}</div>
-                <div>${dateStr}</div>
-            `;
+                // Add click handler to switch date
+                tabButton.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.date-tab').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
 
-            // Add click handler to switch date
-            tabButton.addEventListener('click', function() {
-                // Remove active class from all tabs
-                document.querySelectorAll('.date-tab').forEach(btn => {
-                    btn.classList.remove('active');
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+
+                    // Update showtimes display for this date
+                    displayShowtimesForDate([window.selectedMovie], parseInt(this.getAttribute('data-date-index')));
                 });
 
-                // Add active class to clicked tab
-                this.classList.add('active');
-
-                // Update showtimes display for this date
-                displayShowtimesForDate(currentMovies, parseInt(this.getAttribute('data-date-index')));
-            });
-
-            dateTabsContainer.appendChild(tabButton);
+                dateTabsContainer.appendChild(tabButton);
+            }
+            
+            // Ensure we're not showing any theaters until a movie is selected
+            if (!window.selectedMovieId) {
+                theatersContainer.innerHTML = '<p class="text-center text-muted mt-3"><i class="bi bi-hand-index-thumb"></i> Click on a movie above to see available theaters and showtimes</p>';
+            }
         }
-
-        // Display showtimes for today (index 0) initially
-        displayShowtimesForDate(currentMovies, 0);
     }
 
     // Display showtimes for a specific date
@@ -339,77 +402,96 @@ document.addEventListener('DOMContentLoaded', function() {
         const theatersContainer = document.getElementById('theatersContainer');
         theatersContainer.innerHTML = '';
 
-        // Get all theaters across all movies
-        const allTheaters = new Map();
+        // Ensure we have a selected movie
+        if (!window.selectedMovie) {
+            theatersContainer.innerHTML = `
+                <p class="text-center text-muted mt-3"><i class="bi bi-hand-index-thumb"></i> Click on a movie above to see available theaters and showtimes</p>
+            `;
+            return;
+        }
 
-        movies.forEach(movie => {
-            if (movie.theaters) {
-                // Debug the theaters data structure
-                console.log(`Processing theaters for ${movie.title}:`, movie.theaters);
+        // Always use the current window.selectedMovie rather than the passed in movies parameter
+        // This ensures we're always using the latest selected movie
+        const movie = window.selectedMovie;
+        
+        console.log(`displayShowtimesForDate for movie: ${movie.title} and date index: ${dateIndex}`);
+        
+        // Debug the selected movie data
+        console.log(`Processing theaters for selected movie: ${movie.title}`, movie);
+        
+        if (!movie.theaters || movie.theaters.length === 0) {
+            theatersContainer.innerHTML = `
+                <p class="text-muted">No theaters are currently showing "${movie.title}". Please check back later or select a different movie.</p>
+            `;
+            return;
+        }
 
-                movie.theaters.forEach(theater => {
-                    // If theater not in map yet, add it
-                    if (!allTheaters.has(theater.name)) {
-                        allTheaters.set(theater.name, {
-                            name: theater.name,
-                            address: theater.address,
-                            distance_miles: theater.distance_miles || 5.0, // Default if distance not available
-                            movies: {}
-                        });
-                    }
+        // Map to hold theaters with showtimes for the selected date
+        const theatersByName = new Map();
+        
+        // Get today's date and the selected date
+        const today = new Date();
+        const selectedDate = new Date(today);
+        selectedDate.setDate(today.getDate() + dateIndex);
+        const selectedDateStr = selectedDate.toISOString().split('T')[0];
+        
+        console.log(`Filtering showtimes for date: ${selectedDateStr}`);
 
-                    // Add movie and its showtimes to this theater
-                    const theaterEntry = allTheaters.get(theater.name);
-
-                    // Check if the theater has showtimes array (new structure) or direct showtime data (old structure)
-                    let showtimesToProcess = [];
-                    if (Array.isArray(theater.showtimes)) {
-                        showtimesToProcess = theater.showtimes;
-                    } else if (theater.start_time) {
-                        // Legacy format - single showtime directly on theater object
-                        showtimesToProcess = [{
-                            start_time: theater.start_time,
-                            format: theater.format || 'Standard'
-                        }];
-                    }
-
-                    // Only process if we have showtimes to work with
-                    if (showtimesToProcess.length > 0) {
-                        // Group showtimes by format (Standard, IMAX, 3D, etc.)
-                        const showtimesByFormat = {};
-
-                        showtimesToProcess.forEach(showtime => {
-                            const format = showtime.format || 'Standard';
-                            if (!showtimesByFormat[format]) {
-                                showtimesByFormat[format] = [];
-                            }
-
-                            // Add showtime to appropriate format
-                            if (showtime.start_time) {
-                                showtimesByFormat[format].push(showtime.start_time);
-                            }
-                        });
-
-                        // Only add to theater's movies if we have actual showtimes
-                        if (Object.keys(showtimesByFormat).length > 0) {
-                            // Add to theater's movies
-                            theaterEntry.movies[movie.title] = {
-                                id: movie.tmdb_id,
-                                title: movie.title,
-                                showtimesByFormat: showtimesByFormat
-                            };
-                        }
-                    }
+        // Process each theater for the selected movie
+        movie.theaters.forEach(theater => {
+            if (!theater.name || !theater.showtimes || !Array.isArray(theater.showtimes)) {
+                return; // Skip invalid theaters
+            }
+            
+            // Filter showtimes for the selected date
+            const showtimesForDate = theater.showtimes.filter(showtime => {
+                if (!showtime.start_time) return false;
+                const date = new Date(showtime.start_time);
+                return date.toISOString().split('T')[0] === selectedDateStr;
+            });
+            
+            if (showtimesForDate.length === 0) {
+                return; // Skip theaters with no showtimes on selected date
+            }
+            
+            // Create or get theater entry
+            if (!theatersByName.has(theater.name)) {
+                theatersByName.set(theater.name, {
+                    name: theater.name,
+                    address: theater.address || '',
+                    distance_miles: theater.distance_miles || 0,
+                    showtimesByFormat: {}
                 });
             }
+            
+            const theaterEntry = theatersByName.get(theater.name);
+            
+            // Group showtimes by format
+            showtimesForDate.forEach(showtime => {
+                const format = showtime.format || 'Standard';
+                if (!theaterEntry.showtimesByFormat[format]) {
+                    theaterEntry.showtimesByFormat[format] = [];
+                }
+                theaterEntry.showtimesByFormat[format].push(showtime.start_time);
+            });
         });
-
-        // Filter and sort theaters by distance
-        const sortedTheaters = Array.from(allTheaters.values())
+        
+        // Convert to array and sort by distance
+        const theatersArray = Array.from(theatersByName.values())
             .sort((a, b) => (a.distance_miles || 0) - (b.distance_miles || 0));
+        
+        console.log(`Found ${theatersArray.length} theaters with showtimes for ${movie.title} on the selected date`);
 
-        // Display each theater
-        sortedTheaters.forEach(theater => {
+        // If no theaters found for the selected date
+        if (theatersArray.length === 0) {
+            theatersContainer.innerHTML = `
+                <p class="text-muted">No theaters are showing "${movie.title}" on this date.</p>
+            `;
+            return;
+        }
+
+        // Display each theater with showtimes
+        theatersArray.forEach(theater => {
             const theaterSection = document.createElement('div');
             theaterSection.className = 'theater-section mb-3';
 
@@ -433,62 +515,40 @@ document.addEventListener('DOMContentLoaded', function() {
             const theaterBody = document.createElement('div');
             theaterBody.className = 'theater-body';
 
-            // For each movie at this theater
-            Object.values(theater.movies).forEach(movie => {
-                theaterBody.innerHTML += `<div class="fw-bold mb-2">${movie.title}</div>`;
+            // For each format (Standard, IMAX, etc.)
+            Object.entries(theater.showtimesByFormat).forEach(([format, times]) => {
+                const formatDiv = document.createElement('div');
+                formatDiv.className = 'mb-3';
+                formatDiv.innerHTML = `<div class="small text-muted mb-1">${format}</div>`;
 
-                // For each format (Standard, IMAX, etc)
-                Object.entries(movie.showtimesByFormat).forEach(([format, times]) => {
-                    // Filter showtimes for the selected date
-                    const today = new Date();
-                    const selectedDate = new Date(today);
-                    selectedDate.setDate(today.getDate() + dateIndex);
+                const showtimesDiv = document.createElement('div');
+                showtimesDiv.className = 'showtimes-scroll-container';
 
-                    // Format date for comparison (YYYY-MM-DD)
-                    const selectedDateStr = selectedDate.toISOString().split('T')[0];
+                // Sort and format times
+                times
+                    .map(timeStr => new Date(timeStr))
+                    .sort((a, b) => a - b) // Sort chronologically
+                    .forEach(date => {
+                        // Format as 24-hour time (HH:MM)
+                        const timeStr = date.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        });
 
-                    // Filter times for the selected date
-                    const timesForDate = times.filter(timeStr => {
-                        const date = new Date(timeStr);
-                        return date.toISOString().split('T')[0] === selectedDateStr;
+                        // Create showtime badge with appropriate class based on format
+                        const badgeClass = format.toLowerCase().includes('imax') ? 'imax' :
+                                          format.toLowerCase().includes('3d') ? 'threed' : '';
+
+                        const badge = document.createElement('span');
+                        badge.className = `showtime-badge ${badgeClass}`;
+                        badge.textContent = timeStr;
+
+                        showtimesDiv.appendChild(badge);
                     });
 
-                    // Only display if there are times for this date
-                    if (timesForDate.length > 0) {
-                        const formatDiv = document.createElement('div');
-                        formatDiv.className = 'mb-3';
-                        formatDiv.innerHTML = `<div class="small text-muted mb-1">${format}</div>`;
-
-                        const showtimesDiv = document.createElement('div');
-                        showtimesDiv.className = 'd-flex flex-wrap gap-2';
-
-                        // Sort and format times
-                        timesForDate
-                            .map(timeStr => new Date(timeStr))
-                            .sort((a, b) => a - b) // Sort chronologically
-                            .forEach(date => {
-                                // Format as 24-hour time (HH:MM)
-                                const timeStr = date.toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: false
-                                });
-
-                                // Create showtime badge with appropriate class based on format
-                                const badgeClass = format.toLowerCase().includes('imax') ? 'imax' :
-                                                  format.toLowerCase().includes('3d') ? 'threed' : '';
-
-                                const badge = document.createElement('span');
-                                badge.className = `showtime-badge ${badgeClass}`;
-                                badge.textContent = timeStr;
-
-                                showtimesDiv.appendChild(badge);
-                            });
-
-                        formatDiv.appendChild(showtimesDiv);
-                        theaterBody.appendChild(formatDiv);
-                    }
-                });
+                formatDiv.appendChild(showtimesDiv);
+                theaterBody.appendChild(formatDiv);
             });
 
             // Add header and body to section
@@ -498,13 +558,137 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add to container
             theatersContainer.appendChild(theaterSection);
         });
+    }
 
-        // If no theaters have showtimes for the selected date
-        if (sortedTheaters.length === 0) {
-            theatersContainer.innerHTML = `
-                <p class="text-muted">No theaters are showing the recommended movies on this date.</p>
-            `;
+    // Handle movie card clicks
+    window.handleMovieClick = function(movieId, movieTitle) {
+        console.log(`Movie clicked: ${movieTitle} (ID: ${movieId})`);
+        
+        // Debug log to trace what's happening
+        console.log(`Previous selected movie: ${window.selectedMovieTitle} (ID: ${window.selectedMovieId})`);
+        
+        // If this is the same movie already selected, don't do anything
+        if (window.selectedMovieId === movieId) {
+            console.log("Same movie clicked - no update needed");
+            return;
         }
+
+        // Clear any previous selections
+        document.querySelectorAll('.movie-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+
+        // Highlight the selected movie
+        document.querySelectorAll(`.movie-card[data-movie-id="${movieId}"]`).forEach(card => {
+            card.classList.add('selected');
+        });
+
+        // Store the selected movie ID and title
+        window.selectedMovieId = movieId;
+        window.selectedMovieTitle = movieTitle;
+
+        // Improved movie finding - convert IDs to strings for reliable comparison
+        const stringMovieId = String(movieId);
+        console.log(`Looking for movie with stringified ID: ${stringMovieId}`);
+        
+        // Log all movies and their IDs to debug the matching issue
+        window.currentMovies.forEach(movie => {
+            console.log(`Checking movie: ${movie.title} - id: ${movie.id}, tmdb_id: ${movie.tmdb_id}`);
+        });
+        
+        // Find movie with more robust ID matching
+        const selectedMovie = window.currentMovies.find(movie => 
+            String(movie.id) === stringMovieId || 
+            String(movie.tmdb_id) === stringMovieId
+        );
+        
+        if (!selectedMovie) {
+            console.error(`Movie with ID ${movieId} not found in current movies`);
+            return;
+        }
+        
+        // Create a fresh copy of the selected movie to avoid reference issues
+        window.selectedMovie = JSON.parse(JSON.stringify(selectedMovie));
+        
+        console.log(`New selected movie: ${window.selectedMovie.title}`, window.selectedMovie);
+        
+        // Check if the movie has theaters
+        if (!selectedMovie.theaters || selectedMovie.theaters.length === 0) {
+            // No theaters available for this movie
+            const theatersContainer = document.getElementById('theatersContainer');
+            theatersContainer.innerHTML = `
+                <p class="text-muted">No theaters are currently showing "${movieTitle}". Please check back later or select a different movie.</p>
+            `;
+            
+            // Hide date tabs
+            const dateTabs = document.getElementById('dateTabs');
+            if (dateTabs) {
+                dateTabs.style.display = 'none';
+            }
+            return;
+        }
+        
+        // Always rebuild date tabs to ensure fresh event listeners that reference the current selected movie
+        rebuildDateTabs();
+        
+        // Display theaters for the selected movie and first date (Today)
+        displayShowtimesForDate(null, 0); // Pass null to force using window.selectedMovie
+    };
+    
+    // Function to rebuild date tabs with fresh event listeners
+    function rebuildDateTabs() {
+        const dateTabs = document.getElementById('dateTabs');
+        if (!dateTabs) return;
+        
+        // Clear existing tabs
+        dateTabs.innerHTML = '';
+        
+        // Generate date tabs for current day + 3 more days (4 total)
+        const today = new Date();
+        
+        for (let i = 0; i < 4; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+
+            // Format day name and date
+            const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            // Create tab button
+            const tabButton = document.createElement('button');
+            tabButton.type = 'button';
+            tabButton.className = `date-tab ${i === 0 ? 'active' : ''}`;
+            tabButton.setAttribute('data-date-index', i);
+            tabButton.innerHTML = `
+                <div class="small">${dayName}</div>
+                <div>${dateStr}</div>
+            `;
+
+            // Create a closure to capture the current date index
+            // This ensures each event listener gets its own copy of i
+            (function(dateIndex) {
+                tabButton.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.date-tab').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    console.log(`Date tab clicked: ${dateIndex} for movie: ${window.selectedMovieTitle}`);
+
+                    // Update showtimes display for this date
+                    // Pass null to force using the current window.selectedMovie
+                    displayShowtimesForDate(null, dateIndex);
+                });
+            })(i);
+
+            dateTabs.appendChild(tabButton);
+        }
+        
+        // Show date tabs
+        dateTabs.style.display = 'flex';
     }
 
     // Get CSRF token for AJAX request
@@ -548,6 +732,10 @@ document.addEventListener('DOMContentLoaded', function() {
         processingContainer.style.display = 'block';
         progressBar.style.width = '50%';
 
+        // Disable user input while detecting location
+        userInput.disabled = true;
+        sendButton.disabled = true;
+
         console.log("Starting location detection");
 
         // Function to hide the processing indicator
@@ -562,75 +750,57 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Function to set a default location
-        function useDefaultLocation() {
-            console.log("Using default location (Seattle)");
-            locationInput.value = "Seattle, WA";
-            hideProcessing("Using default location: Seattle, WA");
+        // Function to check if a location is in the US
+        function isLocationInUS(country_code) {
+            return country_code === 'US';
         }
 
-        // Try to use the browser's geolocation API
+        // Function to enable user input once we have a valid location
+        function enableInput(hasValidLocation) {
+            if (hasValidLocation) {
+                // Enable the input field
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                console.log("Chat input enabled with valid location");
+            } else {
+                // Keep input disabled until a location is entered
+                locationInput.focus();
+                locationInput.placeholder = "Enter a US city and state (e.g., Seattle, Washington, United States)";
+                console.log("Chat input remains disabled until location is set");
+            }
+        }
+
+        // Function when we detect non-US location or can't detect location
+        function handleNonUSLocation() {
+            console.log("Location not in US or couldn't be determined");
+            locationInput.value = ""; // Clear the value
+            hideProcessing("Please enter a US city and state (e.g., Seattle, Washington, United States)");
+            enableInput(false);
+        }
+
+        // Listen for changes to the location input
+        locationInput.addEventListener('input', function() {
+            // Enable the user input if location has been entered
+            if (locationInput.value.trim().length > 0) {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+            }
+        });
+
+        // First try to use browser's geolocation API
         if (navigator.geolocation) {
             console.log("Geolocation API available, requesting position");
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    // Success - we have coordinates, now reverse geocode to get address
-                    const latitude = position.coords.latitude;
-                    const longitude = position.coords.longitude;
-                    console.log(`Got coordinates: ${latitude}, ${longitude}`);
-
-                    // Use reverse geocoding to get readable location
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
-                        headers: {
-                            'User-Agent': 'Movie Chatbot Application'
-                        }
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("Received geocoding response:", data);
-                        
-                        // Extract a reasonable location name
-                        let locationName;
-                        if (data.display_name) {
-                            // Get first three parts of the address
-                            locationName = data.display_name.split(',').slice(0, 3).join(',');
-                        } else if (data.address) {
-                            // Try to use city, state, country
-                            const address = data.address;
-                            const city = address.city || address.town || address.village || address.hamlet;
-                            const state = address.state || address.province;
-                            const country = address.country;
-                            
-                            if (city && state) {
-                                locationName = `${city}, ${state}`;
-                            } else if (city) {
-                                locationName = city;
-                            }
-                        }
-
-                        // If we have a location name, use it
-                        if (locationName) {
-                            console.log(`Setting location to: ${locationName}`);
-                            locationInput.value = locationName;
-                            hideProcessing(`Location detected: ${locationName}`);
-                        } else {
-                            console.error("Could not parse location from response:", data);
-                            useDefaultLocation();
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error with reverse geocoding:", error);
-                        useDefaultLocation();
-                    });
+                    // Success - we have coordinates, now use ipapi.co directly
+                    // Since browser geolocation succeeded, we could just use ipapi.co to get location info
+                    // This is more reliable than trying to do reverse geocoding from coordinates
+                    gatherLocationDataFromIpApi();
                 },
                 function(error) {
                     console.error(`Geolocation error (${error.code}): ${error.message}`);
-                    useDefaultLocation();
+                    // Fall back to IP-based geolocation
+                    gatherLocationDataFromIpApi();
                 },
                 {
                     enableHighAccuracy: true, // Try for best accuracy
@@ -641,7 +811,64 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Browser doesn't support geolocation
             console.error("Geolocation not supported by this browser");
-            useDefaultLocation();
+            // Fall back to IP-based geolocation
+            gatherLocationDataFromIpApi();
+        }
+
+        // Function to gather location and timezone data from ipapi.co
+        function gatherLocationDataFromIpApi() {
+            console.log("Using ipapi.co for location and timezone detection");
+
+            // Use ipapi.co - no API key needed
+            fetch('https://ipapi.co/json/')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Received ipapi.co response:", data);
+
+                // Check if location is in the US
+                if (!isLocationInUS(data.country_code)) {
+                    console.log(`Detected non-US location: ${data.country_name || 'unknown'}`);
+                    handleNonUSLocation();
+                    return;
+                }
+
+                // Extract city and state for US locations
+                const city = data.city;
+                const state = data.region;
+                const country = data.country_name;
+
+                // Capture timezone information
+                if (data.timezone) {
+                    window.userTimezone = data.timezone;
+                    console.log(`Captured user timezone: ${window.userTimezone}`);
+                } else {
+                    console.warn("No timezone information in ipapi.co response");
+                    window.userTimezone = "America/Los_Angeles";
+                }
+
+                // If we have all values, use the standard "City, State, Country" format
+                if (city && state && country) {
+                    const locationName = `${city}, ${state}, ${country}`;
+                    console.log(`Setting location to: ${locationName}`);
+                    locationInput.value = locationName;
+                    hideProcessing(`Location detected: ${locationName}`);
+                    enableInput(true);
+                    return;
+                }
+
+                // If we couldn't extract both city and state, handle as non-US location
+                console.error("Could not parse US city/state from response:", data);
+                handleNonUSLocation();
+            })
+            .catch(error => {
+                console.error("Error with ipapi.co:", error);
+                handleNonUSLocation();
+            });
         }
     }
 

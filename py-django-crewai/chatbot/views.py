@@ -2,11 +2,13 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from django.utils import timezone
 from .models import Conversation, Message, MovieRecommendation, Theater, Showtime
 from .services.movie_crew import MovieCrewManager
 import json
 import logging
 import traceback
+from datetime import datetime as dt
 from datetime import datetime
 
 logger = logging.getLogger('chatbot')
@@ -33,7 +35,7 @@ def index(request):
     # Track conversations for both modes
     first_run_conversation_id = request.session.get('first_run_conversation_id')
     casual_conversation_id = request.session.get('casual_conversation_id')
-    
+
     # First Run mode conversation (default)
     if first_run_conversation_id:
         try:
@@ -92,11 +94,11 @@ def index(request):
 
 @csrf_exempt
 def send_message(request):
-    """Process a message sent by the user and return the chatbot's response."""
+    """Process a message sent by the user and return the chatbot's response with complete movie and theater data."""
     if request.method == 'POST':
         try:
             logger.info("=== Processing new chat message ===")
-            
+
             # Parse request data first to determine the mode
             try:
                 raw_body = request.body.decode('utf-8')
@@ -113,19 +115,19 @@ def send_message(request):
                                 'status': 'error',
                                 'message': 'Invalid request format. Could not parse message.'
                             }, status=400)
-                
+
                 # Extract first run filter preference to determine which conversation to use
                 first_run_filter = data.get('first_run_filter', True)
                 if isinstance(first_run_filter, str):
                     first_run_filter = first_run_filter.lower() == 'true'
-                
+
                 logger.info(f"Message mode: {'First Run' if first_run_filter else 'Casual Viewing'}")
             except Exception as parsing_error:
                 logger.error(f"Error parsing request: {str(parsing_error)}")
                 # Default to First Run mode if we can't determine from the request
                 first_run_filter = True
                 logger.info("Defaulting to First Run mode due to parsing error")
-            
+
             # Get the appropriate conversation based on the mode
             if first_run_filter:
                 conversation_id = request.session.get('first_run_conversation_id')
@@ -233,6 +235,16 @@ def send_message(request):
                 # Store location in session for future use
                 request.session['user_location'] = location
 
+                # Extract timezone information (passed from frontend)
+                timezone_str = (
+                    data.get('timezone') or
+                    request.session.get('user_timezone') or
+                    'America/Los_Angeles'  # Default if not provided
+                )
+                # Store timezone in session for future use
+                request.session['user_timezone'] = timezone_str
+                logger.info(f"Using timezone: {timezone_str}")
+
                 # Extract first run filter preference (default to True for first run movie mode)
                 first_run_filter = data.get('first_run_filter', True)
                 # Convert string representation to boolean if needed
@@ -295,7 +307,8 @@ def send_message(request):
                     model=settings.LLM_CONFIG.get('model', 'gpt-4o-mini'),
                     tmdb_api_key=settings.TMDB_API_KEY,
                     user_location=location,
-                    user_ip=client_ip  # Pass the IP directly in constructor
+                    user_ip=client_ip,  # Pass the IP directly in constructor
+                    timezone=timezone_str  # Pass the timezone string for showtime conversions
                 )
                 logger.info("Movie crew manager initialized successfully")
             except Exception as init_error:
@@ -418,14 +431,23 @@ def send_message(request):
                         for theater_index, theater_data in enumerate(theaters_data):
                             logger.debug(f"Processing theater {theater_index+1}/{len(theaters_data)}: {theater_data.get('name', 'Unknown')}")
 
+                            # Get distance from theater data if available
+                            distance_miles = theater_data.get('distance_miles')
+
                             theater, created = Theater.objects.get_or_create(
                                 name=theater_data.get('name', 'Unknown Theater'),
                                 defaults={
                                     'address': theater_data.get('address', ''),
                                     'latitude': theater_data.get('latitude'),
-                                    'longitude': theater_data.get('longitude')
+                                    'longitude': theater_data.get('longitude'),
+                                    'distance_miles': distance_miles
                                 }
                             )
+
+                            # Update distance even for existing theaters (may change based on user location)
+                            if not created and distance_miles is not None:
+                                theater.distance_miles = distance_miles
+                                theater.save(update_fields=['distance_miles'])
                             theaters_count += 1
 
                             # Log whether we created a new theater or found existing
@@ -440,23 +462,53 @@ def send_message(request):
                                 logger.debug(f"Found {len(showtime_data_list)} showtimes for theater: {theater.name}")
 
                                 for showtime_data in showtime_data_list:
-                                    # Try to parse the start time
+                                    # Try to parse the start time and add timezone info
                                     try:
                                         start_time_str = showtime_data.get('start_time', '')
-                                        if start_time_str:
-                                            start_time = datetime.fromisoformat(start_time_str.replace(' ', 'T'))
-                                        else:
+                                        if not start_time_str:
                                             continue
-                                    except (ValueError, TypeError):
+
+                                        # If the time is in HH:mm AM/PM format from SerpAPI
+                                        if ':' in start_time_str and ('AM' in start_time_str or 'PM' in start_time_str):
+                                            # Convert to a datetime object with date from the selected day
+
+                                            # Get the date part from the string if available
+                                            if 'T' in start_time_str:
+                                                # Already has date information
+                                                start_time = dt.fromisoformat(start_time_str.replace(' ', 'T'))
+                                            else:
+                                                # Extract time
+                                                time_format = '%I:%M %p' if ' ' in start_time_str else '%H:%M'
+                                                time_only = datetime.strptime(start_time_str, time_format).time()
+
+                                                # Combine with today's date
+                                                start_time = datetime.combine(datetime.today().date(), time_only)
+
+                                            # Add timezone info - use Django's timezone utilities
+                                            start_time = timezone.make_aware(start_time)
+                                        else:
+                                            # Standard ISO format processing
+                                            start_time = dt.fromisoformat(start_time_str.replace(' ', 'T'))
+
+                                            # Ensure timezone is set
+                                            from django.utils import timezone as django_timezone
+                                            if django_timezone.is_naive(start_time):
+                                                start_time = django_timezone.make_aware(start_time)
+                                    except (ValueError, TypeError) as e:
+                                        logger.warning(f"Failed to parse showtime: {start_time_str} - {e}")
                                         continue
 
-                                    # Create or update showtime
-                                    Showtime.objects.create(
-                                        movie=movie,
-                                        theater=theater,
-                                        start_time=start_time,
-                                        format=showtime_data.get('format', 'Standard')
-                                    )
+                                    # Create or update showtime with timezone-aware datetime
+                                    try:
+                                        Showtime.objects.create(
+                                            movie=movie,
+                                            theater=theater,
+                                            start_time=start_time,
+                                            format=showtime_data.get('format', 'Standard')
+                                        )
+                                        logger.debug(f"Created showtime: {start_time} for '{movie.title}' at {theater.name}")
+                                    except Exception as showtime_error:
+                                        logger.error(f"Error creating showtime: {str(showtime_error)}")
                                     showtimes_count += 1
                     else:
                         if not first_run_filter:
@@ -487,29 +539,71 @@ def send_message(request):
                         logger.warning(f"Movie {rec.title} has NO showtimes in database")
 
                 # Check if this is a current year movie
-                from datetime import datetime
-                current_year = datetime.now().year
+                current_year = dt.now().year
 
-                recommendations_data = [{
-                    'id': rec.id,
-                    'title': rec.title,
-                    'overview': rec.overview,
-                    'poster_url': rec.poster_url,
-                    'release_date': rec.release_date.isoformat() if rec.release_date else None,
-                    'rating': float(rec.rating) if rec.rating else None,
-                    # Mark as current release if it's from current year or if it has showtimes
-                    'is_current_release': (rec.release_date and rec.release_date.year >= current_year - 1) or rec.showtimes.exists(),
-                    # Properly format theater data with all required fields
-                    'theaters': [{
-                        'name': showtime.theater.name,
-                        'address': showtime.theater.address,
-                        'distance_miles': 5.0,  # Default distance if not available
-                        'showtimes': [{
+                # Prepare recommendations data
+                recommendations_data = []
+
+                for rec in recent_recs:
+                    # Create base recommendation data
+                    movie_data = {
+                        'id': rec.id,
+                        'title': rec.title,
+                        'overview': rec.overview,
+                        'poster_url': rec.poster_url,
+                        'release_date': rec.release_date.isoformat() if rec.release_date else None,
+                        'rating': float(rec.rating) if rec.rating else None,
+                        # Mark as current release if it's from current year or if it has showtimes
+                        'is_current_release': (rec.release_date and rec.release_date.year >= current_year - 1) or rec.showtimes.exists(),
+                        # Properly format theater data with all required fields
+                        'theaters': []
+                    }
+
+                    # Add to recommendations data
+                    recommendations_data.append(movie_data)
+
+                    # Group showtimes by theater to build the correct structure
+                    theater_map = {}
+                    for showtime in rec.showtimes.all():
+                        theater_name = showtime.theater.name
+
+                        # Create theater entry if not exists
+                        if theater_name not in theater_map:
+                            # Find matching theater in the retrieved movie data
+                            matching_theater = next((theater for movie in movies if movie.get('title') == rec.title
+                                                  for theater in movie.get('theaters', [])
+                                                  if theater.get('name') == theater_name), None)
+
+                            # Get distance from the matched theater from API response
+                            distance_miles = None
+                            if matching_theater and matching_theater.get('distance_miles') is not None:
+                                distance_miles = matching_theater.get('distance_miles')
+                                logger.info(f"Found actual distance for theater {theater_name}: {distance_miles} miles")
+                            else:
+                                # Use default distance if not available
+                                distance_miles = showtime.theater.distance_miles if hasattr(showtime.theater, 'distance_miles') else None
+
+                                # If still no distance, use a single default value
+                                if distance_miles is None:
+                                    distance_miles = 10.0  # Default distance
+                                    logger.info(f"Using default distance for theater {theater_name}")
+
+                            theater_map[theater_name] = {
+                                'name': theater_name,
+                                'address': showtime.theater.address,
+                                'distance_miles': distance_miles,
+                                'showtimes': []
+                            }
+
+                        # Add showtimes to the theater
+                        theater_map[theater_name]['showtimes'].append({
                             'start_time': showtime.start_time.isoformat(),
                             'format': showtime.format
-                        }]
-                    } for showtime in rec.showtimes.all()]
-                } for rec in recent_recs]
+                        })
+
+                    # Add theaters to movie sorted by distance
+                    for _, theater in sorted(theater_map.items(), key=lambda x: x[1].get('distance_miles', float('inf'))):
+                        movie_data['theaters'].append(theater)
 
                 return JsonResponse({
                     'status': 'success',
@@ -538,15 +632,101 @@ def send_message(request):
         'message': 'Invalid request method'
     }, status=400)
 
+@csrf_exempt
+def get_theaters(request, movie_id):
+    """Fetch theaters and showtimes for a specific movie."""
+    if request.method != 'GET':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'This endpoint only accepts GET requests'
+        }, status=405)
+
+    try:
+        logger.info(f"=== Fetching theaters for movie ID: {movie_id} ===")
+        
+        # Get the movie from the database
+        try:
+            movie = MovieRecommendation.objects.get(id=movie_id)
+            logger.info(f"Found movie: {movie.title} (ID: {movie_id})")
+        except MovieRecommendation.DoesNotExist:
+            logger.error(f"Movie with ID {movie_id} not found")
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Movie with ID {movie_id} not found'
+            }, status=404)
+        
+        # Get client IP and location for potential geolocation
+        client_ip = get_client_ip(request)
+        user_location = request.session.get('user_location', 'Unknown')
+        timezone_str = request.session.get('user_timezone', 'America/Los_Angeles')
+        
+        # Check if we already have theaters and showtimes for this movie
+        existing_showtimes = movie.showtimes.count()
+        logger.info(f"Movie has {existing_showtimes} existing showtimes in database")
+        
+        theater_data = []
+        
+        if existing_showtimes > 0:
+            # If we already have showtimes, use them
+            logger.info(f"Using existing theater data for {movie.title}")
+            
+            # Group showtimes by theater
+            theater_map = {}
+            for showtime in movie.showtimes.all():
+                theater_name = showtime.theater.name
+                
+                # Create theater entry if not exists
+                if theater_name not in theater_map:
+                    distance_miles = showtime.theater.distance_miles if hasattr(showtime.theater, 'distance_miles') else 10.0
+                    
+                    theater_map[theater_name] = {
+                        'name': theater_name,
+                        'address': showtime.theater.address,
+                        'distance_miles': distance_miles,
+                        'showtimes': []
+                    }
+                
+                # Add showtimes to the theater
+                theater_map[theater_name]['showtimes'].append({
+                    'start_time': showtime.start_time.isoformat(),
+                    'format': showtime.format
+                })
+            
+            # Convert theater map to list sorted by distance
+            for _, theater in sorted(theater_map.items(), key=lambda x: x[1].get('distance_miles', float('inf'))):
+                theater_data.append(theater)
+            
+            logger.info(f"Returning {len(theater_data)} theaters with existing showtimes")
+        else:
+            # No existing showtimes, we might want to fetch them from SerpAPI
+            # This would be a more complex implementation requiring access to the MovieCrewManager
+            # For now, we'll return an empty list
+            logger.warning(f"No existing showtimes for movie {movie.title}, returning empty theater list")
+        
+        return JsonResponse({
+            'status': 'success',
+            'movie_id': movie_id,
+            'movie_title': movie.title,
+            'theaters': theater_data
+        })
+    
+    except Exception as e:
+        logger.error(f"Error fetching theaters: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while fetching theater data'
+        }, status=500)
+
 def reset_conversation(request):
     """Reset the conversations and start new ones."""
     # Reset both conversation types
     if 'first_run_conversation_id' in request.session:
         del request.session['first_run_conversation_id']
-    
+
     if 'casual_conversation_id' in request.session:
         del request.session['casual_conversation_id']
-        
+
     # For backward compatibility - also remove the old format if it exists
     if 'conversation_id' in request.session:
         del request.session['conversation_id']
