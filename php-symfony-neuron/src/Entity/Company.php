@@ -5,7 +5,9 @@ namespace App\Entity;
 use App\Repository\CompanyRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use App\Entity\SecFiling;
 use Doctrine\ORM\Mapping as ORM;
+use App\Entity\StockPrice;
 
 #[ORM\Entity(repositoryClass: CompanyRepository::class)]
 class Company
@@ -53,6 +55,12 @@ class Company
 
     #[ORM\OneToMany(mappedBy: 'company', targetEntity: ResearchReport::class, cascade: ['persist', 'remove'])]
     private Collection $researchReports;
+    
+    #[ORM\OneToMany(mappedBy: 'company', targetEntity: StockPrice::class, cascade: ['persist', 'remove'])]
+    private Collection $stockPrices;
+    
+    #[ORM\OneToMany(mappedBy: 'company', targetEntity: SecFiling::class, cascade: ['persist', 'remove'])]
+    private Collection $secFilings;
 
     public function __construct()
     {
@@ -61,6 +69,8 @@ class Company
         $this->executiveProfiles = new ArrayCollection();
         $this->competitorAnalyses = new ArrayCollection();
         $this->researchReports = new ArrayCollection();
+        $this->stockPrices = new ArrayCollection();
+        $this->secFilings = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -290,6 +300,66 @@ class Company
             // set the owning side to null (unless already changed)
             if ($researchReport->getCompany() === $this) {
                 $researchReport->setCompany(null);
+            }
+        }
+
+        return $this;
+    }
+    
+    /**
+     * @return Collection<int, StockPrice>
+     */
+    public function getStockPrices(): Collection
+    {
+        return $this->stockPrices;
+    }
+
+    public function addStockPrice(StockPrice $stockPrice): static
+    {
+        if (!$this->stockPrices->contains($stockPrice)) {
+            $this->stockPrices->add($stockPrice);
+            $stockPrice->setCompany($this);
+        }
+
+        return $this;
+    }
+
+    public function removeStockPrice(StockPrice $stockPrice): static
+    {
+        if ($this->stockPrices->removeElement($stockPrice)) {
+            // set the owning side to null (unless already changed)
+            if ($stockPrice->getCompany() === $this) {
+                $stockPrice->setCompany(null);
+            }
+        }
+
+        return $this;
+    }
+    
+    /**
+     * @return Collection<int, SecFiling>
+     */
+    public function getSecFilings(): Collection
+    {
+        return $this->secFilings;
+    }
+
+    public function addSecFiling(SecFiling $secFiling): static
+    {
+        if (!$this->secFilings->contains($secFiling)) {
+            $this->secFilings->add($secFiling);
+            $secFiling->setCompany($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSecFiling(SecFiling $secFiling): static
+    {
+        if ($this->secFilings->removeElement($secFiling)) {
+            // set the owning side to null (unless already changed)
+            if ($secFiling->getCompany() === $this) {
+                $secFiling->setCompany(null);
             }
         }
 

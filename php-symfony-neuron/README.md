@@ -14,6 +14,17 @@ This example demonstrates a company research application built with Symfony and 
 - Provide industry segment analysis
 - Export reports to PDF or Excel
 
+## Documentation
+
+Comprehensive documentation is available in the `docs` directory:
+
+- [Architecture](./docs/ARCHITECTURE.md): System design, component architecture, and data flow
+- [Development Guide](./docs/DEVELOPMENT.md): Setup, workflows, core concepts, and development practices
+- [Deployment Guide](./docs/DEPLOYMENT.md): Cloud Foundry deployment scenarios and configurations
+- [Contributing Guidelines](./docs/CONTRIBUTING.md): How to contribute to the project
+- [Setup Guide](./docs/SETUP.md): Detailed PHP and Composer setup instructions
+- [Troubleshooting Guide](./docs/TROUBLESHOOTING.md): Solutions to common issues
+
 ## Architecture
 
 The application consists of:

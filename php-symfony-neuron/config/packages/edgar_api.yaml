@@ -1,0 +1,20 @@
+parameters:
+    edgar_api.api_key: '%env(resolve:EDGAR_API_KEY)%'
+
+services:
+    # Configure the EDGAR API client
+    App\Service\ApiClient\EdgarApiClient:
+        arguments:
+            $params: '@parameter_bag'
+            $logger: '@logger'
+        calls:
+            - [initialize, []]
+    
+    # Configure the SEC filing service
+    App\Service\SecFilingService:
+        arguments:
+            $edgarApiClient: '@App\Service\ApiClient\EdgarApiClient'
+            $neuronAiService: '@App\Service\NeuronAiService'
+            $entityManager: '@doctrine.orm.entity_manager'
+            $secFilingRepository: '@App\Repository\SecFilingRepository'
+            $logger: '@logger'

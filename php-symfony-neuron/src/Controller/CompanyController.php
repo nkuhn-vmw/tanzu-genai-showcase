@@ -9,8 +9,10 @@ use App\Form\CompanyType;
 use App\Form\ResearchReportType;
 use App\Repository\CompanyRepository;
 use App\Repository\ResearchReportRepository;
+use App\Service\LinkedInService;
 use App\Service\NeuronAiService;
 use App\Service\ReportExportService;
+use App\Service\StockDataService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,22 +33,64 @@ class CompanyController extends AbstractController
     }
 
     #[Route('/search', name: 'company_search', methods: ['GET', 'POST'])]
-    public function search(Request $request, CompanyRepository $companyRepository): Response
+    public function search(Request $request, CompanyRepository $companyRepository, StockDataService $stockDataService): Response
     {
         $form = $this->createForm(CompanySearchType::class);
         $form->handleRequest($request);
 
-        $results = [];
+        $dbResults = [];
+        $apiResults = [];
+        $searchTerm = '';
 
         if ($form->isSubmitted() && $form->isValid()) {
             $searchTerm = $form->get('searchTerm')->getData();
-            $results = $companyRepository->findBySearchCriteria($searchTerm);
+            
+            // First search in local database
+            $dbResults = $companyRepository->findBySearchCriteria($searchTerm);
+            
+            // If no local results or explicitly searching by ticker
+            if (count($dbResults) === 0 || preg_match('/^[A-Za-z]{1,5}$/', $searchTerm)) {
+                try {
+                    // Search in external APIs
+                    $apiResults = $stockDataService->searchCompanies($searchTerm);
+                    
+                    // Filter out companies that already exist in DB results
+                    $existingSymbols = array_map(function($company) {
+                        return $company->getTickerSymbol();
+                    }, $dbResults);
+                    
+                    $apiResults = array_filter($apiResults, function($result) use ($existingSymbols) {
+                        return !in_array($result['symbol'], $existingSymbols);
+                    });
+                    
+                } catch (\Exception $e) {
+                    // Log error but continue with DB results
+                    $this->addFlash('warning', 'Could not fetch additional results from external sources');
+                }
+            }
         }
 
         return $this->render('company/search.html.twig', [
             'form' => $form->createView(),
-            'results' => $results,
+            'dbResults' => $dbResults,
+            'apiResults' => $apiResults,
+            'searchTerm' => $searchTerm,
         ]);
+    }
+    
+    #[Route('/import/{symbol}', name: 'company_import', methods: ['POST'])]
+    public function importFromApi(string $symbol, StockDataService $stockDataService): Response
+    {
+        try {
+            $company = $stockDataService->importCompany($symbol);
+            $this->addFlash('success', 'Company successfully imported: ' . $company->getName());
+            
+            return $this->redirectToRoute('company_show', ['id' => $company->getId()]);
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Error importing company: ' . $e->getMessage());
+            
+            return $this->redirectToRoute('company_search');
+        }
     }
 
     #[Route('/new', name: 'company_new', methods: ['GET', 'POST'])]
@@ -125,6 +169,270 @@ class CompanyController extends AbstractController
         return $this->render('company/financial.html.twig', [
             'company' => $company,
             'financialData' => $company->getFinancialData(),
+        ]);
+    }
+    
+    #[Route('/{id}/news', name: 'company_news', methods: ['GET'])]
+    public function news(Company $company, Request $request, StockDataService $stockDataService): Response
+    {
+        $limit = $request->query->getInt('limit', 10);
+        $days = $request->query->getInt('days', 30);
+        
+        // Get news from the service
+        $companyNews = $stockDataService->getCompanyNews($company->getTickerSymbol(), $limit);
+        
+        // Get business headlines for comparison/context
+        $marketNews = [];
+        try {
+            $newsApiClient = $this->getParameter('news_api.api_key') 
+                ? $this->container->get('App\Service\ApiClient\NewsApiClient')
+                : null;
+                
+            if ($newsApiClient) {
+                $marketNews = $newsApiClient->getTopHeadlines('business', 'us', 5);
+            }
+        } catch (\Exception $e) {
+            $this->addFlash('warning', 'Could not retrieve market headlines: ' . $e->getMessage());
+        }
+        
+        return $this->render('company/news.html.twig', [
+            'company' => $company,
+            'news' => $companyNews,
+            'marketNews' => $marketNews,
+            'limit' => $limit,
+            'days' => $days,
+        ]);
+    }
+    
+    #[Route('/{id}/analyst-ratings', name: 'company_analyst_ratings', methods: ['GET'])]
+    public function analystRatings(Company $company, Request $request, StockDataService $stockDataService): Response
+    {
+        // Get analyst ratings data
+        $ratingsData = $stockDataService->getAnalystRatings($company->getTickerSymbol());
+        
+        // Get consensus data
+        $consensusData = $stockDataService->getAnalystConsensus($company->getTickerSymbol());
+        
+        // Get current stock price for context
+        $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
+        
+        return $this->render('company/analyst_ratings.html.twig', [
+            'company' => $company,
+            'ratings' => $ratingsData['ratings'] ?? [],
+            'consensus' => $consensusData,
+            'currentPrice' => $quote['price'] ?? 0,
+        ]);
+    }
+    
+    #[Route('/{id}/insider-trading', name: 'company_insider_trading', methods: ['GET'])]
+    public function insiderTrading(Company $company, Request $request, StockDataService $stockDataService): Response
+    {
+        $limit = $request->query->getInt('limit', 20);
+        
+        // Get insider trading data
+        $insiderData = $stockDataService->getInsiderTrading($company->getTickerSymbol(), $limit);
+        
+        // Get current stock quote for context
+        $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
+        
+        return $this->render('company/insider_trading.html.twig', [
+            'company' => $company,
+            'insiderData' => $insiderData,
+            'currentPrice' => $quote['price'] ?? 0,
+            'limit' => $limit
+        ]);
+    }
+    
+    #[Route('/{id}/institutional-ownership', name: 'company_institutional_ownership', methods: ['GET'])]
+    public function institutionalOwnership(Company $company, Request $request, StockDataService $stockDataService): Response
+    {
+        $limit = $request->query->getInt('limit', 20);
+        
+        // Get institutional ownership data
+        $ownershipData = $stockDataService->getInstitutionalOwnership($company->getTickerSymbol(), $limit);
+        
+        // Get current stock quote and total shares outstanding (if available)
+        $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
+        $sharesOutstanding = $quote['sharesOutstanding'] ?? 0;
+        
+        // Calculate total institutional ownership percentage
+        $totalShares = 0;
+        foreach ($ownershipData as $institution) {
+            $totalShares += $institution['sharesHeld'] ?? 0;
+        }
+        
+        $institutionalOwnershipPercent = 0;
+        if ($sharesOutstanding > 0) {
+            $institutionalOwnershipPercent = ($totalShares / $sharesOutstanding) * 100;
+        }
+        
+        return $this->render('company/institutional_ownership.html.twig', [
+            'company' => $company,
+            'ownershipData' => $ownershipData,
+            'institutionalOwnershipPercent' => $institutionalOwnershipPercent,
+            'sharesOutstanding' => $sharesOutstanding,
+            'limit' => $limit
+        ]);
+    }
+    
+    #[Route('/{id}/stockprices', name: 'company_stockprices', methods: ['GET'])]
+    public function stockPrices(
+        Company $company, 
+        Request $request, 
+        StockDataService $stockDataService
+    ): Response {
+        $interval = $request->query->get('interval', 'daily');
+        $period = $request->query->get('period', '3m');
+        
+        // Map period to limit
+        $limit = match($period) {
+            '1m' => 30,
+            '3m' => 90,
+            '6m' => 180,
+            '1y' => 365,
+            '5y' => 1825,
+            default => 90,
+        };
+        
+        // Get repository for filtering and specialized queries
+        $repository = $this->getDoctrine()->getRepository(\App\Entity\StockPrice::class);
+        
+        // Check if we need to import data
+        $latestPrice = $repository->findMostRecent($company, $interval);
+        $now = new \DateTime();
+        $needsUpdate = false;
+        
+        if (!$latestPrice) {
+            $needsUpdate = true;
+        } else {
+            $daysDiff = $now->diff($latestPrice->getDate())->days;
+            
+            // If data is older than 1 day for daily, 7 days for weekly, 30 days for monthly, update
+            $updateThreshold = match($interval) {
+                'daily' => 1,
+                'weekly' => 7,
+                'monthly' => 30,
+                default => 1,
+            };
+            
+            if ($daysDiff > $updateThreshold) {
+                $needsUpdate = true;
+            }
+        }
+        
+        // Import new data if needed
+        if ($needsUpdate) {
+            $importLimit = match($interval) {
+                'daily' => 365, // 1 year of daily data
+                'weekly' => 260, // 5 years of weekly data
+                'monthly' => 120, // 10 years of monthly data
+                default => 365,
+            };
+            
+            $stockDataService->importHistoricalPrices($company, $interval, $importLimit);
+        }
+        
+        // Get date range based on selected period
+        $endDate = new \DateTime();
+        $startDate = clone $endDate;
+        
+        switch ($period) {
+            case '1m':
+                $startDate->modify('-1 month');
+                break;
+            case '3m':
+                $startDate->modify('-3 months');
+                break;
+            case '6m':
+                $startDate->modify('-6 months');
+                break;
+            case '1y':
+                $startDate->modify('-1 year');
+                break;
+            case '5y':
+                $startDate->modify('-5 years');
+                break;
+            default:
+                $startDate->modify('-3 months');
+        }
+        
+        // Get prices for the selected date range
+        $prices = $repository->findByDateRange($company, $startDate, $endDate, $interval);
+        
+        // Prepare data for charts
+        $chartData = [
+            'dates' => [],
+            'prices' => [
+                'close' => [],
+                'open' => [],
+                'high' => [],
+                'low' => [],
+            ],
+            'volumes' => [],
+            'changes' => [],
+        ];
+        
+        // Reverse to get chronological order
+        $prices = array_reverse($prices);
+        
+        foreach ($prices as $price) {
+            $chartData['dates'][] = $price->getDate()->format('Y-m-d');
+            $chartData['prices']['close'][] = $price->getClose();
+            $chartData['prices']['open'][] = $price->getOpen();
+            $chartData['prices']['high'][] = $price->getHigh();
+            $chartData['prices']['low'][] = $price->getLow();
+            $chartData['volumes'][] = $price->getVolume();
+            $chartData['changes'][] = $price->getChangePercent();
+        }
+        
+        // Calculate additional metrics based on the data
+        $metrics = [];
+        
+        if (!empty($prices)) {
+            // Latest price data
+            $latestPrice = $prices[count($prices) - 1];
+            $metrics['latestPrice'] = $latestPrice->getClose();
+            $metrics['latestChange'] = $latestPrice->getChange();
+            $metrics['latestChangePercent'] = $latestPrice->getChangePercent();
+            $metrics['latestDate'] = $latestPrice->getDate()->format('Y-m-d');
+            
+            // Historical price range
+            $highValues = array_map(function($price) { return $price->getHigh(); }, $prices);
+            $lowValues = array_map(function($price) { return $price->getLow(); }, $prices);
+            $metrics['periodHigh'] = max($highValues);
+            $metrics['periodLow'] = min($lowValues);
+            
+            // 50-day and 200-day moving averages (if daily data)
+            if ($interval === 'daily' && count($prices) >= 50) {
+                $last50Prices = array_slice($prices, -50);
+                $ma50Sum = 0;
+                foreach ($last50Prices as $price) {
+                    $ma50Sum += $price->getClose();
+                }
+                $metrics['ma50'] = $ma50Sum / 50;
+                
+                if (count($prices) >= 200) {
+                    $last200Prices = array_slice($prices, -200);
+                    $ma200Sum = 0;
+                    foreach ($last200Prices as $price) {
+                        $ma200Sum += $price->getClose();
+                    }
+                    $metrics['ma200'] = $ma200Sum / 200;
+                }
+            }
+            
+            // Calculate average daily volume
+            $volumes = array_map(function($price) { return $price->getVolume(); }, $prices);
+            $metrics['avgVolume'] = array_sum($volumes) / count($volumes);
+        }
+        
+        return $this->render('company/stock_prices.html.twig', [
+            'company' => $company,
+            'chartData' => $chartData,
+            'metrics' => $metrics,
+            'prices' => $prices,
+            'interval' => $interval,
+            'period' => $period,
         ]);
     }
 
@@ -210,11 +518,18 @@ class CompanyController extends AbstractController
     }
 
     #[Route('/{id}/leadership', name: 'company_leadership', methods: ['GET'])]
-    public function leadership(Company $company): Response
+    public function leadership(Company $company, LinkedInService $linkedInService = null): Response
     {
+        // If LinkedInService is available, check for LinkedIn connection data
+        $linkedInEnabled = false;
+        if ($linkedInService !== null) {
+            $linkedInEnabled = true;
+        }
+        
         return $this->render('company/leadership.html.twig', [
             'company' => $company,
             'executives' => $company->getExecutiveProfiles(),
+            'linkedInEnabled' => $linkedInEnabled
         ]);
     }
 
@@ -359,122 +674,4 @@ class CompanyController extends AbstractController
             $competitorAnalysis->setSwotStrengths("Strong brand recognition\nInnovative product portfolio\nEfficient supply chain\nStrong financial position\nGlobal market presence");
             $competitorAnalysis->setSwotWeaknesses("High production costs\nFocus on mature markets\nLimited product diversification\nDependence on specific suppliers\nRegulatory compliance challenges");
             $competitorAnalysis->setSwotOpportunities("Emerging market expansion\nNew product development\nStrategic acquisitions\nGrowing demand for eco-friendly solutions\nE-commerce channel growth");
-            $competitorAnalysis->setSwotThreats("Intense competition\nChanging consumer preferences\nRegulatory changes\nSupply chain disruptions\nEconomic downturns");
-
-            // Generate competitor entries
-            foreach ($competitors as $index => $competitor) {
-                $competitorEntity = new \stdClass();
-                $competitorEntity->name = $competitor['name'];
-                $competitorEntity->marketShare = $competitor['share'];
-                $competitorEntity->website = 'https://www.' . strtolower(str_replace(' ', '', $competitor['name'])) . '.com';
-
-                // Randomly generate threat level
-                $threatLevels = ['Low', 'Medium', 'High'];
-                $competitorEntity->threatLevel = $threatLevels[mt_rand(0, 2)];
-
-                // Generate strengths and weaknesses
-                switch ($index) {
-                    case 0:
-                        $competitorEntity->strengths = 'Strong market presence, Product innovation, Efficient operations';
-                        $competitorEntity->weaknesses = 'High prices, Limited geographic reach, Customer support';
-                        break;
-                    case 1:
-                        $competitorEntity->strengths = 'Low-cost provider, Fast growth, Strong marketing';
-                        $competitorEntity->weaknesses = 'Product quality, Limited product range, New entrant';
-                        break;
-                    case 2:
-                        $competitorEntity->strengths = 'Premium quality, Strong customer loyalty, Niche focus';
-                        $competitorEntity->weaknesses = 'Small market share, Limited resources, High costs';
-                        break;
-                    default:
-                        $competitorEntity->strengths = 'Various strengths, Regional focus, Diverse offerings';
-                        $competitorEntity->weaknesses = 'Fragmented approach, Limited scale, Various challenges';
-                }
-
-                // Add to list
-                $competitorAnalysis->addCompetitor($competitorEntity);
-            }
-
-            // Add creation date
-            $competitorAnalysis->setCreatedAt(new \DateTimeImmutable());
-            $competitorAnalysis->setGeneratedBy('Neuron AI');
-
-            // Persist and flush
-            $entityManager->persist($competitorAnalysis);
-            $entityManager->flush();
-
-            return $this->json(['success' => true]);
-        } catch (\Exception $e) {
-            return $this->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
-    }
-
-    #[Route('/{id}/reports', name: 'company_reports', methods: ['GET', 'POST'])]
-    public function reports(
-        Request $request,
-        Company $company,
-        EntityManagerInterface $entityManager,
-        NeuronAiService $neuronAiService
-    ): Response {
-        $report = new ResearchReport();
-        $report->setCompany($company);
-        $report->setReportType('Comprehensive');
-        $report->setTitle('Research Report: ' . $company->getName());
-
-        $form = $this->createForm(ResearchReportType::class, $report);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            if ($request->request->get('generate_with_ai') === 'yes') {
-                try {
-                    $reportData = $neuronAiService->generateResearchReport(
-                        $company->getName(),
-                        $report->getReportType()
-                    );
-
-                    if (!isset($reportData['error'])) {
-                        $report->setTitle($reportData['title'] ?? $report->getTitle());
-                        $report->setExecutiveSummary($reportData['executiveSummary'] ?? '');
-                        $report->setCompanyOverview($reportData['companyOverview'] ?? '');
-                        $report->setIndustryAnalysis($reportData['industryAnalysis'] ?? '');
-                        $report->setFinancialAnalysis($reportData['financialAnalysis'] ?? '');
-                        $report->setCompetitiveAnalysis($reportData['competitiveAnalysis'] ?? '');
-                        $report->setSwotAnalysis($reportData['swotAnalysis'] ?? '');
-                        $report->setInvestmentHighlights($reportData['investmentHighlights'] ?? '');
-                        $report->setRisksAndChallenges($reportData['risksAndChallenges'] ?? '');
-                        $report->setConclusion($reportData['conclusion'] ?? '');
-                        $report->setGeneratedBy('Neuron AI');
-                    }
-                } catch (\Exception $e) {
-                    $this->addFlash('error', 'Failed to generate report: ' . $e->getMessage());
-                }
-            }
-
-            $entityManager->persist($report);
-            $entityManager->flush();
-
-            $this->addFlash('success', 'Research report created successfully.');
-
-            return $this->redirectToRoute('report_show', ['id' => $report->getId()]);
-        }
-
-        return $this->render('company/reports.html.twig', [
-            'company' => $company,
-            'reports' => $company->getResearchReports(),
-            'form' => $form->createView(),
-        ]);
-    }
-
-    #[Route('/{id}/delete', name: 'company_delete', methods: ['POST'])]
-    public function delete(Request $request, Company $company, EntityManagerInterface $entityManager): Response
-    {
-        if ($this->isCsrfTokenValid('delete'.$company->getId(), $request->request->get('_token'))) {
-            $entityManager->remove($company);
-            $entityManager->flush();
-
-            $this->addFlash('success', 'Company deleted successfully.');
-        }
-
-        return $this->redirectToRoute('company_index');
-    }
-}
+            $competitorAnalysis->setSwotThreats("Intense competition\nChanging consumer preferences\nRegulatory changes\nSupply chain disruptions\nEconomic down

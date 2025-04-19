@@ -1,0 +1,296 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - Insider Trading{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .insider-card {
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .insider-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .transaction-purchase {
+            color: #28a745;
+        }
+        
+        .transaction-sale {
+            color: #dc3545;
+        }
+        
+        .transaction-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 50px;
+        }
+        
+        .badge-purchase {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .badge-sale {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .badge-grant {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .badge-disposition {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .badge-other {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .transaction-detail {
+            margin-bottom: 0.5rem;
+            padding: 0.75rem;
+            border-radius: 0.25rem;
+            background-color: #f8f9fa;
+        }
+        
+        .owner-title {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .filing-date {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('company_index') }}">Companies</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('company_show', {'id': company.id}) }}">{{ company.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Insider Trading</li>
+        </ol>
+    </nav>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-4">{{ company.name }} Insider Trading</h1>
+        </div>
+        <div class="col-md-4 d-flex align-items-center justify-content-end">
+            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Company
+            </a>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle"></i> About Insider Trading Data</h5>
+                <p class="mb-0">This page shows Form 4 filings submitted to the SEC by company insiders. Insiders include executives, directors, and beneficial owners who own more than 10% of the company's stock. Transactions include purchases, sales, grants, and other dispositions of securities.</p>
+                <hr>
+                <p class="mb-1"><strong>Transaction Types:</strong></p>
+                <ul class="mb-0">
+                    <li><span class="badge bg-success">P</span> - Purchase of securities on the open market</li>
+                    <li><span class="badge bg-danger">S</span> - Sale of securities on the open market</li>
+                    <li><span class="badge bg-info">A</span> - Grant/award of securities from the company</li>
+                    <li><span class="badge bg-secondary">D</span> - Disposition of securities (e.g., donation, transfer)</li>
+                    <li><span class="badge bg-secondary">G</span> - Gift of securities</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Form 4 Filings -->
+        <div class="col-md-12">
+            {% if insiderData is empty %}
+                <div class="alert alert-info">
+                    <p>No insider trading data is available for {{ company.name }} at this time.</p>
+                </div>
+            {% else %}
+                <form method="get" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="limit">Show entries</label>
+                                <select id="limit" name="limit" class="form-select" onchange="this.form.submit()">
+                                    <option value="10" {% if limit == 10 %}selected{% endif %}>10 entries</option>
+                                    <option value="20" {% if limit == 20 %}selected{% endif %}>20 entries</option>
+                                    <option value="50" {% if limit == 50 %}selected{% endif %}>50 entries</option>
+                                    <option value="100" {% if limit == 100 %}selected{% endif %}>100 entries</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="card shadow-sm">
+                    <div class="card-header">
+                        <h5 class="mb-0">Recent Form 4 Filings</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for filing in insiderData %}
+                            <div class="card insider-card">
+                                <div class="card-header">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h5 class="mb-0">{{ filing.ownerName }}</h5>
+                                            <span class="owner-title">
+                                                {{ filing.ownerTitle }}
+                                                {% if filing.isDirector %} | Director{% endif %}
+                                                {% if filing.isOfficer %} | Officer{% endif %}
+                                                {% if filing.isTenPercentOwner %} | 10% Owner{% endif %}
+                                            </span>
+                                        </div>
+                                        <div class="filing-date">
+                                            <i class="far fa-calendar-alt"></i> Filed: {{ filing.filingDate|date('M d, Y') }}
+                                            <br>
+                                            <i class="fas fa-exchange-alt"></i> Transaction: {{ filing.transactionDate|date('M d, Y') }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <h6>Transactions</h6>
+                                            
+                                            {% for transaction in filing.transactions %}
+                                                <div class="transaction-detail">
+                                                    <div class="row">
+                                                        <div class="col-md-3">
+                                                            <div class="mb-2">
+                                                                {% set badgeClass = 'badge-other' %}
+                                                                {% if transaction.transactionType == 'P' %}
+                                                                    {% set badgeClass = 'badge-purchase' %}
+                                                                {% elseif transaction.transactionType == 'S' %}
+                                                                    {% set badgeClass = 'badge-sale' %}
+                                                                {% elseif transaction.transactionType == 'A' %}
+                                                                    {% set badgeClass = 'badge-grant' %}
+                                                                {% elseif transaction.transactionType == 'D' %}
+                                                                    {% set badgeClass = 'badge-disposition' %}
+                                                                {% endif %}
+                                                                
+                                                                <span class="transaction-badge {{ badgeClass }}">
+                                                                    {{ transaction.transactionType }}
+                                                                </span>
+                                                                <span class="ms-2">{{ transaction.securityType }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <strong>
+                                                                    {% if transaction.transactionType == 'P' %}
+                                                                        <span class="transaction-purchase">
+                                                                            <i class="fas fa-arrow-up"></i>
+                                                                            Purchased
+                                                                        </span>
+                                                                    {% elseif transaction.transactionType == 'S' %}
+                                                                        <span class="transaction-sale">
+                                                                            <i class="fas fa-arrow-down"></i>
+                                                                            Sold
+                                                                        </span>
+                                                                    {% elseif transaction.transactionType == 'A' %}
+                                                                        <span class="text-info">
+                                                                            <i class="fas fa-award"></i>
+                                                                            Awarded
+                                                                        </span>
+                                                                    {% else %}
+                                                                        Other Transaction
+                                                                    {% endif %}
+                                                                </strong>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-muted">Shares</div>
+                                                            <div class="fs-5">{{ transaction.shares|number_format }}</div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-muted">Price Per Share</div>
+                                                            <div class="fs-5">${{ transaction.pricePerShare|number_format(2) }}</div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="text-muted">Total Value</div>
+                                                            <div class="fs-5">${{ transaction.totalValue|number_format(2) }}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mt-3">
+                                                        <div class="col-md-6">
+                                                            <div class="text-muted">Ownership Type</div>
+                                                            <div>{{ transaction.ownershipType }}</div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <div class="text-muted">Shares Owned Following Transaction</div>
+                                                            <div>{{ transaction.sharesOwnedFollowing|number_format }}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                            
+                                            <div class="text-end mt-3">
+                                                <a href="{{ filing.formUrl }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-external-link-alt"></i> View Form 4 on SEC Website
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Related Links -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Related Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Analyst Ratings</h5>
+                                    <p class="card-text">View current analyst ratings and price targets for {{ company.name }}.</p>
+                                    <a href="{{ path('company_analyst_ratings', {'id': company.id}) }}" class="btn btn-outline-primary">View Ratings</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Institutional Ownership</h5>
+                                    <p class="card-text">See which institutional investors hold positions in {{ company.name }}.</p>
+                                    <a href="{{ path('company_institutional_ownership', {'id': company.id}) }}" class="btn btn-outline-primary">View Institutions</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Stock Price Chart</h5>
+                                    <p class="card-text">View historical stock price performance for {{ company.name }}.</p>
+                                    <a href="{{ path('company_stockprices', {'id': company.id}) }}" class="btn btn-outline-primary">View Chart</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

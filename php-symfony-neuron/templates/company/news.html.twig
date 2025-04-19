@@ -1,0 +1,203 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - News & Events{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .news-card {
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .news-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .news-image {
+            height: 180px;
+            object-fit: cover;
+            width: 100%;
+        }
+        
+        .news-source {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .news-date {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .sentiment-positive {
+            color: #28a745;
+        }
+        
+        .sentiment-negative {
+            color: #dc3545;
+        }
+        
+        .sentiment-neutral {
+            color: #6c757d;
+        }
+        
+        .market-news-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .market-news-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('company_index') }}">Companies</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('company_show', {'id': company.id}) }}">{{ company.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">News</li>
+        </ol>
+    </nav>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-4">{{ company.name }} News</h1>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label for="limit" class="form-label">Number of Articles</label>
+                            <select id="limit" name="limit" class="form-select">
+                                <option value="5" {% if limit == 5 %}selected{% endif %}>5 articles</option>
+                                <option value="10" {% if limit == 10 %}selected{% endif %}>10 articles</option>
+                                <option value="20" {% if limit == 20 %}selected{% endif %}>20 articles</option>
+                                <option value="50" {% if limit == 50 %}selected{% endif %}>50 articles</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="days" class="form-label">Time Period</label>
+                            <select id="days" name="days" class="form-select">
+                                <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                                <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+                                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                                <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">Update</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 d-flex align-items-center">
+            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Company
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Company News -->
+        <div class="col-md-8">
+            {% if news is empty %}
+                <div class="alert alert-info">
+                    No news articles found for {{ company.name }}. Try changing your search parameters or check back later.
+                </div>
+            {% else %}
+                <div class="row">
+                    {% for article in news %}
+                        <div class="col-md-6">
+                            <div class="card shadow-sm news-card">
+                                {% if article.imageUrl %}
+                                    <img src="{{ article.imageUrl }}" class="card-img-top news-image" alt="{{ article.title }}">
+                                {% else %}
+                                    <div class="card-img-top news-image bg-light d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-newspaper fa-3x text-secondary"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ article.title }}</h5>
+                                    <p class="card-text">{{ article.description|length > 100 ? article.description|slice(0, 100) ~ '...' : article.description }}</p>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="news-source">
+                                            <i class="fas fa-newspaper fa-fw"></i> {{ article.source }}
+                                        </div>
+                                        
+                                        {% if article.sentiment is defined and article.sentiment != 0 %}
+                                            <div class="sentiment-badge">
+                                                {% if article.sentiment > 0.25 %}
+                                                    <span class="badge bg-success">Positive</span>
+                                                {% elseif article.sentiment < -0.25 %}
+                                                    <span class="badge bg-danger">Negative</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Neutral</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="news-date mt-2">
+                                        <i class="far fa-calendar-alt fa-fw"></i> {{ article.publishedAt is instanceof('DateTime') ? article.publishedAt|date('M d, Y') : article.publishedAt|date('M d, Y') }}
+                                    </div>
+                                    
+                                    <a href="{{ article.url }}" target="_blank" class="btn btn-primary btn-sm mt-3">Read More</a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Market News Sidebar -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Market Headlines</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if marketNews is empty %}
+                        <div class="p-3">
+                            <p class="text-muted">No market headlines available at the moment.</p>
+                        </div>
+                    {% else %}
+                        <div class="list-group list-group-flush">
+                            {% for article in marketNews %}
+                                <div class="market-news-item">
+                                    <h6 class="mb-1">{{ article.title }}</h6>
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <small class="text-muted">{{ article.source }}</small>
+                                        <small class="text-muted">{{ article.publishedAt is instanceof('DateTime') ? article.publishedAt|date('M d') : article.publishedAt|date('M d') }}</small>
+                                    </div>
+                                    <div class="mt-2">
+                                        <a href="{{ article.url }}" target="_blank" class="btn btn-outline-secondary btn-sm">Read</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Financial Data</h5>
+                </div>
+                <div class="card-body">
+                    <p>View the company's financial data to understand its performance and market position.</p>
+                    <a href="{{ path('company_financial', {'id': company.id}) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-chart-line"></i> View Financials
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

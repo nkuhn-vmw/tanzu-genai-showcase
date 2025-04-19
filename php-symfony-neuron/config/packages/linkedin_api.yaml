@@ -1,0 +1,12 @@
+parameters:
+    linkedin_api.client_id: '%env(resolve:LINKEDIN_CLIENT_ID)%'
+    linkedin_api.client_secret: '%env(resolve:LINKEDIN_CLIENT_SECRET)%'
+    linkedin_api.redirect_uri: '%env(resolve:LINKEDIN_REDIRECT_URI)%'
+
+services:
+    # Configure the LinkedIn API client
+    App\Service\ApiClient\LinkedInApiClient:
+        arguments:
+            $params: '@parameter_bag'
+            $logger: '@logger'
+            $session: '@session'

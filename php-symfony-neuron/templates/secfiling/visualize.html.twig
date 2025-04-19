@@ -1,0 +1,502 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - Financial Data Visualization{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .chart-container {
+            height: 400px;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background-color: #f8f9fa;
+            border-left: 5px solid #007bff;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #212529;
+        }
+        
+        .metric-label {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+        
+        .metric-change {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .metric-change-positive {
+            color: #28a745;
+        }
+        
+        .metric-change-negative {
+            color: #dc3545;
+        }
+        
+        .tab-pane {
+            padding: 1.5rem;
+        }
+        
+        .visualization-nav {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+    
+    <!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('company_index') }}">Companies</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('company_show', {'id': company.id}) }}">{{ company.name }}</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('secfiling_company_index', {'id': company.id}) }}">SEC Filings</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('secfiling_show', {'id': filing.id}) }}">{{ filing.formType }} ({{ filing.fiscalYear }})</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Financial Visualization</li>
+        </ol>
+    </nav>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>Financial Data Visualization</h1>
+            <h5 class="text-muted">{{ company.name }} ({{ company.tickerSymbol }}) - {{ filing.fiscalYear }}</h5>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ path('secfiling_show', {'id': filing.id}) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Filing
+            </a>
+        </div>
+    </div>
+    
+    <!-- Visualization Tabs -->
+    <ul class="nav nav-tabs visualization-nav" id="visualizationTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+                Financial Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="income-tab" data-bs-toggle="tab" data-bs-target="#income" type="button" role="tab" aria-controls="income" aria-selected="false">
+                Income Metrics
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance" type="button" role="tab" aria-controls="balance" aria-selected="false">
+                Balance Sheet
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="visualizationTabsContent">
+        <!-- Financial Overview Tab -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Financial Overview</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="metric-card">
+                                <div class="metric-label">Revenue (Latest Year)</div>
+                                <div class="metric-value">${{ data.revenue[years|length - 1]|number_format }}</div>
+                                {% set revGrowth = (data.revenue[years|length - 1] - data.revenue[years|length - 2]) / data.revenue[years|length - 2] * 100 %}
+                                <div class="metric-change {% if revGrowth > 0 %}metric-change-positive{% else %}metric-change-negative{% endif %}">
+                                    {% if revGrowth > 0 %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% endif %}
+                                    {{ revGrowth|abs|number_format(1) }}% YoY
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card">
+                                <div class="metric-label">Net Income (Latest Year)</div>
+                                <div class="metric-value">${{ data.netIncome[years|length - 1]|number_format }}</div>
+                                {% set incomeGrowth = (data.netIncome[years|length - 1] - data.netIncome[years|length - 2]) / data.netIncome[years|length - 2] * 100 %}
+                                <div class="metric-change {% if incomeGrowth > 0 %}metric-change-positive{% else %}metric-change-negative{% endif %}">
+                                    {% if incomeGrowth > 0 %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% endif %}
+                                    {{ incomeGrowth|abs|number_format(1) }}% YoY
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-card">
+                                <div class="metric-label">Profit Margin (Latest Year)</div>
+                                {% set profitMargin = data.netIncome[years|length - 1] / data.revenue[years|length - 1] * 100 %}
+                                <div class="metric-value">{{ profitMargin|number_format(1) }}%</div>
+                                {% set prevMargin = data.netIncome[years|length - 2] / data.revenue[years|length - 2] * 100 %}
+                                {% set marginChange = profitMargin - prevMargin %}
+                                <div class="metric-change {% if marginChange > 0 %}metric-change-positive{% else %}metric-change-negative{% endif %}">
+                                    {% if marginChange > 0 %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% endif %}
+                                    {{ marginChange|abs|number_format(1) }} points YoY
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="overviewChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Income Metrics Tab -->
+        <div class="tab-pane fade" id="income" role="tabpanel" aria-labelledby="income-tab">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Income Statement Metrics</h4>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="incomeChart"></canvas>
+                    </div>
+                    
+                    <h5 class="mt-4">Revenue & Net Income (5 Year Trend)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Year</th>
+                                    {% for year in years %}
+                                        <th class="text-end">{{ year }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th>Revenue</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        <td class="text-end">${{ data.revenue[i]|number_format }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <th>Net Income</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        <td class="text-end">${{ data.netIncome[i]|number_format }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <th>Profit Margin</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        {% set margin = data.netIncome[i] / data.revenue[i] * 100 %}
+                                        <td class="text-end">{{ margin|number_format(1) }}%</td>
+                                    {% endfor %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Balance Sheet Tab -->
+        <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Balance Sheet</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="metric-card">
+                                <div class="metric-label">Total Assets (Latest Year)</div>
+                                <div class="metric-value">${{ data.assets[years|length - 1]|number_format }}</div>
+                                {% set assetGrowth = (data.assets[years|length - 1] - data.assets[years|length - 2]) / data.assets[years|length - 2] * 100 %}
+                                <div class="metric-change {% if assetGrowth > 0 %}metric-change-positive{% else %}metric-change-negative{% endif %}">
+                                    {% if assetGrowth > 0 %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% endif %}
+                                    {{ assetGrowth|abs|number_format(1) }}% YoY
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="metric-card">
+                                <div class="metric-label">Total Liabilities (Latest Year)</div>
+                                <div class="metric-value">${{ data.liabilities[years|length - 1]|number_format }}</div>
+                                {% set liabGrowth = (data.liabilities[years|length - 1] - data.liabilities[years|length - 2]) / data.liabilities[years|length - 2] * 100 %}
+                                <div class="metric-change {% if liabGrowth < 5 %}metric-change-positive{% else %}metric-change-negative{% endif %}">
+                                    {% if liabGrowth > 0 %}
+                                        <i class="fas fa-arrow-up"></i>
+                                    {% else %}
+                                        <i class="fas fa-arrow-down"></i>
+                                    {% endif %}
+                                    {{ liabGrowth|abs|number_format(1) }}% YoY
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                    
+                    <h5 class="mt-4">Assets & Liabilities (5 Year Trend)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Year</th>
+                                    {% for year in years %}
+                                        <th class="text-end">{{ year }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th>Total Assets</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        <td class="text-end">${{ data.assets[i]|number_format }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <th>Total Liabilities</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        <td class="text-end">${{ data.liabilities[i]|number_format }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <th>Net Worth</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        {% set netWorth = data.assets[i] - data.liabilities[i] %}
+                                        <td class="text-end">${{ netWorth|number_format }}</td>
+                                    {% endfor %}
+                                </tr>
+                                <tr>
+                                    <th>Debt-to-Assets Ratio</th>
+                                    {% for i in 0..years|length - 1 %}
+                                        {% set ratio = data.liabilities[i] / data.assets[i] * 100 %}
+                                        <td class="text-end">{{ ratio|number_format(1) }}%</td>
+                                    {% endfor %}
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Data from the controller
+            const years = {{ years|json_encode|raw }};
+            const revenue = {{ data.revenue|json_encode|raw }};
+            const netIncome = {{ data.netIncome|json_encode|raw }};
+            const assets = {{ data.assets|json_encode|raw }};
+            const liabilities = {{ data.liabilities|json_encode|raw }};
+            
+            // Overview Chart
+            const overviewCtx = document.getElementById('overviewChart').getContext('2d');
+            const overviewChart = new Chart(overviewCtx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: revenue,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Net Income',
+                            data: netIncome,
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount ($)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Revenue and Net Income Trends',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+            
+            // Income Chart
+            const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+            const incomeChart = new Chart(incomeCtx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: revenue,
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Net Income',
+                            data: netIncome,
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount ($)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Income Statement Trends',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+            
+            // Balance Sheet Chart
+            const balanceCtx = document.getElementById('balanceChart').getContext('2d');
+            
+            // Calculate net worth (assets - liabilities)
+            const netWorth = years.map((year, index) => assets[index] - liabilities[index]);
+            
+            const balanceChart = new Chart(balanceCtx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [
+                        {
+                            label: 'Assets',
+                            data: assets,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Liabilities',
+                            data: liabilities,
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Net Worth',
+                            data: netWorth,
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Amount ($)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Balance Sheet Trends',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}

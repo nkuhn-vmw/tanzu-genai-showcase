@@ -1,0 +1,318 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ company.name }} - Analyst Ratings{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .rating-card {
+            transition: transform 0.2s;
+        }
+        
+        .rating-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .consensus-badge {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+        }
+        
+        .consensus-strong-buy {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .consensus-buy {
+            background-color: #5cb85c;
+            color: white;
+        }
+        
+        .consensus-hold {
+            background-color: #f0ad4e;
+            color: white;
+        }
+        
+        .consensus-sell {
+            background-color: #d9534f;
+            color: white;
+        }
+        
+        .consensus-strong-sell {
+            background-color: #c9302c;
+            color: white;
+        }
+        
+        .price-target {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .upside-positive {
+            color: #28a745;
+        }
+        
+        .upside-negative {
+            color: #dc3545;
+        }
+        
+        .rating-distribution {
+            height: 2rem;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .rating-firm-card {
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+        
+        .rating-firm-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .rating-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 50px;
+        }
+        
+        .rating-buy {
+            background-color: #5cb85c;
+            color: white;
+        }
+        
+        .rating-hold {
+            background-color: #f0ad4e;
+            color: white;
+        }
+        
+        .rating-sell {
+            background-color: #d9534f;
+            color: white;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ path('company_index') }}">Companies</a></li>
+            <li class="breadcrumb-item"><a href="{{ path('company_show', {'id': company.id}) }}">{{ company.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Analyst Ratings</li>
+        </ol>
+    </nav>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-4">{{ company.name }} Analyst Ratings</h1>
+        </div>
+        <div class="col-md-4 d-flex align-items-center justify-content-end">
+            <a href="{{ path('company_show', {'id': company.id}) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left"></i> Back to Company
+            </a>
+        </div>
+    </div>
+    
+    {% if ratings is empty %}
+        <div class="alert alert-info">
+            <p>No analyst ratings are available for {{ company.name }} at this time.</p>
+        </div>
+    {% else %}
+        <div class="row">
+            <!-- Consensus Summary -->
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Consensus Rating</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        {% set consensusClass = 'consensus-hold' %}
+                        {% if consensus.consensus == 'Strong Buy' %}
+                            {% set consensusClass = 'consensus-strong-buy' %}
+                        {% elseif consensus.consensus == 'Buy' %}
+                            {% set consensusClass = 'consensus-buy' %}
+                        {% elseif consensus.consensus == 'Hold' %}
+                            {% set consensusClass = 'consensus-hold' %}
+                        {% elseif consensus.consensus == 'Sell' %}
+                            {% set consensusClass = 'consensus-sell' %}
+                        {% elseif consensus.consensus == 'Strong Sell' %}
+                            {% set consensusClass = 'consensus-strong-sell' %}
+                        {% endif %}
+                        
+                        <span class="d-inline-block consensus-badge {{ consensusClass }} mb-3">
+                            {{ consensus.consensus }}
+                        </span>
+                        
+                        <p class="text-muted">Based on {{ consensus.ratings_count }} analyst ratings</p>
+                        
+                        <!-- Rating Distribution -->
+                        <div class="rating-distribution mb-3">
+                            {% set buyWidth = (consensus.ratings.buy / consensus.ratings_count) * 100 %}
+                            {% set holdWidth = (consensus.ratings.hold / consensus.ratings_count) * 100 %}
+                            {% set sellWidth = (consensus.ratings.sell / consensus.ratings_count) * 100 %}
+                            
+                            <div class="d-flex" style="height: 100%;">
+                                <div class="bg-success" style="width: {{ buyWidth }}%;"></div>
+                                <div class="bg-warning" style="width: {{ holdWidth }}%;"></div>
+                                <div class="bg-danger" style="width: {{ sellWidth }}%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-4">
+                            <div>
+                                <strong>{{ consensus.ratings.buy }}</strong>
+                                <div class="text-success">Buy</div>
+                            </div>
+                            <div>
+                                <strong>{{ consensus.ratings.hold }}</strong>
+                                <div class="text-warning">Hold</div>
+                            </div>
+                            <div>
+                                <strong>{{ consensus.ratings.sell }}</strong>
+                                <div class="text-danger">Sell</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Price Target</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="price-target mb-3">${{ consensus.averagePriceTarget|number_format(2) }}</div>
+                        
+                        {% if consensus.upside != 0 %}
+                            <div class="mb-3 {% if consensus.upside > 0 %}upside-positive{% else %}upside-negative{% endif %}">
+                                {% if consensus.upside > 0 %}
+                                    <i class="fas fa-arrow-up"></i>
+                                {% else %}
+                                    <i class="fas fa-arrow-down"></i>
+                                {% endif %}
+                                {{ consensus.upside|abs|number_format(2) }}% from current price
+                            </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <div>
+                                <div class="text-muted">Low</div>
+                                <strong>${{ consensus.lowPriceTarget|number_format(2) }}</strong>
+                            </div>
+                            <div>
+                                <div class="text-muted">Current</div>
+                                <strong>${{ currentPrice|number_format(2) }}</strong>
+                            </div>
+                            <div>
+                                <div class="text-muted">High</div>
+                                <strong>${{ consensus.highPriceTarget|number_format(2) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analyst Ratings List -->
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Analyst Ratings</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for rating in ratings %}
+                            <div class="card rating-firm-card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="card-title mb-1">{{ rating.firm }}</h5>
+                                        <div>
+                                            {% set ratingClass = 'rating-hold' %}
+                                            {% if rating.rating == 'Buy' or rating.rating == 'Overweight' %}
+                                                {% set ratingClass = 'rating-buy' %}
+                                            {% elseif rating.rating == 'Sell' or rating.rating == 'Underweight' %}
+                                                {% set ratingClass = 'rating-sell' %}
+                                            {% endif %}
+                                            
+                                            <span class="rating-badge {{ ratingClass }}">{{ rating.rating }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="text-muted mb-2">{{ rating.analyst }}</p>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between">
+                                                <div class="text-muted">Price Target:</div>
+                                                <div><strong>${{ rating.priceTarget|number_format(2) }}</strong></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="d-flex justify-content-between">
+                                                <div class="text-muted">Previous:</div>
+                                                <div>
+                                                    {% if rating.previousPriceTarget is defined %}
+                                                        ${{ rating.previousPriceTarget|number_format(2) }}
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="text-muted mt-3">
+                                        <small>{{ rating.date|date('M d, Y') }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Related Links -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0">Related Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Insider Trading</h5>
+                                    <p class="card-text">View recent insider trades by company executives and major shareholders.</p>
+                                    <a href="{{ path('company_insider_trading', {'id': company.id}) }}" class="btn btn-outline-primary">View Insider Trades</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Institutional Ownership</h5>
+                                    <p class="card-text">See which institutional investors hold positions in {{ company.name }}.</p>
+                                    <a href="{{ path('company_institutional_ownership', {'id': company.id}) }}" class="btn btn-outline-primary">View Institutions</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Financial Data</h5>
+                                    <p class="card-text">Review financial statements and key metrics for {{ company.name }}.</p>
+                                    <a href="{{ path('company_financial', {'id': company.id}) }}" class="btn btn-outline-primary">View Financials</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
