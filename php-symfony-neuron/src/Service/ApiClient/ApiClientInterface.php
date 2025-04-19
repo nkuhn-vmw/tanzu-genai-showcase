@@ -14,7 +14,7 @@ interface ApiClientInterface
      * @return array An array of matching companies with basic info
      */
     public function searchCompanies(string $term): array;
-    
+
     /**
      * Get company profile information
      *
@@ -22,7 +22,7 @@ interface ApiClientInterface
      * @return array Company profile data
      */
     public function getCompanyProfile(string $symbol): array;
-    
+
     /**
      * Get latest stock quote
      *
@@ -30,7 +30,7 @@ interface ApiClientInterface
      * @return array Quote data
      */
     public function getQuote(string $symbol): array;
-    
+
     /**
      * Get company financial data
      *
@@ -39,7 +39,7 @@ interface ApiClientInterface
      * @return array Financial data
      */
     public function getFinancials(string $symbol, string $period = 'quarterly'): array;
-    
+
     /**
      * Get latest news for a company
      *
@@ -48,7 +48,7 @@ interface ApiClientInterface
      * @return array Company news
      */
     public function getCompanyNews(string $symbol, int $limit = 5): array;
-    
+
     /**
      * Get company executive/leadership data
      *
@@ -56,7 +56,7 @@ interface ApiClientInterface
      * @return array Executive data
      */
     public function getExecutives(string $symbol): array;
-    
+
     /**
      * Get historical stock prices
      *

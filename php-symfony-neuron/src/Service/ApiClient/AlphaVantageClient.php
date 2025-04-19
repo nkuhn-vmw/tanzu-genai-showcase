@@ -4,7 +4,7 @@ namespace App\Service\ApiClient;
 
 /**
  * Alpha Vantage API client
- * 
+ *
  * Documentation: https://www.alphavantage.co/documentation/
  */
 class AlphaVantageClient extends AbstractApiClient
@@ -16,13 +16,13 @@ class AlphaVantageClient extends AbstractApiClient
     {
         $this->baseUrl = 'https://www.alphavantage.co/query';
         $this->apiKey = $this->params->get('alpha_vantage.api_key', '');
-        
+
         // During development without API key, log a message
         if (empty($this->apiKey)) {
             $this->logger->warning('Alpha Vantage API key not set, using mock data');
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -30,7 +30,7 @@ class AlphaVantageClient extends AbstractApiClient
     {
         return ['apikey' => $this->apiKey];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -40,9 +40,9 @@ class AlphaVantageClient extends AbstractApiClient
             'function' => 'SYMBOL_SEARCH',
             'keywords' => $term
         ];
-        
+
         $data = $this->request('GET', '', $params);
-        
+
         $results = [];
         if (isset($data['bestMatches']) && is_array($data['bestMatches'])) {
             foreach ($data['bestMatches'] as $match) {
@@ -56,10 +56,10 @@ class AlphaVantageClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -69,9 +69,9 @@ class AlphaVantageClient extends AbstractApiClient
             'function' => 'OVERVIEW',
             'symbol' => $symbol
         ];
-        
+
         $data = $this->request('GET', '', $params);
-        
+
         // Format the data
         return [
             'symbol' => $data['Symbol'] ?? $symbol,
@@ -109,7 +109,7 @@ class AlphaVantageClient extends AbstractApiClient
             '200DayMovingAverage' => (float)($data['200DayMovingAverage'] ?? 0),
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -119,9 +119,9 @@ class AlphaVantageClient extends AbstractApiClient
             'function' => 'GLOBAL_QUOTE',
             'symbol' => $symbol
         ];
-        
+
         $data = $this->request('GET', '', $params);
-        
+
         if (isset($data['Global Quote'])) {
             $quote = $data['Global Quote'];
             return [
@@ -137,7 +137,7 @@ class AlphaVantageClient extends AbstractApiClient
                 'low' => (float)($quote['04. low'] ?? 0),
             ];
         }
-        
+
         return [
             'symbol' => $symbol,
             'price' => 0,
@@ -151,21 +151,21 @@ class AlphaVantageClient extends AbstractApiClient
             'low' => 0,
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
     public function getFinancials(string $symbol, string $period = 'quarterly'): array
     {
         $function = $period === 'quarterly' ? 'INCOME_STATEMENT' : 'INCOME_STATEMENT';
-        
+
         $params = [
             'function' => $function,
             'symbol' => $symbol
         ];
-        
+
         $data = $this->request('GET', '', $params);
-        
+
         $financials = [];
         if (isset($data['quarterlyReports']) && $period === 'quarterly') {
             $reports = array_slice($data['quarterlyReports'], 0, 4); // Get last 4 quarters
@@ -178,13 +178,13 @@ class AlphaVantageClient extends AbstractApiClient
                 $financials[] = $this->formatFinancialReport($report, $symbol);
             }
         }
-        
+
         return $financials;
     }
-    
+
     /**
      * Format a financial report
-     * 
+     *
      * @param array $report Raw report data
      * @param string $symbol Company symbol
      * @return array Formatted report
@@ -196,7 +196,7 @@ class AlphaVantageClient extends AbstractApiClient
         $date = new \DateTime($fiscalDate);
         $year = $date->format('Y');
         $month = (int)$date->format('m');
-        
+
         if ($month <= 3) {
             $quarter = 'Q1';
         } elseif ($month <= 6) {
@@ -206,7 +206,7 @@ class AlphaVantageClient extends AbstractApiClient
         } else {
             $quarter = 'Q4';
         }
-        
+
         return [
             'symbol' => $symbol,
             'fiscalDate' => $fiscalDate,
@@ -230,7 +230,7 @@ class AlphaVantageClient extends AbstractApiClient
             'netIncomeFromContinuingOperations' => (float)($report['netIncomeFromContinuingOperations'] ?? 0),
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -240,7 +240,7 @@ class AlphaVantageClient extends AbstractApiClient
         $this->logger->info("Alpha Vantage doesn't have a dedicated news API, using mock data");
         return $this->getMockNews($symbol, $limit);
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -250,7 +250,7 @@ class AlphaVantageClient extends AbstractApiClient
         $this->logger->info("Alpha Vantage doesn't have a leadership API, using mock data");
         return $this->getMockExecutives($symbol);
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -263,16 +263,16 @@ class AlphaVantageClient extends AbstractApiClient
             'monthly' => 'TIME_SERIES_MONTHLY',
             default => 'TIME_SERIES_DAILY',
         };
-        
+
         $params = [
             'function' => $function,
             'symbol' => $symbol,
             'outputsize' => $outputSize,
             'datatype' => 'json'
         ];
-        
+
         $data = $this->request('GET', '', $params);
-        
+
         // Extract the time series data
         $timeSeriesKey = match($interval) {
             'daily' => 'Time Series (Daily)',
@@ -280,9 +280,9 @@ class AlphaVantageClient extends AbstractApiClient
             'monthly' => 'Monthly Time Series',
             default => 'Time Series (Daily)',
         };
-        
+
         $prices = [];
-        
+
         if (isset($data[$timeSeriesKey]) && is_array($data[$timeSeriesKey])) {
             foreach ($data[$timeSeriesKey] as $date => $priceData) {
                 $prices[] = [
@@ -298,10 +298,10 @@ class AlphaVantageClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return $prices;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -309,7 +309,7 @@ class AlphaVantageClient extends AbstractApiClient
     {
         $function = $params['function'] ?? '';
         $symbol = $params['symbol'] ?? 'UNKNOWN';
-        
+
         switch ($function) {
             case 'SYMBOL_SEARCH':
                 return $this->getMockSearchResults($params['keywords'] ?? '');
@@ -323,7 +323,7 @@ class AlphaVantageClient extends AbstractApiClient
                 return [];
         }
     }
-    
+
     /**
      * Generate mock search results
      *
@@ -333,7 +333,7 @@ class AlphaVantageClient extends AbstractApiClient
     private function getMockSearchResults(string $term): array
     {
         $term = strtoupper($term);
-        
+
         // For AVGO (Broadcom) search
         if (strpos($term, 'AVGO') !== false || strpos($term, 'BROADCOM') !== false) {
             return [
@@ -349,7 +349,7 @@ class AlphaVantageClient extends AbstractApiClient
                 ]
             ];
         }
-        
+
         // For AAPL (Apple) search
         if (strpos($term, 'AAPL') !== false || strpos($term, 'APPLE') !== false) {
             return [
@@ -365,7 +365,7 @@ class AlphaVantageClient extends AbstractApiClient
                 ]
             ];
         }
-        
+
         // For MSFT (Microsoft) search
         if (strpos($term, 'MSFT') !== false || strpos($term, 'MICROSOFT') !== false) {
             return [
@@ -381,11 +381,11 @@ class AlphaVantageClient extends AbstractApiClient
                 ]
             ];
         }
-        
+
         // Default: Return empty results
         return ['bestMatches' => []];
     }
-    
+
     /**
      * Generate mock company profile
      *
@@ -431,7 +431,7 @@ class AlphaVantageClient extends AbstractApiClient
                     '50DayMovingAverage' => '1275.50',
                     '200DayMovingAverage' => '1150.25',
                 ];
-            
+
             case 'AAPL':
                 return [
                     'Symbol' => 'AAPL',
@@ -468,7 +468,7 @@ class AlphaVantageClient extends AbstractApiClient
                     '50DayMovingAverage' => '178.35',
                     '200DayMovingAverage' => '185.42',
                 ];
-                
+
             default:
                 return [
                     'Symbol' => $symbol,
@@ -482,7 +482,7 @@ class AlphaVantageClient extends AbstractApiClient
                 ];
         }
     }
-    
+
     /**
      * Generate mock quote data
      *
@@ -507,7 +507,7 @@ class AlphaVantageClient extends AbstractApiClient
                         '10. change percent' => '0.5337%'
                     ]
                 ];
-                
+
             case 'AAPL':
                 return [
                     'Global Quote' => [
@@ -523,7 +523,7 @@ class AlphaVantageClient extends AbstractApiClient
                         '10. change percent' => '1.3707%'
                     ]
                 ];
-                
+
             default:
                 return [
                     'Global Quote' => [
@@ -541,7 +541,7 @@ class AlphaVantageClient extends AbstractApiClient
                 ];
         }
     }
-    
+
     /**
      * Generate mock income statement data
      *
@@ -559,7 +559,7 @@ class AlphaVantageClient extends AbstractApiClient
         $quarter3->modify('-9 months');
         $quarter4 = clone $now;
         $quarter4->modify('-12 months');
-        
+
         switch (strtoupper($symbol)) {
             case 'AVGO':
                 return [
@@ -643,7 +643,7 @@ class AlphaVantageClient extends AbstractApiClient
                         ],
                     ],
                 ];
-                
+
             default:
                 return [
                     'quarterlyReports' => [
@@ -683,7 +683,7 @@ class AlphaVantageClient extends AbstractApiClient
                 ];
         }
     }
-    
+
     /**
      * Generate mock news articles
      *
@@ -694,7 +694,7 @@ class AlphaVantageClient extends AbstractApiClient
     private function getMockNews(string $symbol, int $limit): array
     {
         $news = [];
-        
+
         // Generic news items customized by company
         $companyName = match (strtoupper($symbol)) {
             'AVGO' => 'Broadcom',
@@ -702,9 +702,9 @@ class AlphaVantageClient extends AbstractApiClient
             'MSFT' => 'Microsoft',
             default => ucfirst(strtolower($symbol)),
         };
-        
+
         $now = new \DateTime();
-        
+
         $newsItems = [
             [
                 'title' => $companyName . ' Reports Record Quarterly Revenue',
@@ -747,11 +747,11 @@ class AlphaVantageClient extends AbstractApiClient
                 'imageUrl' => 'https://example.com/images/ceo-interview.jpg',
             ],
         ];
-        
+
         // Return limited number of news items
         return array_slice($newsItems, 0, $limit);
     }
-    
+
     /**
      * Generate mock executive data
      *
@@ -794,7 +794,7 @@ class AlphaVantageClient extends AbstractApiClient
                         'previousCompanies' => 'Nortel Networks, Oren Semiconductor',
                     ],
                 ];
-                
+
             case 'AAPL':
                 return [
                     [
@@ -828,7 +828,7 @@ class AlphaVantageClient extends AbstractApiClient
                         'previousCompanies' => 'NeXT, Ariba',
                     ],
                 ];
-                
+
             default:
                 return [
                     [

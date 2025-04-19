@@ -4,7 +4,7 @@ namespace App\Service\ApiClient;
 
 /**
  * Yahoo Finance API client
- * 
+ *
  * Documentation: https://rapidapi.com/apidojo/api/yahoo-finance1/
  */
 class YahooFinanceClient extends AbstractApiClient
@@ -16,13 +16,13 @@ class YahooFinanceClient extends AbstractApiClient
     {
         $this->baseUrl = 'https://apidojo-yahoo-finance-v1.p.rapidapi.com';
         $this->apiKey = $this->params->get('yahoo_finance.api_key', '');
-        
+
         // During development without API key, log a message
         if (empty($this->apiKey)) {
             $this->logger->warning('Yahoo Finance API key not set, using mock data');
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -31,10 +31,10 @@ class YahooFinanceClient extends AbstractApiClient
         // For Yahoo Finance via RapidAPI, authentication is done via headers, not params
         return [];
     }
-    
+
     /**
      * Get headers for RapidAPI authentication
-     * 
+     *
      * @return array Headers for RapidAPI
      */
     private function getRapidApiHeaders(): array
@@ -44,7 +44,7 @@ class YahooFinanceClient extends AbstractApiClient
             'X-RapidAPI-Host' => 'apidojo-yahoo-finance-v1.p.rapidapi.com'
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -55,14 +55,14 @@ class YahooFinanceClient extends AbstractApiClient
             'quotesCount' => 10,
             'newsCount' => 0,
         ];
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', '/auto-complete', $params, $options);
-        
+
         $results = [];
         if (isset($data['quotes']) && is_array($data['quotes'])) {
             foreach ($data['quotes'] as $quote) {
@@ -80,10 +80,10 @@ class YahooFinanceClient extends AbstractApiClient
                 }
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -93,26 +93,26 @@ class YahooFinanceClient extends AbstractApiClient
             'symbols' => $symbol,
             'modules' => 'assetProfile,summaryProfile,summaryDetail,financialData'
         ];
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', '/stock/v2/get-summary', $params, $options);
-        
+
         // Format the data
         $profile = [];
-        
+
         if (isset($data['quoteSummary']['result'][0])) {
             $result = $data['quoteSummary']['result'][0];
-            
+
             // Extract asset profile data
             $assetProfile = $result['assetProfile'] ?? [];
             $summaryProfile = $result['summaryProfile'] ?? [];
             $summaryDetail = $result['summaryDetail'] ?? [];
             $financialData = $result['financialData'] ?? [];
-            
+
             $profile = [
                 'symbol' => $symbol,
                 'name' => $assetProfile['name'] ?? '',
@@ -130,7 +130,7 @@ class YahooFinanceClient extends AbstractApiClient
                 'employees' => (int)($assetProfile['fullTimeEmployees'] ?? 0),
                 'officers' => $assetProfile['companyOfficers'] ?? [],
                 'marketCap' => (float)($summaryDetail['marketCap']['raw'] ?? 0),
-                
+
                 // Financial metrics
                 'peRatio' => (float)($summaryDetail['trailingPE']['raw'] ?? 0),
                 'pegRatio' => (float)($summaryDetail['pegRatio']['raw'] ?? 0),
@@ -138,13 +138,13 @@ class YahooFinanceClient extends AbstractApiClient
                 'dividendYield' => (float)($summaryDetail['dividendYield']['raw'] ?? 0),
                 'dividendRate' => (float)($summaryDetail['dividendRate']['raw'] ?? 0),
                 'beta' => (float)($summaryDetail['beta']['raw'] ?? 0),
-                
+
                 // Price data
                 'currentPrice' => (float)($financialData['currentPrice']['raw'] ?? 0),
                 'targetHighPrice' => (float)($financialData['targetHighPrice']['raw'] ?? 0),
                 'targetLowPrice' => (float)($financialData['targetLowPrice']['raw'] ?? 0),
                 'targetMeanPrice' => (float)($financialData['targetMeanPrice']['raw'] ?? 0),
-                
+
                 // Financial health
                 'returnOnEquity' => (float)($financialData['returnOnEquity']['raw'] ?? 0),
                 'debtToEquity' => (float)($financialData['debtToEquity']['raw'] ?? 0),
@@ -154,10 +154,10 @@ class YahooFinanceClient extends AbstractApiClient
                 'profitMargins' => (float)($financialData['profitMargins']['raw'] ?? 0),
             ];
         }
-        
+
         return $profile;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -167,18 +167,18 @@ class YahooFinanceClient extends AbstractApiClient
             'symbols' => $symbol,
             'modules' => 'price,summaryDetail'
         ];
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', '/stock/v2/get-summary', $params, $options);
-        
+
         if (isset($data['quoteSummary']['result'][0]['price'])) {
             $price = $data['quoteSummary']['result'][0]['price'];
             $summary = $data['quoteSummary']['result'][0]['summaryDetail'] ?? [];
-            
+
             return [
                 'symbol' => $symbol,
                 'price' => (float)($price['regularMarketPrice']['raw'] ?? 0),
@@ -200,7 +200,7 @@ class YahooFinanceClient extends AbstractApiClient
                 'priceToSales' => (float)($summary['priceToSalesTrailing12Months']['raw'] ?? 0),
             ];
         }
-        
+
         return [
             'symbol' => $symbol,
             'price' => 0,
@@ -213,7 +213,7 @@ class YahooFinanceClient extends AbstractApiClient
             'low' => 0,
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -223,31 +223,31 @@ class YahooFinanceClient extends AbstractApiClient
         $params = [
             'symbol' => $symbol,
         ];
-        
-        $endpoint = $period === 'quarterly' 
-            ? '/stock/v2/get-financials' 
+
+        $endpoint = $period === 'quarterly'
+            ? '/stock/v2/get-financials'
             : '/stock/v2/get-financials';
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', $endpoint, $params, $options);
-        
+
         $financials = [];
-        
+
         if (isset($data['timeSeries']['result'])) {
             $results = $data['timeSeries']['result'];
-            
+
             // Yahoo Finance returns data in a more complex format
             // We need to extract and format specific metrics
             $reportDates = [];
             $metrics = [];
-            
+
             foreach ($results as $metric) {
                 $metricName = $metric['meta']['type'][0] ?? '';
-                
+
                 // Only include specific financial metrics
                 if (in_array($metricName, [
                     'totalRevenue', 'costOfRevenue', 'grossProfit', 'netIncome',
@@ -257,7 +257,7 @@ class YahooFinanceClient extends AbstractApiClient
                         foreach ($metric['quarterly'] as $quarter) {
                             $date = $quarter['asOfDate'] ?? '';
                             $value = $quarter['reportedValue']['raw'] ?? 0;
-                            
+
                             if (!empty($date)) {
                                 $reportDates[$date] = true;
                                 $metrics[$date][$metricName] = $value;
@@ -266,13 +266,13 @@ class YahooFinanceClient extends AbstractApiClient
                     }
                 }
             }
-            
+
             // Format the data by quarter
             foreach (array_keys($reportDates) as $date) {
                 $dateObj = new \DateTime($date);
                 $year = $dateObj->format('Y');
                 $month = (int)$dateObj->format('m');
-                
+
                 if ($month <= 3) {
                     $quarter = 'Q1';
                 } elseif ($month <= 6) {
@@ -282,7 +282,7 @@ class YahooFinanceClient extends AbstractApiClient
                 } else {
                     $quarter = 'Q4';
                 }
-                
+
                 $financials[] = [
                     'symbol' => $symbol,
                     'fiscalDate' => $date,
@@ -300,19 +300,19 @@ class YahooFinanceClient extends AbstractApiClient
                     'researchAndDevelopment' => (float)($metrics[$date]['researchDevelopment'] ?? 0),
                 ];
             }
-            
+
             // Sort by date descending
             usort($financials, function($a, $b) {
                 return strtotime($b['fiscalDate']) - strtotime($a['fiscalDate']);
             });
-            
+
             // Limit to 4 quarters
             $financials = array_slice($financials, 0, 4);
         }
-        
+
         return $financials;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -322,14 +322,14 @@ class YahooFinanceClient extends AbstractApiClient
             'category' => $symbol,
             'count' => $limit
         ];
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', '/news/v2/list', $params, $options);
-        
+
         $news = [];
         if (isset($data['data']['stream_items'])) {
             foreach ($data['data']['stream_items'] as $item) {
@@ -344,17 +344,17 @@ class YahooFinanceClient extends AbstractApiClient
                         'imageUrl' => $card['thumbnail_url'] ?? null,
                         'category' => $card['category'] ?? 'finance',
                     ];
-                    
+
                     if (count($news) >= $limit) {
                         break;
                     }
                 }
             }
         }
-        
+
         return $news;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -362,7 +362,7 @@ class YahooFinanceClient extends AbstractApiClient
     {
         // This information is included in the company profile for Yahoo Finance
         $profile = $this->getCompanyProfile($symbol);
-        
+
         $executives = [];
         if (isset($profile['officers']) && is_array($profile['officers'])) {
             foreach ($profile['officers'] as $officer) {
@@ -378,15 +378,15 @@ class YahooFinanceClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         // If no executives found, return mock data
         if (empty($executives)) {
             return $this->getMockExecutives($symbol);
         }
-        
+
         return $executives;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -399,14 +399,14 @@ class YahooFinanceClient extends AbstractApiClient
             'monthly' => '1mo',
             default => '1d',
         };
-        
+
         // Map output size to range (period)
         $range = match($outputSize) {
             'compact' => '3mo',
             'full' => '5y',
             default => '1y',
         };
-        
+
         $params = [
             'symbol' => $symbol,
             'range' => $range,
@@ -414,23 +414,23 @@ class YahooFinanceClient extends AbstractApiClient
             'includePrePost' => 'false',
             'events' => 'div,split',
         ];
-        
+
         // Add headers for RapidAPI
         $options = [
             'headers' => $this->getRapidApiHeaders()
         ];
-        
+
         $data = $this->request('GET', '/stock/v3/get-chart', $params, $options);
-        
+
         // Extract the time series data
         $prices = [];
-        
+
         if (isset($data['chart']['result'][0])) {
             $result = $data['chart']['result'][0];
             $timestamps = $result['timestamp'] ?? [];
             $quoteData = $result['indicators']['quote'][0] ?? [];
             $adjClose = $result['indicators']['adjclose'][0]['adjclose'] ?? [];
-            
+
             $timeZone = new \DateTimeZone('UTC');
             if (!empty($result['meta']['exchangeTimezoneName'])) {
                 try {
@@ -439,16 +439,16 @@ class YahooFinanceClient extends AbstractApiClient
                     // If timezone is invalid, fall back to UTC
                 }
             }
-            
+
             for ($i = 0; $i < count($timestamps); $i++) {
                 if (!isset($quoteData['open'][$i]) || !isset($quoteData['close'][$i])) {
                     continue; // Skip if missing data
                 }
-                
+
                 $date = new \DateTime();
                 $date->setTimestamp($timestamps[$i]);
                 $date->setTimezone($timeZone);
-                
+
                 $prices[] = [
                     'date' => $date->format('Y-m-d'),
                     'open' => (float)($quoteData['open'][$i] ?? 0),
@@ -460,10 +460,10 @@ class YahooFinanceClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return $prices;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -482,7 +482,7 @@ class YahooFinanceClient extends AbstractApiClient
                 return [];
         }
     }
-    
+
     /**
      * Generate mock search results
      *
@@ -493,7 +493,7 @@ class YahooFinanceClient extends AbstractApiClient
     {
         $term = strtoupper($term);
         $quotes = [];
-        
+
         // For AVGO (Broadcom)
         if (strpos($term, 'AVGO') !== false || strpos($term, 'BROADCOM') !== false) {
             $quotes[] = [
@@ -507,7 +507,7 @@ class YahooFinanceClient extends AbstractApiClient
                 'marketCap' => 515000000000,
             ];
         }
-        
+
         // For AAPL (Apple)
         if (strpos($term, 'AAPL') !== false || strpos($term, 'APPLE') !== false) {
             $quotes[] = [
@@ -521,7 +521,7 @@ class YahooFinanceClient extends AbstractApiClient
                 'marketCap' => 2750000000000,
             ];
         }
-        
+
         // For MSFT (Microsoft)
         if (strpos($term, 'MSFT') !== false || strpos($term, 'MICROSOFT') !== false) {
             $quotes[] = [
@@ -535,10 +535,10 @@ class YahooFinanceClient extends AbstractApiClient
                 'marketCap' => 2990000000000,
             ];
         }
-        
+
         return ['quotes' => $quotes];
     }
-    
+
     /**
      * Generate mock summary data
      *
@@ -548,7 +548,7 @@ class YahooFinanceClient extends AbstractApiClient
     private function getMockSummary(string $symbol): array
     {
         $symbol = strtoupper($symbol);
-        
+
         $mockSummaries = [
             'AVGO' => [
                 'assetProfile' => [
@@ -691,7 +691,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ],
             ],
         ];
-        
+
         $mockData = $mockSummaries[$symbol] ?? [
             'assetProfile' => [
                 'name' => 'Unknown Company',
@@ -721,14 +721,14 @@ class YahooFinanceClient extends AbstractApiClient
                 'regularMarketDayLow' => ['raw' => 0],
             ],
         ];
-        
+
         return [
             'quoteSummary' => [
                 'result' => [$mockData]
             ]
         ];
     }
-    
+
     /**
      * Generate mock financials data
      *
@@ -738,7 +738,7 @@ class YahooFinanceClient extends AbstractApiClient
     private function getMockFinancials(string $symbol): array
     {
         $symbol = strtoupper($symbol);
-        
+
         // Generate dates for the last 4 quarters
         $now = new \DateTime();
         $quarter1 = clone $now;
@@ -749,7 +749,7 @@ class YahooFinanceClient extends AbstractApiClient
         $quarter3->modify('-9 months');
         $quarter4 = clone $now;
         $quarter4->modify('-12 months');
-        
+
         // Format dates
         $dates = [
             $quarter1->format('Y-m-d'),
@@ -757,9 +757,9 @@ class YahooFinanceClient extends AbstractApiClient
             $quarter3->format('Y-m-d'),
             $quarter4->format('Y-m-d'),
         ];
-        
+
         $metrics = [];
-        
+
         // Revenue data
         $metrics[] = [
             'meta' => ['type' => ['totalRevenue']],
@@ -770,7 +770,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 11800000000]],
             ]
         ];
-        
+
         // Cost of Revenue
         $metrics[] = [
             'meta' => ['type' => ['costOfRevenue']],
@@ -781,7 +781,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 3850000000]],
             ]
         ];
-        
+
         // Gross Profit
         $metrics[] = [
             'meta' => ['type' => ['grossProfit']],
@@ -792,7 +792,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 7950000000]],
             ]
         ];
-        
+
         // Net Income
         $metrics[] = [
             'meta' => ['type' => ['netIncome']],
@@ -803,7 +803,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 3000000000]],
             ]
         ];
-        
+
         // Operating Income
         $metrics[] = [
             'meta' => ['type' => ['operatingIncome']],
@@ -814,7 +814,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 4350000000]],
             ]
         ];
-        
+
         // Operating Expense
         $metrics[] = [
             'meta' => ['type' => ['operatingExpense']],
@@ -825,7 +825,7 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 2230000000]],
             ]
         ];
-        
+
         // Research & Development
         $metrics[] = [
             'meta' => ['type' => ['researchDevelopment']],
@@ -836,14 +836,14 @@ class YahooFinanceClient extends AbstractApiClient
                 ['asOfDate' => $dates[3], 'reportedValue' => ['raw' => 1430000000]],
             ]
         ];
-        
+
         return [
             'timeSeries' => [
                 'result' => $metrics
             ]
         ];
     }
-    
+
     /**
      * Generate mock news list data
      *
@@ -854,7 +854,7 @@ class YahooFinanceClient extends AbstractApiClient
     private function getMockNewsList(string $symbol, int $limit): array
     {
         $symbol = strtoupper($symbol);
-        
+
         // Generate company name from symbol if it's one of our examples
         $companyName = match ($symbol) {
             'AVGO' => 'Broadcom',
@@ -862,11 +862,11 @@ class YahooFinanceClient extends AbstractApiClient
             'MSFT' => 'Microsoft',
             default => ucfirst(strtolower($symbol)),
         };
-        
+
         $now = time();
-        
+
         $news = [];
-        
+
         $mockNews = [
             [
                 'title' => $companyName . ' Reports Record Quarterly Revenue',
@@ -914,21 +914,21 @@ class YahooFinanceClient extends AbstractApiClient
                 'category' => 'business',
             ],
         ];
-        
+
         // Convert to the format Yahoo Finance API returns
         foreach (array_slice($mockNews, 0, $limit) as $index => $item) {
             $news[] = [
                 'card' => $item
             ];
         }
-        
+
         return [
             'data' => [
                 'stream_items' => $news
             ]
         ];
     }
-    
+
     /**
      * Generate mock executive data based on the company symbol
      *
@@ -971,7 +971,7 @@ class YahooFinanceClient extends AbstractApiClient
                         'previousCompanies' => 'Nortel Networks, Oren Semiconductor',
                     ],
                 ];
-                
+
             case 'AAPL':
                 return [
                     [
@@ -1005,7 +1005,7 @@ class YahooFinanceClient extends AbstractApiClient
                         'previousCompanies' => 'NeXT, Ariba',
                     ],
                 ];
-                
+
             default:
                 return [
                     [

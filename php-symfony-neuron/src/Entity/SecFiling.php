@@ -381,17 +381,17 @@ class SecFiling
     public function getFormattedTitle(): string
     {
         $title = $this->formType;
-        
+
         if ($this->fiscalYear) {
             $title .= ' - ' . $this->fiscalYear;
-            
+
             if ($this->fiscalQuarter) {
                 $title .= ' ' . $this->fiscalQuarter;
             }
         } elseif ($this->reportDate) {
             $title .= ' - ' . $this->reportDate->format('Y-m-d');
         }
-        
+
         return $title;
     }
 }

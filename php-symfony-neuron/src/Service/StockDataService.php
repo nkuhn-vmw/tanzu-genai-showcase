@@ -25,7 +25,7 @@ class StockDataService
     private EntityManagerInterface $entityManager;
     private AdapterInterface $cache;
     private LoggerInterface $logger;
-    
+
     /**
      * Constructor
      */
@@ -46,7 +46,7 @@ class StockDataService
         $this->cache = $cache;
         $this->logger = $logger;
     }
-    
+
     /**
      * Search for companies by name or ticker symbol
      *
@@ -58,40 +58,40 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'company_search_' . md5($term);
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Otherwise, search APIs with fallback
         try {
             // First try Alpha Vantage
             $results = $this->alphaVantageClient->searchCompanies($term);
-            
+
             if (empty($results)) {
                 // If no results, try Yahoo Finance
                 $this->logger->info('No results from Alpha Vantage, trying Yahoo Finance');
                 $results = $this->yahooFinanceClient->searchCompanies($term);
             }
-            
+
             // Cache results for 1 hour
             $cacheItem->set($results);
             $cacheItem->expiresAfter(3600);
             $this->cache->save($cacheItem);
-            
+
             return $results;
         } catch (\Exception $e) {
             $this->logger->error('Error searching companies: ' . $e->getMessage());
-            
+
             // Try Yahoo Finance as fallback
             try {
                 $results = $this->yahooFinanceClient->searchCompanies($term);
-                
+
                 // Cache results
                 $cacheItem->set($results);
                 $cacheItem->expiresAfter(3600);
                 $this->cache->save($cacheItem);
-                
+
                 return $results;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback search: ' . $e->getMessage());
@@ -99,7 +99,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get a company profile by ticker symbol
      *
@@ -111,40 +111,40 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'company_profile_' . $symbol;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Otherwise, get from APIs with fallback
         try {
             // First try Alpha Vantage
             $profile = $this->alphaVantageClient->getCompanyProfile($symbol);
-            
+
             if (empty($profile['name'])) {
                 // If no valid profile, try Yahoo Finance
                 $this->logger->info('No valid profile from Alpha Vantage, trying Yahoo Finance');
                 $profile = $this->yahooFinanceClient->getCompanyProfile($symbol);
             }
-            
+
             // Cache results for 24 hours
             $cacheItem->set($profile);
             $cacheItem->expiresAfter(86400);
             $this->cache->save($cacheItem);
-            
+
             return $profile;
         } catch (\Exception $e) {
             $this->logger->error('Error getting company profile: ' . $e->getMessage());
-            
+
             // Try Yahoo Finance as fallback
             try {
                 $profile = $this->yahooFinanceClient->getCompanyProfile($symbol);
-                
+
                 // Cache results
                 $cacheItem->set($profile);
                 $cacheItem->expiresAfter(86400);
                 $this->cache->save($cacheItem);
-                
+
                 return $profile;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback profile: ' . $e->getMessage());
@@ -152,7 +152,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get current stock quote
      *
@@ -164,40 +164,40 @@ class StockDataService
         // Try to get from cache first (shorter TTL for quotes - 5 minutes)
         $cacheKey = 'stock_quote_' . $symbol;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Otherwise, get from APIs with fallback
         try {
             // First try Alpha Vantage
             $quote = $this->alphaVantageClient->getQuote($symbol);
-            
+
             if (empty($quote['price'])) {
                 // If no valid quote, try Yahoo Finance
                 $this->logger->info('No valid quote from Alpha Vantage, trying Yahoo Finance');
                 $quote = $this->yahooFinanceClient->getQuote($symbol);
             }
-            
+
             // Cache results for 5 minutes
             $cacheItem->set($quote);
             $cacheItem->expiresAfter(300);
             $this->cache->save($cacheItem);
-            
+
             return $quote;
         } catch (\Exception $e) {
             $this->logger->error('Error getting stock quote: ' . $e->getMessage());
-            
+
             // Try Yahoo Finance as fallback
             try {
                 $quote = $this->yahooFinanceClient->getQuote($symbol);
-                
+
                 // Cache results
                 $cacheItem->set($quote);
                 $cacheItem->expiresAfter(300);
                 $this->cache->save($cacheItem);
-                
+
                 return $quote;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback quote: ' . $e->getMessage());
@@ -205,7 +205,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get financial data
      *
@@ -218,40 +218,40 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'financial_data_' . $symbol . '_' . $period;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Otherwise, get from APIs with fallback
         try {
             // First try Alpha Vantage
             $financials = $this->alphaVantageClient->getFinancials($symbol, $period);
-            
+
             if (empty($financials)) {
                 // If no valid data, try Yahoo Finance
                 $this->logger->info('No valid financial data from Alpha Vantage, trying Yahoo Finance');
                 $financials = $this->yahooFinanceClient->getFinancials($symbol, $period);
             }
-            
+
             // Cache results for 24 hours
             $cacheItem->set($financials);
             $cacheItem->expiresAfter(86400);
             $this->cache->save($cacheItem);
-            
+
             return $financials;
         } catch (\Exception $e) {
             $this->logger->error('Error getting financial data: ' . $e->getMessage());
-            
+
             // Try Yahoo Finance as fallback
             try {
                 $financials = $this->yahooFinanceClient->getFinancials($symbol, $period);
-                
+
                 // Cache results
                 $cacheItem->set($financials);
                 $cacheItem->expiresAfter(86400);
                 $this->cache->save($cacheItem);
-                
+
                 return $financials;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback financials: ' . $e->getMessage());
@@ -259,7 +259,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get company news
      *
@@ -272,56 +272,56 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'company_news_' . $symbol . '_' . $limit;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // First try NewsAPI (dedicated news service)
         try {
             // Get company information to improve search
             $companyInfo = $this->getCompanyProfile($symbol);
             $companyName = $companyInfo['name'] ?? '';
-            
+
             // Create search term with both symbol and name if available
             $searchTerm = $symbol;
             if (!empty($companyName)) {
                 $searchTerm = $symbol . ' ' . $companyName;
             }
-            
+
             $news = $this->newsApiClient->getCompanyNews($searchTerm, null, null, $limit);
-            
+
             // Cache results for 1 hour
             $cacheItem->set($news);
             $cacheItem->expiresAfter(3600);
             $this->cache->save($cacheItem);
-            
+
             return $news;
         } catch (\Exception $e) {
             $this->logger->error('Error getting company news from NewsAPI: ' . $e->getMessage());
-            
+
             // First fallback: Yahoo Finance
             try {
                 $news = $this->yahooFinanceClient->getCompanyNews($symbol, $limit);
-                
+
                 // Cache results
                 $cacheItem->set($news);
                 $cacheItem->expiresAfter(3600);
                 $this->cache->save($cacheItem);
-                
+
                 return $news;
             } catch (\Exception $e) {
                 $this->logger->error('Error with Yahoo Finance news fallback: ' . $e->getMessage());
-                
+
                 // Second fallback: Alpha Vantage
                 try {
                     $news = $this->alphaVantageClient->getCompanyNews($symbol, $limit);
-                    
+
                     // Cache results
                     $cacheItem->set($news);
                     $cacheItem->expiresAfter(3600);
                     $this->cache->save($cacheItem);
-                    
+
                     return $news;
                 } catch (\Exception $e) {
                     $this->logger->error('Error with all news sources: ' . $e->getMessage());
@@ -330,7 +330,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get company executives
      *
@@ -342,33 +342,33 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'company_executives_' . $symbol;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Yahoo Finance often has more executive info, so use it as primary
         try {
             $executives = $this->yahooFinanceClient->getExecutives($symbol);
-            
+
             // Cache results for 24 hours
             $cacheItem->set($executives);
             $cacheItem->expiresAfter(86400);
             $this->cache->save($cacheItem);
-            
+
             return $executives;
         } catch (\Exception $e) {
             $this->logger->error('Error getting company executives: ' . $e->getMessage());
-            
+
             // Fallback to Alpha Vantage
             try {
                 $executives = $this->alphaVantageClient->getExecutives($symbol);
-                
+
                 // Cache results
                 $cacheItem->set($executives);
                 $cacheItem->expiresAfter(86400);
                 $this->cache->save($cacheItem);
-                
+
                 return $executives;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback executives: ' . $e->getMessage());
@@ -376,7 +376,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Get historical stock prices
      *
@@ -390,21 +390,21 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'historical_prices_' . $symbol . '_' . $interval . '_' . $outputSize;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Alpha Vantage has good historical data, try it first
         try {
             $prices = $this->alphaVantageClient->getHistoricalPrices($symbol, $interval, $outputSize);
-            
+
             if (empty($prices)) {
                 // If no valid data, try Yahoo Finance
                 $this->logger->info('No valid historical price data from Alpha Vantage, trying Yahoo Finance');
                 $prices = $this->yahooFinanceClient->getHistoricalPrices($symbol, $interval, $outputSize);
             }
-            
+
             // Cache TTL depends on the interval
             $cacheTtl = match($interval) {
                 'daily' => 3600, // 1 hour for daily data (more frequently updated)
@@ -412,25 +412,25 @@ class StockDataService
                 'monthly' => 86400 * 3, // 3 days for monthly data
                 default => 3600,
             };
-            
+
             // Cache results
             $cacheItem->set($prices);
             $cacheItem->expiresAfter($cacheTtl);
             $this->cache->save($cacheItem);
-            
+
             return $prices;
         } catch (\Exception $e) {
             $this->logger->error('Error getting historical prices: ' . $e->getMessage());
-            
+
             // Fallback to Yahoo Finance
             try {
                 $prices = $this->yahooFinanceClient->getHistoricalPrices($symbol, $interval, $outputSize);
-                
+
                 // Cache results
                 $cacheItem->set($prices);
                 $cacheItem->expiresAfter(3600); // 1 hour
                 $this->cache->save($cacheItem);
-                
+
                 return $prices;
             } catch (\Exception $e) {
                 $this->logger->error('Error with fallback prices: ' . $e->getMessage());
@@ -438,7 +438,7 @@ class StockDataService
             }
         }
     }
-    
+
     /**
      * Import a company and its data into the database
      *
@@ -453,11 +453,11 @@ class StockDataService
         if (!$profile) {
             throw new \Exception('Could not find company profile for ' . $symbol);
         }
-        
+
         // Check if company already exists
         $existingCompany = $this->entityManager->getRepository(Company::class)
             ->findOneBy(['tickerSymbol' => $symbol]);
-        
+
         if ($existingCompany) {
             $this->logger->info('Company already exists, updating: ' . $symbol);
             $company = $existingCompany;
@@ -467,38 +467,38 @@ class StockDataService
             $company->setTickerSymbol($symbol);
             $company->setCreatedAt(new \DateTimeImmutable());
         }
-        
+
         // Update company data
         $company->setName($profile['name']);
         $company->setDescription($profile['description']);
         $company->setSector($profile['sector']);
         $company->setIndustry($profile['industry']);
-        $company->setHeadquarters($profile['address'] . ', ' . 
-                                 $profile['city'] . ', ' . 
-                                 $profile['state'] . ', ' . 
+        $company->setHeadquarters($profile['address'] . ', ' .
+                                 $profile['city'] . ', ' .
+                                 $profile['state'] . ', ' .
                                  $profile['country']);
         $company->setWebsite($profile['website']);
         $company->setUpdatedAt(new \DateTimeImmutable());
-        
+
         // Import financial data
         $this->importFinancialData($company);
-        
+
         // Import executive profiles
         $this->importExecutiveProfiles($company);
-        
+
         // Import historical prices (last 100 days)
         $this->importHistoricalPrices($company, 'daily', 100);
-        
+
         // Also import weekly prices for longer trends (last 52 weeks)
         $this->importHistoricalPrices($company, 'weekly', 52);
-        
+
         // Persist the company
         $this->entityManager->persist($company);
         $this->entityManager->flush();
-        
+
         return $company;
     }
-    
+
     /**
      * Import financial data for a company
      *
@@ -512,22 +512,22 @@ class StockDataService
             $this->logger->warning('No financial data available for ' . $company->getTickerSymbol());
             return;
         }
-        
+
         // Get current stock quote
         $quote = $this->getStockQuote($company->getTickerSymbol());
-        
+
         // Get existing financial data periods to avoid duplicates
         $existingPeriods = [];
         foreach ($company->getFinancialData() as $data) {
             $key = $data->getFiscalQuarter() . '-' . $data->getFiscalYear();
             $existingPeriods[$key] = $data;
         }
-        
+
         foreach ($financials as $financial) {
             $quarter = $financial['fiscalQuarter'];
             $year = $financial['fiscalYear'];
             $key = $quarter . '-' . $year;
-            
+
             if (isset($existingPeriods[$key])) {
                 // Update existing entry
                 $data = $existingPeriods[$key];
@@ -541,25 +541,25 @@ class StockDataService
                 $data->setCreatedAt(new \DateTimeImmutable());
                 $this->logger->info('Creating financial data for ' . $company->getTickerSymbol() . ': ' . $key);
             }
-            
+
             // Set or update data
             $data->setReportType('Income Statement');
-            
+
             if (isset($financial['fiscalDate'])) {
                 $data->setReportDate(new \DateTime($financial['fiscalDate']));
             }
-            
+
             $data->setRevenue($financial['revenue'] ?? 0);
             $data->setNetIncome($financial['netIncome'] ?? 0);
             $data->setEps($financial['eps'] ?? 0);
             $data->setEbitda($financial['ebitda'] ?? 0);
-            
+
             $data->setCostOfRevenue($financial['costOfRevenue'] ?? 0);
             $data->setGrossProfit($financial['grossProfit'] ?? 0);
             $data->setOperatingIncome($financial['operatingIncome'] ?? 0);
             $data->setOperatingExpenses($financial['operatingExpenses'] ?? 0);
             $data->setResearchAndDevelopment($financial['researchAndDevelopment'] ?? 0);
-            
+
             // Calculate profit margin if not provided
             if (!isset($financial['profitMargin']) && $financial['revenue'] > 0) {
                 $profitMargin = $financial['netIncome'] / $financial['revenue'];
@@ -567,11 +567,11 @@ class StockDataService
             } else {
                 $data->setProfitMargin($financial['profitMargin'] ?? 0);
             }
-            
+
             // Add quote data to the most recent quarter
             if ($quote && $key === $financials[0]['fiscalQuarter'] . '-' . $financials[0]['fiscalYear']) {
                 $data->setMarketCap($quote['marketCap'] ?? 0);
-                
+
                 // Set PE ratio if available and EPS is not zero
                 if (isset($quote['price']) && $data->getEps() != 0) {
                     $data->setPeRatio($quote['price'] / $data->getEps());
@@ -579,11 +579,11 @@ class StockDataService
                     $data->setPeRatio(0);
                 }
             }
-            
+
             $this->entityManager->persist($data);
         }
     }
-    
+
     /**
      * Import executive profiles for a company
      *
@@ -597,13 +597,13 @@ class StockDataService
             $this->logger->warning('No executive data available for ' . $company->getTickerSymbol());
             return;
         }
-        
+
         // Get existing executives to avoid duplicates
         $existingExecutives = [];
         foreach ($company->getExecutiveProfiles() as $profile) {
             $existingExecutives[$profile->getName()] = $profile;
         }
-        
+
         foreach ($executives as $executive) {
             if (isset($existingExecutives[$executive['name']])) {
                 // Update existing entry
@@ -617,24 +617,24 @@ class StockDataService
                 $profile->setCreatedAt(new \DateTimeImmutable());
                 $this->logger->info('Creating executive profile for ' . $executive['name']);
             }
-            
+
             // Set or update data
             $profile->setTitle($executive['title']);
             $profile->setBio($executive['bio'] ?? '');
             $profile->setEducation($executive['education'] ?? '');
             $profile->setPreviousCompanies($executive['previousCompanies'] ?? '');
             $profile->setAchievements($executive['achievements'] ?? '');
-            
+
             if (isset($executive['yearJoined'])) {
                 $profile->setStartYear($executive['yearJoined']);
             }
-            
+
             if (isset($executive['photoUrl'])) {
                 $profile->setPhotoUrl($executive['photoUrl']);
             }
-            
+
             $profile->setUpdatedAt(new \DateTimeImmutable());
-            
+
             $this->entityManager->persist($profile);
         }
     }
@@ -650,27 +650,27 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'analyst_ratings_' . $symbol;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Get ratings from SEC API client
         try {
             $ratings = $this->secApiClient->getAnalystRatings($symbol);
-            
+
             // Cache results for 6 hours (ratings often updated throughout day)
             $cacheItem->set($ratings);
             $cacheItem->expiresAfter(21600);
             $this->cache->save($cacheItem);
-            
+
             return $ratings;
         } catch (\Exception $e) {
             $this->logger->error('Error getting analyst ratings: ' . $e->getMessage());
             return [];
         }
     }
-    
+
     /**
      * Get insider trading data
      *
@@ -683,27 +683,27 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'insider_trading_' . $symbol . '_' . $limit;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Get insider trading data from SEC API client
         try {
             $insiderData = $this->secApiClient->getInsiderTrading($symbol, $limit);
-            
+
             // Cache results for 1 day (insider filings don't change that often)
             $cacheItem->set($insiderData);
             $cacheItem->expiresAfter(86400);
             $this->cache->save($cacheItem);
-            
+
             return $insiderData;
         } catch (\Exception $e) {
             $this->logger->error('Error getting insider trading data: ' . $e->getMessage());
             return [];
         }
     }
-    
+
     /**
      * Get institutional ownership data
      *
@@ -716,27 +716,27 @@ class StockDataService
         // Try to get from cache first
         $cacheKey = 'institutional_ownership_' . $symbol . '_' . $limit;
         $cacheItem = $this->cache->getItem($cacheKey);
-        
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
-        
+
         // Get institutional ownership data from SEC API client
         try {
             $ownershipData = $this->secApiClient->getInstitutionalOwnership($symbol, $limit);
-            
+
             // Cache results for 1 week (13F filings quarterly)
             $cacheItem->set($ownershipData);
             $cacheItem->expiresAfter(604800);
             $this->cache->save($cacheItem);
-            
+
             return $ownershipData;
         } catch (\Exception $e) {
             $this->logger->error('Error getting institutional ownership data: ' . $e->getMessage());
             return [];
         }
     }
-    
+
     /**
      * Calculate consensus data from analyst ratings
      *
@@ -746,7 +746,7 @@ class StockDataService
     public function getAnalystConsensus(string $symbol): array
     {
         $ratingsData = $this->getAnalystRatings($symbol);
-        
+
         if (empty($ratingsData) || empty($ratingsData['ratings'])) {
             return [
                 'symbol' => $symbol,
@@ -763,7 +763,7 @@ class StockDataService
                 'ratings_count' => 0
             ];
         }
-        
+
         // Just return the consensus data that's already calculated
         return [
             'symbol' => $symbol,
@@ -780,7 +780,7 @@ class StockDataService
             'ratings_count' => count($ratingsData['ratings'] ?? [])
         ];
     }
-    
+
     /**
      * Import historical stock prices for a company
      *
@@ -792,24 +792,24 @@ class StockDataService
     public function importHistoricalPrices(Company $company, string $interval = 'daily', int $limit = 100): int
     {
         $prices = $this->getHistoricalPrices(
-            $company->getTickerSymbol(), 
-            $interval, 
+            $company->getTickerSymbol(),
+            $interval,
             $limit > 100 ? 'full' : 'compact'
         );
-        
+
         if (empty($prices)) {
             $this->logger->warning('No historical price data available for ' . $company->getTickerSymbol());
             return 0;
         }
-        
+
         $count = 0;
         $repository = $this->entityManager->getRepository(\App\Entity\StockPrice::class);
-        
+
         // Limit the number of records if needed
         if ($limit > 0 && count($prices) > $limit) {
             $prices = array_slice($prices, 0, $limit);
         }
-        
+
         foreach ($prices as $priceData) {
             // Check if this date already exists
             $date = new \DateTime($priceData['date']);
@@ -818,7 +818,7 @@ class StockDataService
                 'date' => $date,
                 'period' => $interval
             ]);
-            
+
             if ($existingPrice) {
                 // Update existing price
                 $price = $existingPrice;
@@ -832,7 +832,7 @@ class StockDataService
                 $price->setCreatedAt(new \DateTimeImmutable());
                 $this->logger->debug('Creating price data for ' . $company->getTickerSymbol() . ': ' . $priceData['date']);
             }
-            
+
             // Set price data
             $price->setOpen($priceData['open']);
             $price->setHigh($priceData['high']);
@@ -840,32 +840,32 @@ class StockDataService
             $price->setClose($priceData['close']);
             $price->setAdjustedClose($priceData['adjustedClose']);
             $price->setVolume($priceData['volume']);
-            
+
             // Calculate change and change percent
             if (isset($prices[$count+1])) {
                 $previousClose = $prices[$count+1]['close'];
                 $change = $priceData['close'] - $previousClose;
                 $changePercent = $previousClose > 0 ? ($change / $previousClose) * 100 : 0;
-                
+
                 $price->setChange($change);
                 $price->setChangePercent($changePercent);
             }
-            
+
             $price->setSource('API');
             $price->setUpdatedAt(new \DateTimeImmutable());
-            
+
             $this->entityManager->persist($price);
             $count++;
-            
+
             // Periodically flush to avoid memory issues with large datasets
             if ($count % 50 === 0) {
                 $this->entityManager->flush();
             }
         }
-        
+
         $this->entityManager->flush();
         $this->logger->info('Imported ' . $count . ' price records for ' . $company->getTickerSymbol());
-        
+
         return $count;
     }
 }

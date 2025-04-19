@@ -7,7 +7,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * News API client for fetching news articles
- * 
+ *
  * Documentation: https://newsapi.org/docs
  */
 class NewsApiClient extends AbstractApiClient
@@ -19,13 +19,13 @@ class NewsApiClient extends AbstractApiClient
     {
         $this->baseUrl = 'https://newsapi.org/v2';
         $this->apiKey = $this->params->get('news_api.api_key', '');
-        
+
         // During development without API key, log a message
         if (empty($this->apiKey)) {
             $this->logger->warning('News API key not set, using mock data');
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -33,7 +33,7 @@ class NewsApiClient extends AbstractApiClient
     {
         return ['apiKey' => $this->apiKey];
     }
-    
+
     /**
      * Get company news from News API
      *
@@ -44,27 +44,27 @@ class NewsApiClient extends AbstractApiClient
      * @return array News articles
      */
     public function getCompanyNews(
-        string $symbol, 
-        ?\DateTime $from = null, 
-        ?\DateTime $to = null, 
+        string $symbol,
+        ?\DateTime $from = null,
+        ?\DateTime $to = null,
         int $limit = 10
     ): array {
         // Default date range is last 30 days
         if (!$from) {
             $from = new \DateTime('30 days ago');
         }
-        
+
         if (!$to) {
             $to = new \DateTime();
         }
-        
+
         // Format dates for API
         $fromFormatted = $from->format('Y-m-d');
         $toFormatted = $to->format('Y-m-d');
-        
+
         // Company name or ticker (use both for better results)
         $query = $symbol;
-        
+
         // Add parameters
         $params = [
             'q' => $query,
@@ -74,13 +74,13 @@ class NewsApiClient extends AbstractApiClient
             'sortBy' => 'publishedAt',
             'pageSize' => $limit
         ];
-        
+
         // Make the API request
         $data = $this->request('GET', '/everything', $params);
-        
+
         // Process and standardize the results
         $articles = [];
-        
+
         if (isset($data['articles']) && is_array($data['articles'])) {
             foreach ($data['articles'] as $article) {
                 $articles[] = [
@@ -96,13 +96,13 @@ class NewsApiClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return $articles;
     }
-    
+
     /**
      * Search for top headlines in a specific category
-     * 
+     *
      * @param string $category News category (business, technology, etc.)
      * @param string $country Country code (us, gb, etc.)
      * @param int $limit Maximum number of articles to return
@@ -115,13 +115,13 @@ class NewsApiClient extends AbstractApiClient
             'country' => $country,
             'pageSize' => $limit
         ];
-        
+
         // Make the API request
         $data = $this->request('GET', '/top-headlines', $params);
-        
+
         // Process and standardize the results
         $articles = [];
-        
+
         if (isset($data['articles']) && is_array($data['articles'])) {
             foreach ($data['articles'] as $article) {
                 $articles[] = [
@@ -137,13 +137,13 @@ class NewsApiClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return $articles;
     }
-    
+
     /**
      * Get market news for multiple companies
-     * 
+     *
      * @param array $symbols Array of ticker symbols
      * @param int $limit Maximum number of articles per symbol
      * @return array News articles grouped by symbol
@@ -151,14 +151,14 @@ class NewsApiClient extends AbstractApiClient
     public function getMarketNews(array $symbols, int $limit = 5): array
     {
         $results = [];
-        
+
         foreach ($symbols as $symbol) {
             $results[$symbol] = $this->getCompanyNews($symbol, null, null, $limit);
         }
-        
+
         return $results;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -173,7 +173,7 @@ class NewsApiClient extends AbstractApiClient
                 return ['articles' => []];
         }
     }
-    
+
     /**
      * Generate mock company news
      *
@@ -184,12 +184,12 @@ class NewsApiClient extends AbstractApiClient
     {
         // Strip any quotes from query
         $query = trim(str_replace('"', '', $query));
-        
+
         // Get a company name from the query (either use as-is or extract from query like "AAPL Apple")
         $parts = explode(' ', $query);
         $symbol = $parts[0];
         $companyName = count($parts) > 1 ? implode(' ', array_slice($parts, 1)) : $symbol;
-        
+
         // Map known symbols to company names
         if (strtoupper($symbol) === 'AAPL') {
             $companyName = 'Apple';
@@ -209,11 +209,11 @@ class NewsApiClient extends AbstractApiClient
             $companyName = 'NVIDIA';
         }
         // else keep the existing company name
-        
+
         // Current time for timestamps
         $now = time();
         $day = 86400; // seconds in a day
-        
+
         // Generate mock articles with company name
         $articles = [
             [
@@ -267,10 +267,10 @@ class NewsApiClient extends AbstractApiClient
                 'publishedAt' => date('Y-m-d H:i:s', $now - (14 * $day)),
             ],
         ];
-        
+
         return ['articles' => $articles];
     }
-    
+
     /**
      * Generate mock top headlines
      *
@@ -281,10 +281,10 @@ class NewsApiClient extends AbstractApiClient
     {
         $now = time();
         $day = 86400; // seconds in a day
-        
+
         // Different headlines based on category
         $headlines = [];
-        
+
         switch ($category) {
             case 'business':
                 $headlines = [
@@ -310,7 +310,7 @@ class NewsApiClient extends AbstractApiClient
                     ],
                 ];
                 break;
-                
+
             case 'technology':
                 $headlines = [
                     [
@@ -335,7 +335,7 @@ class NewsApiClient extends AbstractApiClient
                     ],
                 ];
                 break;
-                
+
             default:
                 $headlines = [
                     [
@@ -350,7 +350,7 @@ class NewsApiClient extends AbstractApiClient
                     ],
                 ];
         }
-        
+
         return ['articles' => $headlines];
     }
 }

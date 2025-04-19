@@ -27,13 +27,13 @@ class SecFilingController extends AbstractController
     ): Response {
         $formType = $request->query->get('formType');
         $limit = $request->query->getInt('limit', 20);
-        
+
         if ($formType) {
             $filings = $secFilingRepository->findRecentFilingsByCompany($company, $formType, $limit);
         } else {
             $filings = $secFilingRepository->findRecentFilingsByCompany($company, null, $limit);
         }
-        
+
         // Get counts by form type
         $counts = [];
         $allFilings = $secFilingRepository->findRecentFilingsByCompany($company, null, 100);
@@ -44,7 +44,7 @@ class SecFilingController extends AbstractController
             }
             $counts[$type]++;
         }
-        
+
         return $this->render('secfiling/index.html.twig', [
             'company' => $company,
             'filings' => $filings,
@@ -53,7 +53,7 @@ class SecFilingController extends AbstractController
             'limit' => $limit,
         ]);
     }
-    
+
     /**
      * Import 10-K reports for a company
      */
@@ -63,16 +63,16 @@ class SecFilingController extends AbstractController
         SecFilingService $secFilingService
     ): Response {
         $filings = $secFilingService->import10KReports($company, true, 5);
-        
+
         if (empty($filings)) {
             $this->addFlash('warning', 'No new 10-K reports were found for ' . $company->getName());
         } else {
             $this->addFlash('success', count($filings) . ' 10-K reports were imported for ' . $company->getName());
         }
-        
+
         return $this->redirectToRoute('secfiling_company_index', ['id' => $company->getId()]);
     }
-    
+
     /**
      * Show details of a specific SEC filing
      */
@@ -85,13 +85,13 @@ class SecFilingController extends AbstractController
         if (!$secFiling->getIsProcessed() && $secFiling->getContent()) {
             $secFilingService->processSecFiling($secFiling);
         }
-        
+
         return $this->render('secfiling/show.html.twig', [
             'filing' => $secFiling,
             'company' => $secFiling->getCompany(),
         ]);
     }
-    
+
     /**
      * Process an SEC filing to extract sections and generate summaries
      */
@@ -101,16 +101,16 @@ class SecFilingController extends AbstractController
         SecFilingService $secFilingService
     ): Response {
         $success = $secFilingService->processSecFiling($secFiling);
-        
+
         if ($success) {
             $this->addFlash('success', 'Filing processed successfully');
         } else {
             $this->addFlash('error', 'Failed to process filing');
         }
-        
+
         return $this->redirectToRoute('secfiling_show', ['id' => $secFiling->getId()]);
     }
-    
+
     /**
      * Download the raw content of an SEC filing
      */
@@ -132,18 +132,18 @@ class SecFilingController extends AbstractController
                 return $this->redirectToRoute('secfiling_show', ['id' => $secFiling->getId()]);
             }
         }
-        
+
         // Return the content as a download
         $response = new Response($secFiling->getContent());
         $response->headers->set('Content-Type', 'text/plain');
-        $response->headers->set('Content-Disposition', 'attachment; filename="' . 
-            $secFiling->getFormType() . '-' . 
-            $secFiling->getCompany()->getTickerSymbol() . '-' . 
+        $response->headers->set('Content-Disposition', 'attachment; filename="' .
+            $secFiling->getFormType() . '-' .
+            $secFiling->getCompany()->getTickerSymbol() . '-' .
             $secFiling->getFilingDate()->format('Y-m-d') . '.txt"');
-            
+
         return $response;
     }
-    
+
     /**
      * Generate a summary of a section using Neuron AI
      */
@@ -156,15 +156,15 @@ class SecFilingController extends AbstractController
     ): Response {
         $sectionKey = $request->request->get('section');
         $section = $secFiling->getSection($sectionKey);
-        
+
         if (!$section) {
             $this->addFlash('error', 'Section not found');
             return $this->redirectToRoute('secfiling_show', ['id' => $secFiling->getId()]);
         }
-        
+
         // Trim content to manageable size for AI processing
         $truncatedContent = substr($section, 0, 8000);
-        
+
         $sectionTitle = match($sectionKey) {
             'item1' => 'Business',
             'item1a' => 'Risk Factors',
@@ -172,24 +172,24 @@ class SecFilingController extends AbstractController
             'item8' => 'Financial Statements and Supplementary Data',
             default => 'Section ' . $sectionKey,
         };
-        
+
         try {
             // Generate summary
             $summary = $neuronAiService->generateText(
                 "Summarize the following section from a 10-K report for {$secFiling->getCompany()->getName()}: {$sectionTitle}\n\n{$truncatedContent}",
                 1000
             );
-            
+
             // Update key findings
             $keyFindings = $secFiling->getKeyFindings() ?? [];
             $keyFindings[$sectionKey] = $neuronAiService->generateText(
                 "Extract 3-5 key findings from the following section of a 10-K report for {$secFiling->getCompany()->getName()}: {$sectionTitle}\n\n{$truncatedContent}",
                 500
             );
-            
+
             $secFiling->setKeyFindings($keyFindings);
             $entityManager->flush();
-            
+
             return $this->json([
                 'success' => true,
                 'summary' => $summary,
@@ -202,7 +202,7 @@ class SecFilingController extends AbstractController
             ], 500);
         }
     }
-    
+
     /**
      * Visualize data from an SEC filing
      */
@@ -210,7 +210,7 @@ class SecFilingController extends AbstractController
     public function visualize(SecFiling $secFiling): Response
     {
         $section = $secFiling->getSection('item8') ?? '';
-        
+
         // Extract financial numbers for visualization
         // This is a simplified approach - in a real world application,
         // you would use a more sophisticated parser
@@ -220,28 +220,28 @@ class SecFilingController extends AbstractController
             'assets' => [],
             'liabilities' => [],
         ];
-        
+
         // For the demo, we'll just populate with random data
         $years = [];
         $startYear = (int)$secFiling->getFiscalYear() - 4;
-        
+
         for ($i = 0; $i < 5; $i++) {
             $year = $startYear + $i;
             $years[] = $year;
-            
+
             $baseRevenue = mt_rand(10000, 50000);
             $growthFactor = 1 + (mt_rand(-10, 30) / 100); // -10% to +30% growth
-            
+
             if ($i > 0) {
                 $baseRevenue = $data['revenue'][$i - 1] * $growthFactor;
             }
-            
+
             $data['revenue'][] = round($baseRevenue);
             $data['netIncome'][] = round($baseRevenue * (mt_rand(5, 25) / 100)); // 5-25% profit margin
             $data['assets'][] = round($baseRevenue * (mt_rand(150, 300) / 100)); // 1.5-3x revenue in assets
             $data['liabilities'][] = round($baseRevenue * (mt_rand(50, 150) / 100)); // 0.5-1.5x revenue in liabilities
         }
-        
+
         return $this->render('secfiling/visualize.html.twig', [
             'filing' => $secFiling,
             'company' => $secFiling->getCompany(),

@@ -19,7 +19,7 @@ class LinkedInService
     private EntityManagerInterface $entityManager;
     private LoggerInterface $logger;
     private SessionInterface $session;
-    
+
     /**
      * Constructor
      */
@@ -34,7 +34,7 @@ class LinkedInService
         $this->logger = $logger;
         $this->session = $requestStack->getSession();
     }
-    
+
     /**
      * Get the LinkedIn authorization URL
      *
@@ -46,10 +46,10 @@ class LinkedInService
         if ($executiveId = $this->session->get('current_executive_id')) {
             $this->session->set('linkedin_auth_executive_id', $executiveId);
         }
-        
+
         return $this->linkedInApiClient->getAuthorizationUrl();
     }
-    
+
     /**
      * Handle the OAuth callback and token exchange
      *
@@ -62,25 +62,25 @@ class LinkedInService
         try {
             // Exchange code for token
             $tokenData = $this->linkedInApiClient->getAccessToken($code, $state);
-            
+
             // Store token in session temporarily (would use a more secure storage in production)
             $this->session->set('linkedin_access_token', $tokenData['access_token']);
             $this->session->set('linkedin_expires_at', time() + $tokenData['expires_in']);
-            
+
             return [
                 'success' => true,
                 'token' => $tokenData
             ];
         } catch (\Exception $e) {
             $this->logger->error('LinkedIn callback error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
             ];
         }
     }
-    
+
     /**
      * Check if we have a valid LinkedIn access token
      *
@@ -90,10 +90,10 @@ class LinkedInService
     {
         $token = $this->session->get('linkedin_access_token');
         $expiresAt = $this->session->get('linkedin_expires_at');
-        
+
         return $token && $expiresAt && $expiresAt > time();
     }
-    
+
     /**
      * Get the current LinkedIn access token
      *
@@ -104,10 +104,10 @@ class LinkedInService
         if (!$this->hasValidToken()) {
             return null;
         }
-        
+
         return $this->session->get('linkedin_access_token');
     }
-    
+
     /**
      * Get the current user's LinkedIn profile
      *
@@ -116,38 +116,38 @@ class LinkedInService
     public function getCurrentUserProfile(): array
     {
         $token = $this->getAccessToken();
-        
+
         if (!$token) {
             return [
                 'success' => false,
                 'error' => 'No valid access token'
             ];
         }
-        
+
         try {
             $profileData = $this->linkedInApiClient->getProfile($token);
-            
+
             if (isset($profileData['error'])) {
                 return [
                     'success' => false,
                     'error' => $profileData['error']
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'profile' => $profileData
             ];
         } catch (\Exception $e) {
             $this->logger->error('LinkedIn profile fetch error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
             ];
         }
     }
-    
+
     /**
      * Get the work experience of the current user
      *
@@ -156,31 +156,31 @@ class LinkedInService
     public function getCurrentUserWorkExperience(): array
     {
         $token = $this->getAccessToken();
-        
+
         if (!$token) {
             return [
                 'success' => false,
                 'error' => 'No valid access token'
             ];
         }
-        
+
         try {
             $experiences = $this->linkedInApiClient->getWorkExperience($token);
-            
+
             return [
                 'success' => true,
                 'experiences' => $experiences
             ];
         } catch (\Exception $e) {
             $this->logger->error('LinkedIn experience fetch error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
             ];
         }
     }
-    
+
     /**
      * Get connections of the current user
      *
@@ -189,31 +189,31 @@ class LinkedInService
     public function getCurrentUserConnections(): array
     {
         $token = $this->getAccessToken();
-        
+
         if (!$token) {
             return [
                 'success' => false,
                 'error' => 'No valid access token'
             ];
         }
-        
+
         try {
             $connections = $this->linkedInApiClient->getConnections($token);
-            
+
             return [
                 'success' => true,
                 'connections' => $connections
             ];
         } catch (\Exception $e) {
             $this->logger->error('LinkedIn connections fetch error: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage()
             ];
         }
     }
-    
+
     /**
      * Update an executive profile with LinkedIn data
      *
@@ -225,27 +225,27 @@ class LinkedInService
     {
         try {
             $token = $this->getAccessToken();
-            
+
             if (!$token) {
                 return false;
             }
-            
+
             // Update basic LinkedIn info
             $profile->setLinkedinId($linkedinData['linkedinId']);
             $profile->setLinkedinProfileUrl($linkedinData['profileUrl']);
             $profile->setProfilePictureUrl($linkedinData['pictureUrl']);
-            
+
             // Store raw LinkedIn data
             $profile->setLinkedinData($linkedinData['rawData']);
-            
+
             // Update profile with LinkedIn data if fields are empty
             if (empty($profile->getName()) && isset($linkedinData['firstName']) && isset($linkedinData['lastName'])) {
                 $profile->setName($linkedinData['firstName'] . ' ' . $linkedinData['lastName']);
             }
-            
+
             // Get work experiences
             $experiences = $this->linkedInApiClient->getWorkExperience($token);
-            
+
             // Find current job for title
             $currentJob = null;
             foreach ($experiences as $experience) {
@@ -254,12 +254,12 @@ class LinkedInService
                     break;
                 }
             }
-            
+
             // Update title if empty and found in LinkedIn
             if (empty($profile->getTitle()) && $currentJob && !empty($currentJob['title'])) {
                 $profile->setTitle($currentJob['title']);
             }
-            
+
             // Update previous companies if empty
             if (empty($profile->getPreviousCompanies())) {
                 $previousCompanies = [];
@@ -268,30 +268,30 @@ class LinkedInService
                         $previousCompanies[] = $experience['companyName'];
                     }
                 }
-                
+
                 if (!empty($previousCompanies)) {
                     $profile->setPreviousCompanies(implode(', ', $previousCompanies));
                 }
             }
-            
+
             // Get connections
             $connectionsData = $this->linkedInApiClient->getConnections($token);
             $profile->setConnectionCount($connectionsData['count'] ?? 0);
-            
+
             // Update last synced timestamp
             $profile->setLastSynced(new \DateTimeImmutable());
-            
+
             // Save changes
             $this->entityManager->persist($profile);
             $this->entityManager->flush();
-            
+
             return true;
         } catch (\Exception $e) {
             $this->logger->error('Error updating executive with LinkedIn data: ' . $e->getMessage());
             return false;
         }
     }
-    
+
     /**
      * Update an executive profile from the session-stored LinkedIn access token
      *
@@ -303,24 +303,24 @@ class LinkedInService
         try {
             // Get current user's profile
             $profileResult = $this->getCurrentUserProfile();
-            
+
             if (!$profileResult['success']) {
                 return [
                     'success' => false,
                     'message' => 'Failed to fetch LinkedIn profile: ' . ($profileResult['error'] ?? 'Unknown error')
                 ];
             }
-            
+
             // Update the executive profile
             $updated = $this->updateExecutiveWithLinkedInData($profile, $profileResult['profile']);
-            
+
             if (!$updated) {
                 return [
                     'success' => false,
                     'message' => 'Failed to update executive profile with LinkedIn data'
                 ];
             }
-            
+
             return [
                 'success' => true,
                 'message' => 'Successfully synced profile with LinkedIn',
@@ -328,17 +328,17 @@ class LinkedInService
             ];
         } catch (\Exception $e) {
             $this->logger->error('Error syncing executive profile: ' . $e->getMessage());
-            
+
             return [
                 'success' => false,
                 'message' => 'Error syncing profile: ' . $e->getMessage()
             ];
         }
     }
-    
+
     /**
      * Find company connections for a specific company
-     * 
+     *
      * @param Company $company The company to find connections for
      * @return array Company connections data
      */
@@ -347,9 +347,9 @@ class LinkedInService
         // This would typically involve more sophisticated logic to scan
         // across executive profiles and their connections for people at the target company
         // For this example, we'll use a simpler approach
-        
+
         $executives = $company->getExecutiveProfiles();
-        
+
         $connectionStats = [
             'totalConnections' => 0,
             'companyConnections' => 0,
@@ -363,14 +363,14 @@ class LinkedInService
                 'other' => 0
             ]
         ];
-        
+
         foreach ($executives as $executive) {
             if ($executive->getLinkedinId()) {
                 $connectionStats['executivesWithLinkedIn']++;
-                
+
                 // Add their connection count
                 $connectionStats['totalConnections'] += $executive->getConnectionCount() ?? 0;
-                
+
                 // Generate some random values for industry distribution
                 // In a real implementation, this would come from actual LinkedIn data
                 $connectionStats['industry']['finance'] += rand(5, 50);
@@ -381,11 +381,11 @@ class LinkedInService
                 $connectionStats['industry']['other'] += rand(10, 50);
             }
         }
-        
+
         // Make up some company connections number - in reality this would
         // be based on actual LinkedIn data analysis
         $connectionStats['companyConnections'] = rand(5, 20);
-        
+
         return $connectionStats;
     }
 }

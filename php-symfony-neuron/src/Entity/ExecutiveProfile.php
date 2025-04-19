@@ -45,25 +45,25 @@ class ExecutiveProfile
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
-    
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $linkedinProfileUrl = null;
-    
+
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $linkedinId = null;
-    
+
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $linkedinData = null;
-    
+
     #[ORM\Column(nullable: true)]
     private ?int $connectionCount = null;
-    
+
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $skills = null;
-    
+
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $lastSynced = null;
-    
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $profilePictureUrl = null;
 
@@ -196,88 +196,88 @@ class ExecutiveProfile
 
         return $this;
     }
-    
+
     public function getLinkedinProfileUrl(): ?string
     {
         return $this->linkedinProfileUrl;
     }
-    
+
     public function setLinkedinProfileUrl(?string $linkedinProfileUrl): static
     {
         $this->linkedinProfileUrl = $linkedinProfileUrl;
-        
+
         return $this;
     }
-    
+
     public function getLinkedinId(): ?string
     {
         return $this->linkedinId;
     }
-    
+
     public function setLinkedinId(?string $linkedinId): static
     {
         $this->linkedinId = $linkedinId;
-        
+
         return $this;
     }
-    
+
     public function getLinkedinData(): ?array
     {
         return $this->linkedinData;
     }
-    
+
     public function setLinkedinData(?array $linkedinData): static
     {
         $this->linkedinData = $linkedinData;
-        
+
         return $this;
     }
-    
+
     public function getConnectionCount(): ?int
     {
         return $this->connectionCount;
     }
-    
+
     public function setConnectionCount(?int $connectionCount): static
     {
         $this->connectionCount = $connectionCount;
-        
+
         return $this;
     }
-    
+
     public function getSkills(): ?array
     {
         return $this->skills;
     }
-    
+
     public function setSkills(?array $skills): static
     {
         $this->skills = $skills;
-        
+
         return $this;
     }
-    
+
     public function getLastSynced(): ?\DateTimeImmutable
     {
         return $this->lastSynced;
     }
-    
+
     public function setLastSynced(?\DateTimeImmutable $lastSynced): static
     {
         $this->lastSynced = $lastSynced;
-        
+
         return $this;
     }
-    
+
     public function getProfilePictureUrl(): ?string
     {
         return $this->profilePictureUrl;
     }
-    
+
     public function setProfilePictureUrl(?string $profilePictureUrl): static
     {
         $this->profilePictureUrl = $profilePictureUrl;
-        
+
         return $this;
     }
 }

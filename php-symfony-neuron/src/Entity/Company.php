@@ -55,10 +55,10 @@ class Company
 
     #[ORM\OneToMany(mappedBy: 'company', targetEntity: ResearchReport::class, cascade: ['persist', 'remove'])]
     private Collection $researchReports;
-    
+
     #[ORM\OneToMany(mappedBy: 'company', targetEntity: StockPrice::class, cascade: ['persist', 'remove'])]
     private Collection $stockPrices;
-    
+
     #[ORM\OneToMany(mappedBy: 'company', targetEntity: SecFiling::class, cascade: ['persist', 'remove'])]
     private Collection $secFilings;
 
@@ -305,7 +305,7 @@ class Company
 
         return $this;
     }
-    
+
     /**
      * @return Collection<int, StockPrice>
      */
@@ -335,7 +335,7 @@ class Company
 
         return $this;
     }
-    
+
     /**
      * @return Collection<int, SecFiling>
      */

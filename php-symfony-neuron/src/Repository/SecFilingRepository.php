@@ -35,15 +35,15 @@ class SecFilingRepository extends ServiceEntityRepository
             ->setParameter('company', $company)
             ->orderBy('f.filingDate', 'DESC')
             ->setMaxResults($limit);
-        
+
         if ($formType) {
             $qb->andWhere('f.formType = :formType')
                ->setParameter('formType', $formType);
         }
-        
+
         return $qb->getQuery()->getResult();
     }
-    
+
     /**
      * Find the latest 10-K report for a company
      *
@@ -62,7 +62,7 @@ class SecFilingRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
-    
+
     /**
      * Find the latest filing by form type for a company
      *
@@ -82,7 +82,7 @@ class SecFilingRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
-    
+
     /**
      * Find filings by fiscal year
      *
@@ -101,7 +101,7 @@ class SecFilingRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
-    
+
     /**
      * Find filings by accession number
      *
@@ -116,7 +116,7 @@ class SecFilingRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
-    
+
     /**
      * Find filings that need processing (downloaded but not yet processed)
      *

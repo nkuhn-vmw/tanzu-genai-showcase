@@ -20,7 +20,7 @@ class SecFilingService
     private EntityManagerInterface $entityManager;
     private SecFilingRepository $secFilingRepository;
     private LoggerInterface $logger;
-    
+
     /**
      * Constructor
      */
@@ -37,7 +37,7 @@ class SecFilingService
         $this->secFilingRepository = $secFilingRepository;
         $this->logger = $logger;
     }
-    
+
     /**
      * Fetch and store 10-K reports for a company
      *
@@ -52,59 +52,59 @@ class SecFilingService
             $this->logger->warning('Cannot import 10-K reports: company has no ticker symbol');
             return [];
         }
-        
+
         // Fetch 10-K reports from EDGAR
         $reports = $this->edgarApiClient->get10KReports($company->getTickerSymbol(), $limit);
-        
+
         if (empty($reports)) {
             $this->logger->warning('No 10-K reports found for ' . $company->getTickerSymbol());
             return [];
         }
-        
+
         $importedFilings = [];
-        
+
         foreach ($reports as $report) {
             // Check if we already have this filing
             $existingFiling = $this->secFilingRepository->findByAccessionNumber($report['accessionNumber']);
-            
+
             if ($existingFiling) {
                 $this->logger->info('SEC filing already exists for accession number: ' . $report['accessionNumber']);
                 $importedFilings[] = $existingFiling;
                 continue;
             }
-            
+
             // Create new filing entity
             $filing = new SecFiling();
             $filing->setCompany($company);
             $filing->setFormType($report['formType']);
             $filing->setFilingDate(new \DateTime($report['filingDate']));
-            
+
             if (isset($report['reportDate'])) {
                 $filing->setReportDate(new \DateTime($report['reportDate']));
             }
-            
+
             $filing->setAccessionNumber($report['accessionNumber']);
             $filing->setFileNumber($report['fileNumber'] ?? null);
             $filing->setDescription($report['description'] ?? null);
             $filing->setDocumentUrl($report['documentUrl']);
             $filing->setHtmlUrl($report['htmlUrl'] ?? null);
             $filing->setTextUrl($report['textUrl'] ?? null);
-            
+
             // Extract fiscal year from filing date or report date
             $filingDate = new \DateTime($report['filingDate']);
             $fiscalYear = $filingDate->format('Y');
-            
+
             // If filing is in Q1, it's likely for the previous year
             if ($filingDate->format('m') <= 3) {
                 $fiscalYear = (int)$fiscalYear - 1;
             }
-            
+
             $filing->setFiscalYear((string)$fiscalYear);
-            
+
             // Download content if requested
             if ($downloadContent && !empty($report['textUrl'])) {
                 $this->logger->info('Downloading content for 10-K: ' . $report['accessionNumber']);
-                
+
                 try {
                     $content = $this->edgarApiClient->downloadReport($report['textUrl'], 'text');
                     $filing->setContent($content);
@@ -112,17 +112,17 @@ class SecFilingService
                     $this->logger->error('Error downloading 10-K content: ' . $e->getMessage());
                 }
             }
-            
+
             // Save to database
             $this->entityManager->persist($filing);
             $importedFilings[] = $filing;
         }
-        
+
         $this->entityManager->flush();
-        
+
         return $importedFilings;
     }
-    
+
     /**
      * Process SEC filing document to extract sections and generate summaries
      *
@@ -146,27 +146,27 @@ class SecFilingService
                 return false;
             }
         }
-        
+
         // Extract sections
         $sections = $this->edgarApiClient->extractReportSections($filing->getContent());
-        
+
         if (empty($sections)) {
             $this->logger->warning('No sections extracted from filing: ' . $filing->getId());
             return false;
         }
-        
+
         // Set extracted sections
         $filing->setSections($sections);
-        
+
         // Generate summaries using NeuronAI
         $keyFindings = [];
         $summaries = [];
-        
+
         foreach ($sections as $key => $content) {
             if (empty(trim($content))) {
                 continue;
             }
-            
+
             $sectionTitle = match($key) {
                 'item1' => 'Business',
                 'item1a' => 'Risk Factors',
@@ -174,23 +174,23 @@ class SecFilingService
                 'item8' => 'Financial Statements and Supplementary Data',
                 default => 'Section ' . $key,
             };
-            
+
             // Trim content to manageable size for AI processing
             $truncatedContent = substr($content, 0, 8000);
-            
+
             try {
                 // Generate summary
                 $summary = $this->neuronAiService->generateText(
                     "Summarize the following section from a 10-K report for {$filing->getCompany()->getName()}: {$sectionTitle}\n\n{$truncatedContent}",
                     1000
                 );
-                
+
                 // Extract key findings
                 $findings = $this->neuronAiService->generateText(
                     "Extract 3-5 key findings from the following section of a 10-K report for {$filing->getCompany()->getName()}: {$sectionTitle}\n\n{$truncatedContent}",
                     500
                 );
-                
+
                 $summaries[$key] = $summary;
                 $keyFindings[$key] = $findings;
             } catch (\Exception $e) {
@@ -198,7 +198,7 @@ class SecFilingService
                 // Continue with other sections if one fails
             }
         }
-        
+
         // Generate overall summary
         $overallSummary = '';
         try {
@@ -210,20 +210,20 @@ class SecFilingService
         } catch (\Exception $e) {
             $this->logger->error('Error generating overall summary: ' . $e->getMessage());
         }
-        
+
         // Update filing with summaries and key findings
         $filing->setSummary($overallSummary);
         $filing->setKeyFindings($keyFindings);
         $filing->setIsProcessed(true);
         $filing->setUpdatedAt(new \DateTimeImmutable());
-        
+
         // Save changes
         $this->entityManager->persist($filing);
         $this->entityManager->flush();
-        
+
         return true;
     }
-    
+
     /**
      * Process all unprocessed SEC filings
      *
@@ -233,23 +233,23 @@ class SecFilingService
     public function processUnprocessedFilings(int $limit = 10): int
     {
         $unprocessedFilings = $this->secFilingRepository->findUnprocessedFilings($limit);
-        
+
         if (empty($unprocessedFilings)) {
             $this->logger->info('No unprocessed SEC filings found');
             return 0;
         }
-        
+
         $count = 0;
-        
+
         foreach ($unprocessedFilings as $filing) {
             if ($this->processSecFiling($filing)) {
                 $count++;
             }
         }
-        
+
         return $count;
     }
-    
+
     /**
      * Get latest 10-K report for a company
      *
@@ -261,21 +261,21 @@ class SecFilingService
     {
         // Try to find in database first
         $filing = $this->secFilingRepository->findLatest10K($company);
-        
+
         if (!$filing) {
             // If not found, try to import from EDGAR
             $filings = $this->import10KReports($company, true, 1);
             $filing = $filings[0] ?? null;
         }
-        
+
         // If found but not processed, process it if requested
         if ($filing && !$filing->getIsProcessed() && $processIfNeeded) {
             $this->processSecFiling($filing);
         }
-        
+
         return $filing;
     }
-    
+
     /**
      * Get recommended key sections from 10-K for a company (for research reports)
      *
@@ -285,7 +285,7 @@ class SecFilingService
     public function getKeyInsightsFrom10K(Company $company): array
     {
         $filing = $this->getLatest10K($company);
-        
+
         if (!$filing || !$filing->getIsProcessed()) {
             return [
                 'summary' => 'No processed 10-K report available',
@@ -296,7 +296,7 @@ class SecFilingService
                 'fiscalYear' => date('Y'),
             ];
         }
-        
+
         // Extract key sections
         return [
             'summary' => $filing->getSummary(),
@@ -307,7 +307,7 @@ class SecFilingService
             'fiscalYear' => $filing->getFiscalYear(),
         ];
     }
-    
+
     /**
      * Shorten text to a maximum length while preserving whole sentences
      *
@@ -320,14 +320,14 @@ class SecFilingService
         if (strlen($text) <= $maxLength) {
             return $text;
         }
-        
+
         $shortenedText = substr($text, 0, $maxLength);
         $lastPeriod = strrpos($shortenedText, '.');
-        
+
         if ($lastPeriod !== false) {
             $shortenedText = substr($shortenedText, 0, $lastPeriod + 1);
         }
-        
+
         return $shortenedText . '...';
     }
 }

@@ -4,7 +4,7 @@ namespace App\Service\ApiClient;
 
 /**
  * SEC API client for fetching insider trading and institutional data
- * 
+ *
  * Documentation: https://sec-api.io/docs
  */
 class SecApiClient extends AbstractApiClient
@@ -16,13 +16,13 @@ class SecApiClient extends AbstractApiClient
     {
         $this->baseUrl = 'https://api.sec-api.io';
         $this->apiKey = $this->params->get('sec_api.api_key', '');
-        
+
         // During development without API key, log a message
         if (empty($this->apiKey)) {
             $this->logger->warning('SEC API key not set, using mock data');
         }
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -30,7 +30,7 @@ class SecApiClient extends AbstractApiClient
     {
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -41,7 +41,7 @@ class SecApiClient extends AbstractApiClient
             'Content-Type' => 'application/json',
         ];
     }
-    
+
     /**
      * Get insider trading data (Form 4 filings)
      *
@@ -52,24 +52,24 @@ class SecApiClient extends AbstractApiClient
      * @return array Insider trading data
      */
     public function getInsiderTrading(
-        string $symbol, 
-        int $limit = 20, 
-        ?\DateTime $from = null, 
+        string $symbol,
+        int $limit = 20,
+        ?\DateTime $from = null,
         ?\DateTime $to = null
     ): array {
         // Set default date range to last 90 days if not specified
         if (!$from) {
             $from = new \DateTime('-90 days');
         }
-        
+
         if (!$to) {
             $to = new \DateTime();
         }
-        
+
         // Format dates for API
         $fromFormatted = $from->format('Y-m-d');
         $toFormatted = $to->format('Y-m-d');
-        
+
         // Build search query for Form 4 filings
         $query = [
             'query' => [
@@ -87,32 +87,32 @@ class SecApiClient extends AbstractApiClient
                 ]
             ]
         ];
-        
+
         if ($fromFormatted && $toFormatted) {
             $query['query']['query_string']['query'] .= " AND filedAt:[{$fromFormatted} TO {$toFormatted}]";
         }
-        
+
         // Make the API request to the SEC API search endpoint
         $response = $this->request('POST', '/v1/filings', [], ['json' => $query]);
-        
+
         // Process and normalize the data
         $insiderTrades = [];
-        
+
         if (isset($response['filings']) && is_array($response['filings'])) {
             foreach ($response['filings'] as $filing) {
                 // Parse the raw data from each Form 4 filing
                 $parsedData = $this->parseForm4Data($filing);
-                
+
                 // Add to the results if successfully parsed
                 if ($parsedData) {
                     $insiderTrades[] = $parsedData;
                 }
             }
         }
-        
+
         return $insiderTrades;
     }
-    
+
     /**
      * Get institutional ownership data
      *
@@ -138,13 +138,13 @@ class SecApiClient extends AbstractApiClient
                 ]
             ]
         ];
-        
+
         // Make the API request to the SEC API search endpoint
         $response = $this->request('POST', '/v1/filings', [], ['json' => $query]);
-        
+
         // Process and normalize the data
         $institutionalHoldings = [];
-        
+
         if (isset($response['filings']) && is_array($response['filings'])) {
             foreach ($response['filings'] as $filing) {
                 // Only process the holdings related to the target symbol
@@ -166,10 +166,10 @@ class SecApiClient extends AbstractApiClient
                 }
             }
         }
-        
+
         return $institutionalHoldings;
     }
-    
+
     /**
      * Get analyst ratings
      *
@@ -181,7 +181,7 @@ class SecApiClient extends AbstractApiClient
         // This is a placeholder for mock data implementation
         return $this->getMockAnalystRatings($symbol);
     }
-    
+
     /**
      * Parse Form 4 filing data into a standardized format
      *
@@ -190,12 +190,12 @@ class SecApiClient extends AbstractApiClient
      */
     private function parseForm4Data(array $filing): ?array {
         // Skip if missing essential data
-        if (!isset($filing['documentFormatFiles']) || 
+        if (!isset($filing['documentFormatFiles']) ||
             !isset($filing['issuer']) ||
             !isset($filing['reportingOwner'])) {
             return null;
         }
-        
+
         // Get the XML document URL from the filing
         $xmlUrl = null;
         foreach ($filing['documentFormatFiles'] as $document) {
@@ -204,15 +204,15 @@ class SecApiClient extends AbstractApiClient
                 break;
             }
         }
-        
+
         // If no XML document, we can't parse transaction details
         if (!$xmlUrl) {
             return null;
         }
-        
+
         // In a real implementation, we would fetch and parse the XML
         // For now, extract what we can from the general filing data
-        
+
         return [
             'filingId' => $filing['id'] ?? '',
             'filingDate' => $filing['filedAt'] ?? '',
@@ -229,7 +229,7 @@ class SecApiClient extends AbstractApiClient
             'transactions' => $this->getMockTransactions(), // In a real impl we would parse the XML
         ];
     }
-    
+
     /**
      * Generate mock insider trading data
      *
@@ -239,15 +239,15 @@ class SecApiClient extends AbstractApiClient
         // Generate 1-3 mock transactions
         $transactions = [];
         $transactionCount = mt_rand(1, 3);
-        
+
         $transactionTypes = ['P', 'S', 'A', 'D', 'G'];
         $securityTypes = ['Common Stock', 'Option', 'Restricted Stock Unit'];
-        
+
         for ($i = 0; $i < $transactionCount; $i++) {
             $type = $transactionTypes[array_rand($transactionTypes)];
             $shareCount = mt_rand(1000, 100000);
             $pricePerShare = mt_rand(10, 500) + (mt_rand(0, 99) / 100);
-            
+
             $transactions[] = [
                 'transactionType' => $type,
                 'securityType' => $securityTypes[array_rand($securityTypes)],
@@ -258,10 +258,10 @@ class SecApiClient extends AbstractApiClient
                 'sharesOwnedFollowing' => mt_rand(100000, 5000000),
             ];
         }
-        
+
         return $transactions;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -271,7 +271,7 @@ class SecApiClient extends AbstractApiClient
             // Determine which mock data to return based on the query
             $body = $params['json'] ?? [];
             $query = $body['query']['query_string']['query'] ?? '';
-            
+
             if (strpos($query, 'formType:"4"') !== false) {
                 // For Form 4 (insider trading)
                 preg_match('/ticker:([A-Z]+)/', $query, $matches);
@@ -284,11 +284,11 @@ class SecApiClient extends AbstractApiClient
                 return $this->getMockInstitutionalOwnership($symbol);
             }
         }
-        
+
         // Default mock data
         return ['filings' => []];
     }
-    
+
     /**
      * Generate mock insider trading data
      *
@@ -304,9 +304,9 @@ class SecApiClient extends AbstractApiClient
             'AMZN' => 'Amazon.com, Inc.',
             'GOOGL' => 'Alphabet Inc.',
         ];
-        
+
         $companyName = $companyNames[$symbol] ?? 'Example Corporation';
-        
+
         // Mock data for CEO, CFO, and CTO
         $insiders = [
             [
@@ -334,19 +334,19 @@ class SecApiClient extends AbstractApiClient
                 'isOfficer' => false
             ],
         ];
-        
+
         // Generate filings for each insider
         $filings = [];
         $dateBase = new \DateTime();
-        
+
         foreach ($insiders as $index => $insider) {
             // Create 1-3 filings per insider, each a few days apart
             $filingCount = mt_rand(1, 3);
-            
+
             for ($i = 0; $i < $filingCount; $i++) {
                 $date = clone $dateBase;
                 $date->modify('-' . ($index * 7 + $i * 3) . ' days');
-                
+
                 $filings[] = [
                     'id' => 'mock-' . mt_rand(1000000, 9999999),
                     'filedAt' => $date->format('Y-m-d'),
@@ -376,10 +376,10 @@ class SecApiClient extends AbstractApiClient
                 ];
             }
         }
-        
+
         return ['filings' => $filings];
     }
-    
+
     /**
      * Generate mock institutional ownership data
      *
@@ -415,18 +415,18 @@ class SecApiClient extends AbstractApiClient
                 'holdings' => mt_rand(2000000, 10000000)
             ],
         ];
-        
+
         // Generate 13F filings
         $filings = [];
         $dateBase = new \DateTime();
         $sharePrice = mt_rand(50, 500) + (mt_rand(0, 99) / 100);
-        
+
         foreach ($institutions as $index => $institution) {
             $date = clone $dateBase;
             $date->modify('-' . $index * 15 . ' days');
-            
+
             $previousHoldings = $institution['holdings'] - mt_rand(-500000, 500000);
-            
+
             $filings[] = [
                 'id' => 'mock-13f-' . mt_rand(1000000, 9999999),
                 'filedAt' => $date->format('Y-m-d'),
@@ -447,10 +447,10 @@ class SecApiClient extends AbstractApiClient
                 ]
             ];
         }
-        
+
         return ['filings' => $filings];
     }
-    
+
     /**
      * Generate mock analyst ratings
      *
@@ -471,7 +471,7 @@ class SecApiClient extends AbstractApiClient
             'Barclays',
             'Credit Suisse'
         ];
-        
+
         // Mock ratings types
         $ratings = [
             'Buy',
@@ -481,14 +481,14 @@ class SecApiClient extends AbstractApiClient
             'Underweight',
             'Sell'
         ];
-        
+
         // Generate base price and calculate targets with some variation
         $currentPrice = mt_rand(50, 500);
-        
+
         // Generate ratings
         $analystRatings = [];
         $now = new \DateTime();
-        
+
         // Aggregate data
         $ratingCounts = [
             'Buy' => 0,
@@ -498,27 +498,27 @@ class SecApiClient extends AbstractApiClient
             'Underweight' => 0,
             'Sell' => 0
         ];
-        
+
         $totalPriceTarget = 0;
         $ratingCount = mt_rand(5, 10);
-        
+
         for ($i = 0; $i < $ratingCount; $i++) {
             $firm = $firms[array_rand($firms)];
             $rating = $ratings[array_rand($ratings)];
-            
+
             // More likely to be positive than negative
             if (mt_rand(1, 10) < 7) {
                 $rating = 'Buy'; // Or Overweight
             }
-            
+
             // Price target usually above current price
             $priceDeviation = mt_rand(-20, 40);
             $priceTarget = $currentPrice * (1 + ($priceDeviation / 100));
-            
+
             // Date in last 90 days
             $date = clone $now;
             $date->modify('-' . mt_rand(1, 90) . ' days');
-            
+
             $analystRating = [
                 'firm' => $firm,
                 'analyst' => $this->generateAnalystName(),
@@ -528,14 +528,14 @@ class SecApiClient extends AbstractApiClient
                 'previousPriceTarget' => round($priceTarget * (1 + (mt_rand(-10, 10) / 100)), 2),
                 'date' => $date->format('Y-m-d'),
             ];
-            
+
             $analystRatings[] = $analystRating;
-            
+
             // Track for consensus
             $ratingCounts[$rating]++;
             $totalPriceTarget += $priceTarget;
         }
-        
+
         // Calculate consensus
         $consensus = [
             'buy' => $ratingCounts['Buy'] + $ratingCounts['Overweight'],
@@ -547,12 +547,12 @@ class SecApiClient extends AbstractApiClient
             'lowPriceTarget' => round($currentPrice * (1 - (20 / 100)), 2),
             'upside' => round(($totalPriceTarget / $ratingCount / $currentPrice - 1) * 100, 2),
         ];
-        
+
         // Determine consensus rating
         $buyRatio = $consensus['buy'] / $ratingCount;
         $holdRatio = $consensus['hold'] / $ratingCount;
         $sellRatio = $consensus['sell'] / $ratingCount;
-        
+
         if ($buyRatio > 0.7) {
             $consensus['consensusRating'] = 'Strong Buy';
         } elseif ($buyRatio > 0.5) {
@@ -564,7 +564,7 @@ class SecApiClient extends AbstractApiClient
         } elseif ($sellRatio > 0.7) {
             $consensus['consensusRating'] = 'Strong Sell';
         }
-        
+
         return [
             'symbol' => $symbol,
             'currentPrice' => $currentPrice,
@@ -572,7 +572,7 @@ class SecApiClient extends AbstractApiClient
             'ratings' => $analystRatings
         ];
     }
-    
+
     /**
      * Generate a random analyst name
      *
@@ -581,7 +581,7 @@ class SecApiClient extends AbstractApiClient
     private function generateAnalystName(): string {
         $firstNames = ['John', 'Michael', 'David', 'Robert', 'James', 'William', 'Richard', 'Thomas', 'Mary', 'Sarah', 'Jennifer', 'Elizabeth', 'Linda', 'Patricia', 'Susan'];
         $lastNames = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Miller', 'Davis', 'Garcia', 'Rodriguez', 'Wilson', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Moore'];
-        
+
         return $firstNames[array_rand($firstNames)] . ' ' . $lastNames[array_rand($lastNames)];
     }
 }

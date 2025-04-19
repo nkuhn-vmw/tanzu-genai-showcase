@@ -15,17 +15,17 @@ class EdgarApiClient extends AbstractApiClient
      * EDGAR API base URL (public data)
      */
     private const EDGAR_BASE_URL = 'https://www.sec.gov/Archives/edgar/data';
-    
+
     /**
      * Search API URL
      */
     private const EDGAR_SEARCH_URL = 'https://efts.sec.gov/LATEST/search-index';
-    
+
     /**
      * Company ticker to CIK mapping
      */
     private array $cikMapping = [];
-    
+
     /**
      * {@inheritdoc}
      */
@@ -33,11 +33,11 @@ class EdgarApiClient extends AbstractApiClient
     {
         $this->baseUrl = self::EDGAR_BASE_URL;
         $this->apiKey = $this->params->get('edgar_api.api_key', '');
-        
+
         // Load CIK mapping from file or create it if it doesn't exist
         $this->initializeCikMapping();
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -45,7 +45,7 @@ class EdgarApiClient extends AbstractApiClient
     {
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -56,7 +56,7 @@ class EdgarApiClient extends AbstractApiClient
             'Accept' => 'application/json',
         ];
     }
-    
+
     /**
      * Initialize CIK mapping from file or create it
      */
@@ -64,13 +64,13 @@ class EdgarApiClient extends AbstractApiClient
     {
         // Path to CIK mapping file
         $cikFile = __DIR__ . '/../../../var/cik_mapping.json';
-        
+
         // Check if file exists and isn't too old (refresh weekly)
         if (file_exists($cikFile) && filemtime($cikFile) > (time() - 7 * 24 * 60 * 60)) {
             $this->cikMapping = json_decode(file_get_contents($cikFile), true);
             return;
         }
-        
+
         // Otherwise, fetch the latest mapping and save it
         try {
             $this->fetchAndSaveCikMapping($cikFile);
@@ -82,7 +82,7 @@ class EdgarApiClient extends AbstractApiClient
             }
         }
     }
-    
+
     /**
      * Fetch the CIK mapping from SEC and save it to file
      */
@@ -90,27 +90,27 @@ class EdgarApiClient extends AbstractApiClient
     {
         $url = 'https://www.sec.gov/files/company_tickers.json';
         $client = HttpClient::create();
-        
+
         $response = $client->request('GET', $url, [
             'headers' => $this->getHeaders()
         ]);
-        
+
         if ($response->getStatusCode() === 200) {
             $data = $response->toArray();
             $mapping = [];
-            
+
             // Process the data into a more usable format
             foreach ($data as $entry) {
                 $ticker = strtoupper($entry['ticker']);
                 $cik = str_pad($entry['cik_str'], 10, '0', STR_PAD_LEFT);
                 $name = $entry['title'];
-                
+
                 $mapping[$ticker] = [
                     'cik' => $cik,
                     'name' => $name
                 ];
             }
-            
+
             // Save to file
             file_put_contents($filename, json_encode($mapping));
             $this->cikMapping = $mapping;
@@ -118,7 +118,7 @@ class EdgarApiClient extends AbstractApiClient
             throw new \Exception('Failed to fetch CIK mapping: ' . $response->getStatusCode());
         }
     }
-    
+
     /**
      * Get CIK for a ticker symbol
      */
@@ -127,7 +127,7 @@ class EdgarApiClient extends AbstractApiClient
         $ticker = strtoupper($ticker);
         return $this->cikMapping[$ticker]['cik'] ?? null;
     }
-    
+
     /**
      * Search for filings
      *
@@ -148,7 +148,7 @@ class EdgarApiClient extends AbstractApiClient
             'forms' => $filters['forms'] ?? ['10-K', '10-Q'],
             'page' => $filters['page'] ?? 1
         ];
-        
+
         // Make the API request
         try {
             $response = $this->request('POST', self::EDGAR_SEARCH_URL, [], ['json' => $searchQuery]);
@@ -159,7 +159,7 @@ class EdgarApiClient extends AbstractApiClient
             return $this->getMockFilingSearch($query, $filters);
         }
     }
-    
+
     /**
      * Get 10-K reports for a company
      *
@@ -175,17 +175,17 @@ class EdgarApiClient extends AbstractApiClient
             $this->logger->warning('CIK not found for ticker: ' . $ticker);
             return $this->getMock10KReports($ticker, $limit);
         }
-        
+
         // Search for 10-K filings
         $query = "cik:" . preg_replace('/^0+/', '', $cik) . " AND formType:\"10-K\"";
         $filters = [
             'forms' => ['10-K'],
             'limit' => $limit
         ];
-        
+
         try {
             $searchResults = $this->searchFilings($query, $filters);
-            
+
             // If successful, process the results
             if (!empty($searchResults) && isset($searchResults['hits'])) {
                 return $this->processFilingResults($searchResults['hits']['hits']);
@@ -193,11 +193,11 @@ class EdgarApiClient extends AbstractApiClient
         } catch (\Exception $e) {
             $this->logger->error('Failed to get 10-K reports: ' . $e->getMessage());
         }
-        
+
         // Return mock data if no results or error
         return $this->getMock10KReports($ticker, $limit);
     }
-    
+
     /**
      * Process raw filing search results into a standardized format
      *
@@ -207,10 +207,10 @@ class EdgarApiClient extends AbstractApiClient
     private function processFilingResults(array $hits): array
     {
         $results = [];
-        
+
         foreach ($hits as $hit) {
             $filing = $hit['_source'];
-            
+
             $results[] = [
                 'id' => $filing['adsh'] ?? $hit['_id'],
                 'cik' => $filing['cik'] ?? '',
@@ -226,10 +226,10 @@ class EdgarApiClient extends AbstractApiClient
                 'description' => $filing['formDescription'] ?? '',
             ];
         }
-        
+
         return $results;
     }
-    
+
     /**
      * Get document URL for a filing
      *
@@ -240,15 +240,15 @@ class EdgarApiClient extends AbstractApiClient
     {
         $cik = str_pad(isset($filing['cik']) ? $filing['cik'] : '', 10, '0', STR_PAD_LEFT);
         $accession = str_replace('-', '', isset($filing['accessionNumber']) ? $filing['accessionNumber'] : '');
-        
+
         if (empty($cik) || empty($accession)) {
             return '';
         }
-        
+
         $primaryDoc = isset($filing['primaryDocument']) ? $filing['primaryDocument'] : 'primary-document.xml';
         return "https://www.sec.gov/Archives/edgar/data/{$cik}/{$accession}/{$primaryDoc}";
     }
-    
+
     /**
      * Get HTML URL for a filing
      *
@@ -259,15 +259,15 @@ class EdgarApiClient extends AbstractApiClient
     {
         $cik = str_pad(isset($filing['cik']) ? $filing['cik'] : '', 10, '0', STR_PAD_LEFT);
         $accession = str_replace('-', '', isset($filing['accessionNumber']) ? $filing['accessionNumber'] : '');
-        
+
         if (empty($cik) || empty($accession)) {
             return '';
         }
-        
+
         $primaryDoc = isset($filing['primaryDocument']) ? $filing['primaryDocument'] : '';
         return "https://www.sec.gov/Archives/edgar/data/{$cik}/{$accession}/{$primaryDoc}";
     }
-    
+
     /**
      * Get text URL for a filing
      *
@@ -278,14 +278,14 @@ class EdgarApiClient extends AbstractApiClient
     {
         $cik = str_pad(isset($filing['cik']) ? $filing['cik'] : '', 10, '0', STR_PAD_LEFT);
         $accession = str_replace('-', '', isset($filing['accessionNumber']) ? $filing['accessionNumber'] : '');
-        
+
         if (empty($cik) || empty($accession)) {
             return '';
         }
-        
+
         return "https://www.sec.gov/Archives/edgar/data/{$cik}/{$accession}/{$accession}.txt";
     }
-    
+
     /**
      * Download a 10-K report
      *
@@ -303,7 +303,7 @@ class EdgarApiClient extends AbstractApiClient
             return '';
         }
     }
-    
+
     /**
      * Make a raw HTTP request (for file downloads)
      *
@@ -317,21 +317,21 @@ class EdgarApiClient extends AbstractApiClient
     {
         // Wait for a second to comply with SEC's fair access policy
         sleep(1);
-        
+
         $client = HttpClient::create();
-        
+
         $requestOptions = [
             'headers' => $this->getHeaders(),
         ];
-        
+
         if (!empty($params)) {
             $requestOptions['query'] = $params;
         }
-        
+
         if (!empty($options)) {
             $requestOptions = array_merge($requestOptions, $options);
         }
-        
+
         try {
             $response = $client->request($method, $url, $requestOptions);
             return $response->getContent();
@@ -340,7 +340,7 @@ class EdgarApiClient extends AbstractApiClient
             throw $e;
         }
     }
-    
+
     /**
      * Extract sections from a 10-K report
      *
@@ -356,10 +356,10 @@ class EdgarApiClient extends AbstractApiClient
             'item7' => $this->extractSection($content, 'Item 7.', 'Item 7A.', 'Management\'s Discussion and Analysis'),
             'item8' => $this->extractSection($content, 'Item 8.', 'Item 9.', 'Financial Statements and Supplementary Data'),
         ];
-        
+
         return $sections;
     }
-    
+
     /**
      * Extract a section from report content
      *
@@ -376,17 +376,17 @@ class EdgarApiClient extends AbstractApiClient
         if (preg_match($pattern, $content, $matches)) {
             return $matches[0];
         }
-        
+
         // If that fails, try using the title
         $pattern = '/' . preg_quote($fallbackTitle, '/') . '.{0,100}.*?(?=' . preg_quote($endMarker, '/') . ')/s';
         if (preg_match($pattern, $content, $matches)) {
             return $matches[0];
         }
-        
+
         // Return an empty string if section not found
         return '';
     }
-    
+
     /**
      * Summarize a report section using Neuron AI
      *
@@ -400,7 +400,7 @@ class EdgarApiClient extends AbstractApiClient
         // For now, return a placeholder
         return "Summary of {$sectionTitle} would be generated by Neuron AI.";
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -409,7 +409,7 @@ class EdgarApiClient extends AbstractApiClient
         // Not directly applicable for EDGAR API
         return [];
     }
-    
+
     /**
      * Generate mock filing search results
      *
@@ -422,21 +422,21 @@ class EdgarApiClient extends AbstractApiClient
         // Extract ticker from query if possible
         preg_match('/cik:(\d+)/', $query, $matches);
         $cik = $matches[1] ?? '320193'; // Default to Apple's CIK
-        
+
         // Extract form types
         $formTypes = $filters['forms'] ?? ['10-K', '10-Q'];
         $limit = $filters['limit'] ?? 5;
-        
+
         $hits = [];
         $now = time();
         $year = 365 * 24 * 60 * 60;
-        
+
         for ($i = 0; $i < $limit; $i++) {
             $formType = in_array('10-K', $formTypes) ? '10-K' : $formTypes[0];
             $filingDate = date('Y-m-d', $now - ($i * $year));
             $reportDate = date('Y-m-d', $now - ($i * $year) - (90 * 24 * 60 * 60));
             $accessionNumber = date('Y', $now - ($i * $year)) . '0101-' . mt_rand(10000, 99999);
-            
+
             $hits[] = [
                 '_id' => 'mock-' . mt_rand(1000000, 9999999),
                 '_source' => [
@@ -452,7 +452,7 @@ class EdgarApiClient extends AbstractApiClient
                 ]
             ];
         }
-        
+
         return [
             'hits' => [
                 'total' => [
@@ -462,7 +462,7 @@ class EdgarApiClient extends AbstractApiClient
             ]
         ];
     }
-    
+
     /**
      * Get company name from CIK (for mock data)
      */
@@ -476,10 +476,10 @@ class EdgarApiClient extends AbstractApiClient
             '1326801' => 'Meta Platforms, Inc.',
             '1341439' => 'Tesla, Inc.',
         ];
-        
+
         return $companies[$cik] ?? 'Example Corporation';
     }
-    
+
     /**
      * Generate mock 10-K reports for a company
      *
@@ -498,21 +498,21 @@ class EdgarApiClient extends AbstractApiClient
             'META' => ['name' => 'Meta Platforms, Inc.', 'cik' => '0001326801'],
             'TSLA' => ['name' => 'Tesla, Inc.', 'cik' => '0001341439'],
         ];
-        
+
         $companyInfo = $companyMapping[$ticker] ?? ['name' => 'Example Corporation', 'cik' => '0000000000'];
         $cik = str_replace('0000', '', $companyInfo['cik']);
-        
+
         $reports = [];
         $now = time();
         $year = 365 * 24 * 60 * 60;
-        
+
         for ($i = 0; $i < $limit; $i++) {
             $filingDate = date('Y-m-d', $now - ($i * $year));
             $reportDate = date('Y-m-d', $now - ($i * $year) - (60 * 24 * 60 * 60));
             $fiscalYear = date('Y', $now - ($i * $year));
             $accessionNumber = $fiscalYear . '0101-' . mt_rand(10000, 99999);
             $accessionNumberClean = str_replace('-', '', $accessionNumber);
-            
+
             $reports[] = [
                 'id' => 'mock-10k-' . $ticker . '-' . $fiscalYear,
                 'cik' => $cik,
@@ -529,7 +529,7 @@ class EdgarApiClient extends AbstractApiClient
                 'description' => "Annual Report for {$companyInfo['name']} - Fiscal Year ending {$reportDate}",
             ];
         }
-        
+
         return $reports;
     }
 }

@@ -114,20 +114,20 @@ class StockPriceRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = '
-            SELECT 
+            SELECT
                 YEAR(sp.date) as year,
                 MONTH(sp.date) as month,
                 AVG(sp.close) as average_close
-            FROM 
+            FROM
                 stock_price sp
-            WHERE 
+            WHERE
                 sp.company_id = :company_id
                 AND sp.date >= :start_date
                 AND sp.date <= :end_date
                 AND sp.period = :period
-            GROUP BY 
+            GROUP BY
                 YEAR(sp.date), MONTH(sp.date)
-            ORDER BY 
+            ORDER BY
                 YEAR(sp.date) ASC, MONTH(sp.date) ASC
         ';
 
