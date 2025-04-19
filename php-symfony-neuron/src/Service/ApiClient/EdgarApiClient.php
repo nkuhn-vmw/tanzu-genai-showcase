@@ -409,6 +409,155 @@ class EdgarApiClient extends AbstractApiClient
         // Not directly applicable for EDGAR API
         return [];
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function searchCompanies(string $term): array
+    {
+        // For EDGAR, we'll search by company name in the CIK mapping
+        $results = [];
+        $term = strtoupper($term);
+        
+        foreach ($this->cikMapping as $ticker => $company) {
+            if (strpos($ticker, $term) !== false || strpos(strtoupper($company['name']), $term) !== false) {
+                $results[] = [
+                    'symbol' => $ticker,
+                    'name' => $company['name'],
+                    'cik' => $company['cik'],
+                    'exchange' => 'US',  // Default value
+                ];
+            }
+            
+            // Limit to reasonable number of results
+            if (count($results) >= 10) {
+                break;
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getCompanyProfile(string $symbol): array
+    {
+        $symbol = strtoupper($symbol);
+        $cik = $this->getCik($symbol);
+        
+        if (!$cik) {
+            $this->logger->warning('CIK not found for ticker: ' . $symbol);
+            return [
+                'symbol' => $symbol,
+                'name' => 'Unknown Company',
+                'exchange' => 'US',
+                'cik' => '',
+                'industry' => '',
+                'sector' => '',
+                'description' => 'Company information not available',
+                'website' => '',
+                'employees' => 0,
+                'address' => '',
+                'phone' => '',
+            ];
+        }
+        
+        // In a real implementation, we would search SEC data for company info
+        // For now, return mock data
+        return [
+            'symbol' => $symbol,
+            'name' => $this->cikMapping[$symbol]['name'] ?? 'Unknown Company',
+            'exchange' => 'US',
+            'cik' => $cik,
+            'industry' => 'Not available from SEC EDGAR',
+            'sector' => 'Not available from SEC EDGAR',
+            'description' => 'Company description would be extracted from 10-K filings',
+            'website' => '',
+            'employees' => 0,
+            'address' => '',
+            'phone' => '',
+        ];
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getQuote(string $symbol): array
+    {
+        // SEC EDGAR doesn't provide real-time quotes
+        // This would normally be provided by a market data API
+        return [
+            'symbol' => $symbol,
+            'price' => 0.0,
+            'change' => 0.0,
+            'changePercent' => 0.0,
+            'volume' => 0,
+            'previousClose' => 0.0,
+            'open' => 0.0,
+            'high' => 0.0,
+            'low' => 0.0,
+            'marketCap' => 0.0,
+            'pe' => 0.0,
+            'dividend' => 0.0,
+            'dividendYield' => 0.0,
+            'updated' => date('Y-m-d H:i:s'),
+        ];
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getFinancials(string $symbol, string $period = 'quarterly'): array
+    {
+        // Get the latest 10-K/10-Q reports and extract financial data
+        $symbol = strtoupper($symbol);
+        $cik = $this->getCik($symbol);
+        
+        if (!$cik) {
+            return [];
+        }
+        
+        $formType = $period === 'annual' ? '10-K' : '10-Q';
+        $filings = $this->searchFilings("cik:{$cik} AND formType:\"{$formType}\"", [
+            'forms' => [$formType],
+            'limit' => 4  // Get last 4 quarters or years
+        ]);
+        
+        // In a real implementation, we would extract financial data from filings
+        // For now, return empty array
+        return [];
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getCompanyNews(string $symbol, int $limit = 5): array
+    {
+        // SEC EDGAR doesn't provide news articles
+        // This would normally come from a news API
+        return [];
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getExecutives(string $symbol): array
+    {
+        // This data would normally be extracted from DEF 14A (proxy statement) filings
+        // For now, return empty array
+        return [];
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getHistoricalPrices(string $symbol, string $interval = 'daily', string $outputSize = 'compact'): array
+    {
+        // SEC EDGAR doesn't provide historical price data
+        // This would normally come from a market data API
+        return [];
+    }
 
     /**
      * Generate mock filing search results
