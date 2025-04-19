@@ -1,3 +1,6 @@
+# FILE: php-symfony-neuron/config/services.yaml
+# Purpose: Defines application services and default configurations.
+
 parameters:
     llm.api_key: '%env(GENAI_API_KEY)%'
     llm.base_url: '%env(GENAI_BASE_URL)%'
@@ -23,3 +26,9 @@ services:
             $apiKey: '%llm.api_key%'
             $baseUrl: '%llm.base_url%'
             $model: '%llm.model%'
+
+    # No need to define App\Service\ApiClient\LinkedInApiClient here if autowiring is sufficient.
+    # If autowiring fails for $params or $logger, you might need to bring back the explicit definition
+    # in linkedin_api.yaml, but only defining those non-standard arguments.
+
+    # Add other service definitions below...

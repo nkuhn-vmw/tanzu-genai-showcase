@@ -35,7 +35,19 @@ class NewsApiClient extends AbstractApiClient
     }
 
     /**
-     * Get company news from News API
+     * {@inheritdoc}
+     */
+    public function getCompanyNews(string $symbol, int $limit = 5): array
+    {
+        // Default date range is last 30 days
+        $from = new \DateTime('30 days ago');
+        $to = new \DateTime();
+
+        return $this->getCompanyNewsWithDateRange($symbol, $from, $to, $limit);
+    }
+
+    /**
+     * Get company news with date range
      *
      * @param string $symbol Company ticker symbol or name
      * @param \DateTime|null $from Start date for news search
@@ -43,7 +55,7 @@ class NewsApiClient extends AbstractApiClient
      * @param int $limit Maximum number of articles to return
      * @return array News articles
      */
-    public function getCompanyNews(
+    public function getCompanyNewsWithDateRange(
         string $symbol,
         ?\DateTime $from = null,
         ?\DateTime $to = null,
@@ -153,10 +165,96 @@ class NewsApiClient extends AbstractApiClient
         $results = [];
 
         foreach ($symbols as $symbol) {
-            $results[$symbol] = $this->getCompanyNews($symbol, null, null, $limit);
+            $results[$symbol] = $this->getCompanyNewsWithDateRange($symbol, null, null, $limit);
         }
 
         return $results;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function searchCompanies(string $term): array
+    {
+        // News API doesn't provide company search functionality
+        // Return empty array or mock data
+        return [];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getCompanyProfile(string $symbol): array
+    {
+        // News API doesn't provide company profiles
+        // Return empty or mock profile
+        return [
+            'symbol' => $symbol,
+            'name' => ucfirst(strtolower($symbol)),
+            'exchange' => 'N/A',
+            'industry' => 'N/A',
+            'sector' => 'N/A',
+            'description' => 'Profile not available from News API',
+            'website' => '',
+            'employees' => 0,
+            'address' => '',
+            'phone' => '',
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getQuote(string $symbol): array
+    {
+        // News API doesn't provide stock quotes
+        // Return empty or mock quote
+        return [
+            'symbol' => $symbol,
+            'price' => 0.0,
+            'change' => 0.0,
+            'changePercent' => 0.0,
+            'volume' => 0,
+            'previousClose' => 0.0,
+            'open' => 0.0,
+            'high' => 0.0,
+            'low' => 0.0,
+            'marketCap' => 0.0,
+            'pe' => 0.0,
+            'dividend' => 0.0,
+            'dividendYield' => 0.0,
+            'updated' => date('Y-m-d H:i:s'),
+        ];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getFinancials(string $symbol, string $period = 'quarterly'): array
+    {
+        // News API doesn't provide financial data
+        // Return empty array
+        return [];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getExecutives(string $symbol): array
+    {
+        // News API doesn't provide executive data
+        // Return empty array
+        return [];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getHistoricalPrices(string $symbol, string $interval = 'daily', string $outputSize = 'compact'): array
+    {
+        // News API doesn't provide historical price data
+        // Return empty array
+        return [];
     }
 
     /**

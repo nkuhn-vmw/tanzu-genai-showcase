@@ -1,3 +1,6 @@
+# FILE: php-symfony-neuron/config/packages/linkedin_api.yaml
+# Purpose: Defines configuration specific to the LinkedIn API client.
+
 parameters:
     linkedin_api.client_id: '%env(resolve:LINKEDIN_CLIENT_ID)%'
     linkedin_api.client_secret: '%env(resolve:LINKEDIN_CLIENT_SECRET)%'
@@ -5,8 +8,10 @@ parameters:
 
 services:
     # Configure the LinkedIn API client
-    App\Service\ApiClient\LinkedInApiClient:
-        arguments:
-            $params: '@parameter_bag'
-            $logger: '@logger'
-            $session: '@session'
+    # Rely on autowiring for $params, $logger, and $requestStack
+    # Ensure these services are available/autowirable in your container
+    App\Service\ApiClient\LinkedInApiClient: ~
+        # arguments: # Removed explicit arguments, relying on autowiring
+            # $params: '@parameter_bag' # Usually autowirable
+            # $logger: '@logger'       # Usually autowirable
+            # $requestStack: '@request_stack' # Usually autowirable
