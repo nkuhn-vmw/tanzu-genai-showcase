@@ -219,7 +219,7 @@ class NewsApiClient extends AbstractApiClient
             [
                 'title' => $companyName . ' Reports Strong Quarterly Growth',
                 'description' => $companyName . ' announced financial results for its fiscal quarter, exceeding analyst expectations with revenue growth of 15% year-over-year.',
-                'content' => $companyName . ' announced financial results for its fiscal quarter today, reporting revenue of $XX billion, an increase of 15% year-over-year. The company also reported earnings per share of $X.XX, above the consensus estimate of $X.XX. "We're pleased with our performance this quarter," said the CEO of ' . $companyName . '. "Our continued investment in innovation is driving growth across all business segments."',
+                'content' => $companyName . ' announced financial results for its fiscal quarter today, reporting revenue of $XX billion, an increase of 15% year-over-year. The company also reported earnings per share of $X.XX, above the consensus estimate of $X.XX. "We\'re pleased with our performance this quarter," said the CEO of ' . $companyName . '. "Our continued investment in innovation is driving growth across all business segments."',
                 'url' => 'https://example.com/business/' . strtolower(str_replace(' ', '-', $companyName)) . '-earnings',
                 'urlToImage' => 'https://example.com/images/finance-chart.jpg',
                 'source' => ['id' => null, 'name' => 'Financial Times'],
