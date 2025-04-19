@@ -20,6 +20,25 @@ class NeuronAiService
     }
 
     /**
+     * Extract JSON from a text response that might contain additional text
+     *
+     * @param string $text The text that might contain JSON
+     * @return string The extracted JSON
+     */
+    private function extractJsonFromText(string $text): string
+    {
+        // Look for JSON object pattern ({...})
+        if (preg_match('/\{(?:[^{}]|(?R))*\}/s', $text, $matches)) {
+            return $matches[0];
+        }
+
+        // Remove markdown code block markers if present
+        $text = preg_replace('/```(?:json)?\s*(.*?)\s*```/s', '$1', $text);
+
+        return trim($text);
+    }
+
+    /**
      * Generate a text completion from the LLM
      *
      * @param string $prompt The prompt to send to the LLM
@@ -119,34 +138,46 @@ class NeuronAiService
     {
         $systemPrompt = "You are an AI assistant that specializes in company research. " .
             "Provide accurate, factual information about companies. " .
-            "Focus on company overview, industry, sector, headquarters, and a brief description.";
+            "Focus on company overview, industry, sector, headquarters, and a brief description. " .
+            "Your response must be valid JSON format without any additional text.";
 
         $userPrompt = "Provide information about {$companyName} in JSON format with the following fields: " .
             "name, industry, sector, headquarters, description. " .
-            "Keep the description concise (2-3 sentences).";
+            "Keep the description concise (2-3 sentences). " .
+            "Return only valid JSON, without any explanation or additional text.";
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userPrompt]
         ];
 
-        $response = $this->generateChatCompletion($messages, [
+        // Include response_format for models that support it, but don't depend on it
+        $options = [
             'temperature' => 0.2,
-            'response_format' => ['type' => 'json_object']
-        ]);
+            'response_format' => ['type' => 'json_object'] // Will be ignored by models that don't support it
+        ];
+
+        $response = $this->generateChatCompletion($messages, $options);
+
+        // Extract JSON in case there's additional text in the response
+        $jsonResponse = $this->extractJsonFromText($response);
 
         try {
-            $data = json_decode($response, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response');
-            }
+            // First try with the extracted JSON
+            $data = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
             return $data;
         } catch (\Exception $e) {
-            // If JSON parsing fails, return a structured error response
-            return [
-                'name' => $companyName,
-                'error' => 'Could not generate company information: ' . $e->getMessage()
-            ];
+            // If parsing fails, try once more with the full response
+            try {
+                $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                return $data;
+            } catch (\Exception $innerE) {
+                // If JSON parsing fails, return a structured error response
+                return [
+                    'name' => $companyName,
+                    'error' => 'Could not generate company information: ' . $e->getMessage()
+                ];
+            }
         }
     }
 
@@ -161,36 +192,48 @@ class NeuronAiService
     {
         $systemPrompt = "You are an AI assistant that specializes in financial analysis. " .
             "Provide detailed analysis of company financial reports. Focus on key metrics, " .
-            "trends, and important insights from financial statements.";
+            "trends, and important insights from financial statements. " .
+            "Your response must be valid JSON format without any additional text.";
 
         $userPrompt = "Analyze the most recent {$reportType} financial report for {$companyName}. " .
             "Structure your analysis in JSON format with the following fields: " .
             "reportType, reportDate, revenue, netIncome, eps, ebitda, highlights, risks, " .
-            "and source (indicate that this is AI-generated analysis).";
+            "and source (indicate that this is AI-generated analysis). " .
+            "Return only valid JSON, without any explanation or additional text.";
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userPrompt]
         ];
 
-        $response = $this->generateChatCompletion($messages, [
+        // Include response_format for models that support it, but don't depend on it
+        $options = [
             'temperature' => 0.3,
             'max_tokens' => 1500,
-            'response_format' => ['type' => 'json_object']
-        ]);
+            'response_format' => ['type' => 'json_object'] // Will be ignored by models that don't support it
+        ];
+
+        $response = $this->generateChatCompletion($messages, $options);
+
+        // Extract JSON in case there's additional text in the response
+        $jsonResponse = $this->extractJsonFromText($response);
 
         try {
-            $data = json_decode($response, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response');
-            }
+            // First try with the extracted JSON
+            $data = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
             return $data;
         } catch (\Exception $e) {
-            // If JSON parsing fails, return a structured error response
-            return [
-                'reportType' => $reportType,
-                'error' => 'Could not generate financial analysis: ' . $e->getMessage()
-            ];
+            // If parsing fails, try once more with the full response
+            try {
+                $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                return $data;
+            } catch (\Exception $innerE) {
+                // If JSON parsing fails, return a structured error response
+                return [
+                    'reportType' => $reportType,
+                    'error' => 'Could not generate financial analysis: ' . $e->getMessage()
+                ];
+            }
         }
     }
 
@@ -206,36 +249,48 @@ class NeuronAiService
     {
         $systemPrompt = "You are an AI assistant that specializes in executive leadership analysis. " .
             "Provide detailed profiles of company executives based on publicly available information. " .
-            "Focus on professional background, leadership style, and achievements.";
+            "Focus on professional background, leadership style, and achievements. " .
+            "Your response must be valid JSON format without any additional text.";
 
         $userPrompt = "Create a profile for {$executiveName}, {$title} of {$companyName}. " .
             "Structure your analysis in JSON format with the following fields: " .
-            "name, title, biography, education, previousCompanies, achievements, leadership.";
+            "name, title, biography, education, previousCompanies, achievements, leadership. " .
+            "Return only valid JSON, without any explanation or additional text.";
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userPrompt]
         ];
 
-        $response = $this->generateChatCompletion($messages, [
+        // Include response_format for models that support it, but don't depend on it
+        $options = [
             'temperature' => 0.4,
             'max_tokens' => 1200,
-            'response_format' => ['type' => 'json_object']
-        ]);
+            'response_format' => ['type' => 'json_object'] // Will be ignored by models that don't support it
+        ];
+
+        $response = $this->generateChatCompletion($messages, $options);
+
+        // Extract JSON in case there's additional text in the response
+        $jsonResponse = $this->extractJsonFromText($response);
 
         try {
-            $data = json_decode($response, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response');
-            }
+            // First try with the extracted JSON
+            $data = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
             return $data;
         } catch (\Exception $e) {
-            // If JSON parsing fails, return a structured error response
-            return [
-                'name' => $executiveName,
-                'title' => $title,
-                'error' => 'Could not generate executive profile: ' . $e->getMessage()
-            ];
+            // If parsing fails, try once more with the full response
+            try {
+                $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                return $data;
+            } catch (\Exception $innerE) {
+                // If JSON parsing fails, return a structured error response
+                return [
+                    'name' => $executiveName,
+                    'title' => $title,
+                    'error' => 'Could not generate executive profile: ' . $e->getMessage()
+                ];
+            }
         }
     }
 
@@ -250,36 +305,48 @@ class NeuronAiService
     {
         $systemPrompt = "You are an AI assistant that specializes in competitive analysis. " .
             "Provide detailed comparison between companies in the same industry or market. " .
-            "Focus on strengths, weaknesses, market position, and strategic initiatives.";
+            "Focus on strengths, weaknesses, market position, and strategic initiatives. " .
+            "Your response must be valid JSON format without any additional text.";
 
         $userPrompt = "Compare {$companyName} with its competitor {$competitorName}. " .
             "Structure your analysis in JSON format with the following fields: " .
             "competitorName, overview, strengths, weaknesses, marketShare, productComparison, " .
-            "financialComparison, strategicInitiatives.";
+            "financialComparison, strategicInitiatives. " .
+            "Return only valid JSON, without any explanation or additional text.";
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userPrompt]
         ];
 
-        $response = $this->generateChatCompletion($messages, [
+        // Include response_format for models that support it, but don't depend on it
+        $options = [
             'temperature' => 0.4,
             'max_tokens' => 1500,
-            'response_format' => ['type' => 'json_object']
-        ]);
+            'response_format' => ['type' => 'json_object'] // Will be ignored by models that don't support it
+        ];
+
+        $response = $this->generateChatCompletion($messages, $options);
+
+        // Extract JSON in case there's additional text in the response
+        $jsonResponse = $this->extractJsonFromText($response);
 
         try {
-            $data = json_decode($response, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response');
-            }
+            // First try with the extracted JSON
+            $data = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
             return $data;
         } catch (\Exception $e) {
-            // If JSON parsing fails, return a structured error response
-            return [
-                'competitorName' => $competitorName,
-                'error' => 'Could not generate competitor analysis: ' . $e->getMessage()
-            ];
+            // If parsing fails, try once more with the full response
+            try {
+                $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+                return $data;
+            } catch (\Exception $innerE) {
+                // If JSON parsing fails, return a structured error response
+                return [
+                    'competitorName' => $competitorName,
+                    'error' => 'Could not generate competitor analysis: ' . $e->getMessage()
+                ];
+            }
         }
     }
 
@@ -295,30 +362,36 @@ class NeuronAiService
         $systemPrompt = "You are an AI assistant that specializes in company research and analysis. " .
             "Provide detailed, structured research reports about companies. " .
             "Your reports should be factual, balanced, and informative, highlighting both " .
-            "strengths and challenges facing the company.";
+            "strengths and challenges facing the company. " .
+            "Your response must be valid JSON format without any additional text.";
 
         $userPrompt = "Create a {$reportType} research report for {$companyName}. " .
             "Structure your report in JSON format with the following sections: " .
             "title, executiveSummary, companyOverview, industryAnalysis, financialAnalysis, " .
             "competitiveAnalysis, swotAnalysis, investmentHighlights, risksAndChallenges, conclusion. " .
-            "Each section should be detailed but concise.";
+            "Each section should be detailed but concise. " .
+            "Return only valid JSON, without any explanation or additional text.";
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt],
             ['role' => 'user', 'content' => $userPrompt]
         ];
 
-        $response = $this->generateChatCompletion($messages, [
+        // Include response_format for models that support it, but don't depend on it
+        $options = [
             'temperature' => 0.5,
             'max_tokens' => 4000,
-            'response_format' => ['type' => 'json_object']
-        ]);
+            'response_format' => ['type' => 'json_object'] // Will be ignored by models that don't support it
+        ];
+
+        $response = $this->generateChatCompletion($messages, $options);
+
+        // Extract JSON in case there's additional text in the response
+        $jsonResponse = $this->extractJsonFromText($response);
 
         try {
-            $data = json_decode($response, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response');
-            }
+            // First try with the extracted JSON
+            $data = json_decode($jsonResponse, true, 512, JSON_THROW_ON_ERROR);
 
             // Add metadata
             $data['reportType'] = $reportType;
@@ -326,12 +399,23 @@ class NeuronAiService
 
             return $data;
         } catch (\Exception $e) {
-            // If JSON parsing fails, return a structured error response
-            return [
-                'title' => "{$reportType} Report for {$companyName}",
-                'reportType' => $reportType,
-                'error' => 'Could not generate research report: ' . $e->getMessage()
-            ];
+            // If parsing fails, try once more with the full response
+            try {
+                $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+
+                // Add metadata
+                $data['reportType'] = $reportType;
+                $data['generatedBy'] = 'Neuron AI';
+
+                return $data;
+            } catch (\Exception $innerE) {
+                // If JSON parsing fails, return a structured error response
+                return [
+                    'title' => "{$reportType} Report for {$companyName}",
+                    'reportType' => $reportType,
+                    'error' => 'Could not generate research report: ' . $e->getMessage()
+                ];
+            }
         }
     }
 }

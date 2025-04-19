@@ -122,11 +122,13 @@ class SecFilingController extends AbstractController
         // If we don't have the content yet, download it
         if (!$secFiling->getContent() && $secFiling->getTextUrl()) {
             try {
-                $content = $secFiling->getContent();
-                $secFiling->setContent($content);
-                $entityManager = $this->getDoctrine()->getManager();
-                $entityManager->persist($secFiling);
-                $entityManager->flush();
+                // Use the EdgarApiClient through the SecFilingService to download content
+                $content = $secFilingService->processSecFiling($secFiling);
+
+                if (!$content) {
+                    $this->addFlash('error', 'Failed to download filing content');
+                    return $this->redirectToRoute('secfiling_show', ['id' => $secFiling->getId()]);
+                }
             } catch (\Exception $e) {
                 $this->addFlash('error', 'Failed to download filing content: ' . $e->getMessage());
                 return $this->redirectToRoute('secfiling_show', ['id' => $secFiling->getId()]);

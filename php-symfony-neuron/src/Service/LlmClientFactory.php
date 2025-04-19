@@ -90,19 +90,22 @@ class LlmClientFactory
     private function parseVcapServices(): array
     {
         $vcapServices = [];
-        $vcapServicesJson = $_ENV['VCAP_SERVICES'] ?? null;
+        // Check both $_SERVER and $_ENV to be thorough
+        $vcapServicesJson = $_SERVER['VCAP_SERVICES'] ?? $_ENV['VCAP_SERVICES'] ?? null;
 
         if (!$vcapServicesJson) {
             return $vcapServices;
         }
 
         try {
-            $services = json_decode($vcapServicesJson, true);
+            // Use JSON_THROW_ON_ERROR for explicit error handling
+            $services = json_decode($vcapServicesJson, true, 512, JSON_THROW_ON_ERROR);
 
             // Look for GenAI service
             foreach ($services as $serviceName => $serviceInstances) {
                 // Look for service names containing 'genai' or 'llm'
-                if (strpos(strtolower($serviceName), 'genai') !== false || strpos(strtolower($serviceName), 'llm') !== false) {
+                if (strpos(strtolower($serviceName), 'genai') !== false ||
+                    strpos(strtolower($serviceName), 'llm') !== false) {
                     // Get the first instance (we expect only one binding)
                     if (!empty($serviceInstances[0]['credentials'])) {
                         $credentials = $serviceInstances[0]['credentials'];
@@ -114,9 +117,12 @@ class LlmClientFactory
                     }
                 }
             }
+        } catch (\JsonException $e) {
+            // Log the error but don't crash
+            error_log('Error parsing VCAP_SERVICES JSON: ' . $e->getMessage());
         } catch (\Exception $e) {
             // Log the error but don't crash
-            error_log('Error parsing VCAP_SERVICES: ' . $e->getMessage());
+            error_log('Error processing VCAP_SERVICES: ' . $e->getMessage());
         }
 
         return $vcapServices;
