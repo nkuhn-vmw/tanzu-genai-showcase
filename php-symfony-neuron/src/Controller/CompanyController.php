@@ -44,25 +44,25 @@ class CompanyController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $searchTerm = $form->get('searchTerm')->getData();
-            
+
             // First search in local database
             $dbResults = $companyRepository->findBySearchCriteria($searchTerm);
-            
+
             // If no local results or explicitly searching by ticker
             if (count($dbResults) === 0 || preg_match('/^[A-Za-z]{1,5}$/', $searchTerm)) {
                 try {
                     // Search in external APIs
                     $apiResults = $stockDataService->searchCompanies($searchTerm);
-                    
+
                     // Filter out companies that already exist in DB results
                     $existingSymbols = array_map(function($company) {
                         return $company->getTickerSymbol();
                     }, $dbResults);
-                    
+
                     $apiResults = array_filter($apiResults, function($result) use ($existingSymbols) {
                         return !in_array($result['symbol'], $existingSymbols);
                     });
-                    
+
                 } catch (\Exception $e) {
                     // Log error but continue with DB results
                     $this->addFlash('warning', 'Could not fetch additional results from external sources');
@@ -77,18 +77,18 @@ class CompanyController extends AbstractController
             'searchTerm' => $searchTerm,
         ]);
     }
-    
+
     #[Route('/import/{symbol}', name: 'company_import', methods: ['POST'])]
     public function importFromApi(string $symbol, StockDataService $stockDataService): Response
     {
         try {
             $company = $stockDataService->importCompany($symbol);
             $this->addFlash('success', 'Company successfully imported: ' . $company->getName());
-            
+
             return $this->redirectToRoute('company_show', ['id' => $company->getId()]);
         } catch (\Exception $e) {
             $this->addFlash('error', 'Error importing company: ' . $e->getMessage());
-            
+
             return $this->redirectToRoute('company_search');
         }
     }
@@ -171,30 +171,30 @@ class CompanyController extends AbstractController
             'financialData' => $company->getFinancialData(),
         ]);
     }
-    
+
     #[Route('/{id}/news', name: 'company_news', methods: ['GET'])]
     public function news(Company $company, Request $request, StockDataService $stockDataService): Response
     {
         $limit = $request->query->getInt('limit', 10);
         $days = $request->query->getInt('days', 30);
-        
+
         // Get news from the service
         $companyNews = $stockDataService->getCompanyNews($company->getTickerSymbol(), $limit);
-        
+
         // Get business headlines for comparison/context
         $marketNews = [];
         try {
-            $newsApiClient = $this->getParameter('news_api.api_key') 
+            $newsApiClient = $this->getParameter('news_api.api_key')
                 ? $this->container->get('App\Service\ApiClient\NewsApiClient')
                 : null;
-                
+
             if ($newsApiClient) {
                 $marketNews = $newsApiClient->getTopHeadlines('business', 'us', 5);
             }
         } catch (\Exception $e) {
             $this->addFlash('warning', 'Could not retrieve market headlines: ' . $e->getMessage());
         }
-        
+
         return $this->render('company/news.html.twig', [
             'company' => $company,
             'news' => $companyNews,
@@ -203,19 +203,19 @@ class CompanyController extends AbstractController
             'days' => $days,
         ]);
     }
-    
+
     #[Route('/{id}/analyst-ratings', name: 'company_analyst_ratings', methods: ['GET'])]
     public function analystRatings(Company $company, Request $request, StockDataService $stockDataService): Response
     {
         // Get analyst ratings data
         $ratingsData = $stockDataService->getAnalystRatings($company->getTickerSymbol());
-        
+
         // Get consensus data
         $consensusData = $stockDataService->getAnalystConsensus($company->getTickerSymbol());
-        
+
         // Get current stock price for context
         $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
-        
+
         return $this->render('company/analyst_ratings.html.twig', [
             'company' => $company,
             'ratings' => $ratingsData['ratings'] ?? [],
@@ -223,18 +223,18 @@ class CompanyController extends AbstractController
             'currentPrice' => $quote['price'] ?? 0,
         ]);
     }
-    
+
     #[Route('/{id}/insider-trading', name: 'company_insider_trading', methods: ['GET'])]
     public function insiderTrading(Company $company, Request $request, StockDataService $stockDataService): Response
     {
         $limit = $request->query->getInt('limit', 20);
-        
+
         // Get insider trading data
         $insiderData = $stockDataService->getInsiderTrading($company->getTickerSymbol(), $limit);
-        
+
         // Get current stock quote for context
         $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
-        
+
         return $this->render('company/insider_trading.html.twig', [
             'company' => $company,
             'insiderData' => $insiderData,
@@ -242,30 +242,30 @@ class CompanyController extends AbstractController
             'limit' => $limit
         ]);
     }
-    
+
     #[Route('/{id}/institutional-ownership', name: 'company_institutional_ownership', methods: ['GET'])]
     public function institutionalOwnership(Company $company, Request $request, StockDataService $stockDataService): Response
     {
         $limit = $request->query->getInt('limit', 20);
-        
+
         // Get institutional ownership data
         $ownershipData = $stockDataService->getInstitutionalOwnership($company->getTickerSymbol(), $limit);
-        
+
         // Get current stock quote and total shares outstanding (if available)
         $quote = $stockDataService->getStockQuote($company->getTickerSymbol());
         $sharesOutstanding = $quote['sharesOutstanding'] ?? 0;
-        
+
         // Calculate total institutional ownership percentage
         $totalShares = 0;
         foreach ($ownershipData as $institution) {
             $totalShares += $institution['sharesHeld'] ?? 0;
         }
-        
+
         $institutionalOwnershipPercent = 0;
         if ($sharesOutstanding > 0) {
             $institutionalOwnershipPercent = ($totalShares / $sharesOutstanding) * 100;
         }
-        
+
         return $this->render('company/institutional_ownership.html.twig', [
             'company' => $company,
             'ownershipData' => $ownershipData,
@@ -274,16 +274,16 @@ class CompanyController extends AbstractController
             'limit' => $limit
         ]);
     }
-    
+
     #[Route('/{id}/stockprices', name: 'company_stockprices', methods: ['GET'])]
     public function stockPrices(
-        Company $company, 
-        Request $request, 
+        Company $company,
+        Request $request,
         StockDataService $stockDataService
     ): Response {
         $interval = $request->query->get('interval', 'daily');
         $period = $request->query->get('period', '3m');
-        
+
         // Map period to limit
         $limit = match($period) {
             '1m' => 30,
@@ -293,20 +293,20 @@ class CompanyController extends AbstractController
             '5y' => 1825,
             default => 90,
         };
-        
+
         // Get repository for filtering and specialized queries
         $repository = $this->getDoctrine()->getRepository(\App\Entity\StockPrice::class);
-        
+
         // Check if we need to import data
         $latestPrice = $repository->findMostRecent($company, $interval);
         $now = new \DateTime();
         $needsUpdate = false;
-        
+
         if (!$latestPrice) {
             $needsUpdate = true;
         } else {
             $daysDiff = $now->diff($latestPrice->getDate())->days;
-            
+
             // If data is older than 1 day for daily, 7 days for weekly, 30 days for monthly, update
             $updateThreshold = match($interval) {
                 'daily' => 1,
@@ -314,12 +314,12 @@ class CompanyController extends AbstractController
                 'monthly' => 30,
                 default => 1,
             };
-            
+
             if ($daysDiff > $updateThreshold) {
                 $needsUpdate = true;
             }
         }
-        
+
         // Import new data if needed
         if ($needsUpdate) {
             $importLimit = match($interval) {
@@ -328,14 +328,14 @@ class CompanyController extends AbstractController
                 'monthly' => 120, // 10 years of monthly data
                 default => 365,
             };
-            
+
             $stockDataService->importHistoricalPrices($company, $interval, $importLimit);
         }
-        
+
         // Get date range based on selected period
         $endDate = new \DateTime();
         $startDate = clone $endDate;
-        
+
         switch ($period) {
             case '1m':
                 $startDate->modify('-1 month');
@@ -355,10 +355,10 @@ class CompanyController extends AbstractController
             default:
                 $startDate->modify('-3 months');
         }
-        
+
         // Get prices for the selected date range
         $prices = $repository->findByDateRange($company, $startDate, $endDate, $interval);
-        
+
         // Prepare data for charts
         $chartData = [
             'dates' => [],
@@ -371,10 +371,10 @@ class CompanyController extends AbstractController
             'volumes' => [],
             'changes' => [],
         ];
-        
+
         // Reverse to get chronological order
         $prices = array_reverse($prices);
-        
+
         foreach ($prices as $price) {
             $chartData['dates'][] = $price->getDate()->format('Y-m-d');
             $chartData['prices']['close'][] = $price->getClose();
@@ -384,10 +384,10 @@ class CompanyController extends AbstractController
             $chartData['volumes'][] = $price->getVolume();
             $chartData['changes'][] = $price->getChangePercent();
         }
-        
+
         // Calculate additional metrics based on the data
         $metrics = [];
-        
+
         if (!empty($prices)) {
             // Latest price data
             $latestPrice = $prices[count($prices) - 1];
@@ -395,13 +395,13 @@ class CompanyController extends AbstractController
             $metrics['latestChange'] = $latestPrice->getChange();
             $metrics['latestChangePercent'] = $latestPrice->getChangePercent();
             $metrics['latestDate'] = $latestPrice->getDate()->format('Y-m-d');
-            
+
             // Historical price range
             $highValues = array_map(function($price) { return $price->getHigh(); }, $prices);
             $lowValues = array_map(function($price) { return $price->getLow(); }, $prices);
             $metrics['periodHigh'] = max($highValues);
             $metrics['periodLow'] = min($lowValues);
-            
+
             // 50-day and 200-day moving averages (if daily data)
             if ($interval === 'daily' && count($prices) >= 50) {
                 $last50Prices = array_slice($prices, -50);
@@ -410,7 +410,7 @@ class CompanyController extends AbstractController
                     $ma50Sum += $price->getClose();
                 }
                 $metrics['ma50'] = $ma50Sum / 50;
-                
+
                 if (count($prices) >= 200) {
                     $last200Prices = array_slice($prices, -200);
                     $ma200Sum = 0;
@@ -420,12 +420,12 @@ class CompanyController extends AbstractController
                     $metrics['ma200'] = $ma200Sum / 200;
                 }
             }
-            
+
             // Calculate average daily volume
             $volumes = array_map(function($price) { return $price->getVolume(); }, $prices);
             $metrics['avgVolume'] = array_sum($volumes) / count($volumes);
         }
-        
+
         return $this->render('company/stock_prices.html.twig', [
             'company' => $company,
             'chartData' => $chartData,
@@ -525,7 +525,7 @@ class CompanyController extends AbstractController
         if ($linkedInService !== null) {
             $linkedInEnabled = true;
         }
-        
+
         return $this->render('company/leadership.html.twig', [
             'company' => $company,
             'executives' => $company->getExecutiveProfiles(),
@@ -674,4 +674,24 @@ class CompanyController extends AbstractController
             $competitorAnalysis->setSwotStrengths("Strong brand recognition\nInnovative product portfolio\nEfficient supply chain\nStrong financial position\nGlobal market presence");
             $competitorAnalysis->setSwotWeaknesses("High production costs\nFocus on mature markets\nLimited product diversification\nDependence on specific suppliers\nRegulatory compliance challenges");
             $competitorAnalysis->setSwotOpportunities("Emerging market expansion\nNew product development\nStrategic acquisitions\nGrowing demand for eco-friendly solutions\nE-commerce channel growth");
-            $competitorAnalysis->setSwotThreats("Intense competition\nChanging consumer preferences\nRegulatory changes\nSupply chain disruptions\nEconomic down
+            $competitorAnalysis->setSwotThreats("Intense competition\nChanging consumer preferences\nRegulatory changes\nSupply chain disruptions\nEconomic downturn");
+
+            // Store competitor details
+            foreach ($competitors as $competitor) {
+                $competitorDetail = new \App\Entity\CompetitorDetail();
+                $competitorDetail->setCompetitorAnalysis($competitorAnalysis);
+                $competitorDetail->setName($competitor['name']);
+                $competitorDetail->setMarketShare($competitor['share']);
+                $entityManager->persist($competitorDetail);
+            }
+
+            // Persist the analysis
+            $entityManager->persist($competitorAnalysis);
+            $entityManager->flush();
+
+            return $this->json(['success' => true]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+}
