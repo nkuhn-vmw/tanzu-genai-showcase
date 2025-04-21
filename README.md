@@ -59,8 +59,6 @@ Feel free to add new tech stack examples or improve existing ones.
 
 Still hungry? Here are some links to other project samples to whet your appetite.
 
-## Found Elsewhere
-
 | Link | Description | Languages and Frameworks |
 |------|-------------|--------------------------|
 | 🛍️[![Acme Fitness](https://img.shields.io/badge/-Acme_Fitness-blue?style=flat-square&logo=java)](https://github.com/cpage-pivotal/acme-fitness-store) | An online retail store application that demonstrates Spring AI integration with microservices architecture for product recommendations and enhanced shopping experiences. | Java, Spring Boot, Spring AI, Microservices |
