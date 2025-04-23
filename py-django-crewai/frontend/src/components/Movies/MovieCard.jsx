@@ -1,6 +1,10 @@
 import React from 'react';
+import { useAppContext } from '../../context/AppContext';
 
 function MovieCard({ movie, isSelected, onClick, isFirstRun }) {
+  // Check if the application is in a processing state
+  const { checkIsProcessing } = useAppContext();
+  const isProcessing = checkIsProcessing();
   // Format the release year if available
   let releaseYear = '';
   if (movie.release_date) {
@@ -35,7 +39,9 @@ function MovieCard({ movie, isSelected, onClick, isFirstRun }) {
       className={`movie-card ${isSelected ? 'selected' : ''}`}
       data-movie-id={movie.id}
       data-movie-title={movie.title}
-      onClick={onClick}
+      onClick={isProcessing ? undefined : onClick}
+      style={isProcessing ? { cursor: 'not-allowed', opacity: isSelected ? 1 : 0.7 } : {}}
+      title={isProcessing ? "Can't select movie while processing a request" : movie.title}
     >
       {/* Current Release Badge */}
       {isFirstRun && movie.is_current_release && (

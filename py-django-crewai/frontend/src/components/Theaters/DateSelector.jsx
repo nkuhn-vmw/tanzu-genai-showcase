@@ -2,7 +2,10 @@ import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 
 function DateSelector() {
-  const { selectedDateIndex, setSelectedDateIndex } = useAppContext();
+  const { selectedDateIndex, setSelectedDateIndex, checkIsProcessing } = useAppContext();
+
+  // Check if the application is in a processing state
+  const isProcessing = checkIsProcessing();
 
   // Generate dates for the next 4 days
   const dates = Array.from({ length: 4 }, (_, i) => {
@@ -25,8 +28,14 @@ function DateSelector() {
             type="button"
             className={`date-button ${index === selectedDateIndex ? 'active' : ''}`}
             data-date-index={index}
-            onClick={() => setSelectedDateIndex(index)}
-            title={fullDate}
+            onClick={() => {
+              if (!isProcessing) {
+                setSelectedDateIndex(index);
+              }
+            }}
+            disabled={isProcessing}
+            style={isProcessing ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+            title={isProcessing ? "Can't change date while processing a request" : fullDate}
           >
             <div className="date-button-content">
               <div className="day-name">{dayName}</div>

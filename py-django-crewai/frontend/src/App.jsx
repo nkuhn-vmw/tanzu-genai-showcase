@@ -37,7 +37,10 @@ const queryClient = new QueryClient({
 
 // Main App component
 function AppContent() {
-  const { activeTab, switchTab } = useAppContext();
+  const { activeTab, switchTab, checkIsProcessing } = useAppContext();
+
+  // Check if the application is in a processing state
+  const isProcessing = checkIsProcessing();
 
   return (
     <>
@@ -49,7 +52,22 @@ function AppContent() {
               <span className="ms-3 d-none d-md-inline">Recommendations and showtimes for movie enthusiasts</span>
             </div>
             <div className="col-auto">
-              <a href="/reset/" className="btn btn-outline-light btn-sm">
+              <a
+                href="/reset/"
+                className="btn btn-outline-light btn-sm"
+                style={isProcessing ? {
+                  opacity: 0.7,
+                  cursor: 'not-allowed',
+                  pointerEvents: 'none'
+                } : {}}
+                title={isProcessing ? "Can't start a new chat while processing a request" : ""}
+                onClick={(e) => {
+                  if (isProcessing) {
+                    e.preventDefault();
+                    return false;
+                  }
+                }}
+              >
                 <i className="bi bi-arrow-repeat me-1"></i>New Chat
               </a>
             </div>
@@ -64,6 +82,9 @@ function AppContent() {
               <button
                 className={`nav-link ${activeTab === 'first-run' ? 'active' : ''}`}
                 onClick={() => switchTab('first-run')}
+                disabled={isProcessing}
+                style={isProcessing ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                title={isProcessing ? "Can't switch tabs while processing a request" : ""}
               >
                 <i className="bi bi-film me-2"></i>First Run Movies
               </button>
@@ -72,6 +93,9 @@ function AppContent() {
               <button
                 className={`nav-link ${activeTab === 'casual-viewing' ? 'active' : ''}`}
                 onClick={() => switchTab('casual-viewing')}
+                disabled={isProcessing}
+                style={isProcessing ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                title={isProcessing ? "Can't switch tabs while processing a request" : ""}
               >
                 <i className="bi bi-collection-play me-2"></i>Casual Viewing
               </button>

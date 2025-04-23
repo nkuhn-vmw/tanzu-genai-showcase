@@ -420,12 +420,23 @@ def poll_movie_recommendations(request):
         # Set a flag to prevent concurrent processing
         setattr(request, '_processing_casual_query', True)
 
+        # Log the conversation mode to help with debugging
+        logger.info(f"Processing query in poll_movie_recommendations with conversation mode: {conversation.mode}")
+
+        # Ensure we're explicitly setting first_run_mode to False for casual mode
+        first_run_mode = False
+        if conversation.mode != 'casual':
+            logger.warning(f"Unexpected conversation mode in casual polling: {conversation.mode}. Forcing casual mode.")
+            # Update the conversation mode if it's not set correctly
+            conversation.mode = 'casual'
+            conversation.save()
+
         try:
-            # Process the query
+            # Process the query with explicit casual mode (first_run_mode=False)
             response_data = movie_crew_manager.process_query(
                 query=user_message_text,
                 conversation_history=conversation_history,
-                first_run_mode=conversation.mode == 'first_run'
+                first_run_mode=False  # Explicitly set to False for casual mode
             )
 
             # Save bot response

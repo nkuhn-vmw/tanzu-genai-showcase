@@ -261,12 +261,12 @@ class TMDBService:
             # If we have posters, return the first one (usually the primary poster)
             if images and 'posters' in images and images['posters']:
                 poster = images['posters'][0]  # Use the first poster
-                return f"{self.IMAGE_BASE_URL}{size_path}{poster['file_path']}"
+                return f"{self.IMAGE_BASE_URL}{size_path}{poster['file_path']}?language=en"
 
             # If no posters in images response, try the movie details which should have a poster_path
             movie = self.get_movie_details(movie_id)
             if movie and 'poster_path' in movie and movie['poster_path']:
-                return f"{self.IMAGE_BASE_URL}{size_path}{movie['poster_path']}"
+                return f"{self.IMAGE_BASE_URL}{size_path}{movie['poster_path']}?language=en"
 
             # No poster found
             return ""
@@ -303,11 +303,11 @@ class TMDBService:
             if movie_details:
                 # Update poster with high-quality version
                 if 'poster_path' in movie_details and movie_details['poster_path']:
-                    enhanced_data['poster_url'] = f"{self.IMAGE_BASE_URL}original{movie_details['poster_path']}"
+                    enhanced_data['poster_url'] = f"{self.IMAGE_BASE_URL}original{movie_details['poster_path']}?language=en"
 
                 # Add backdrop if available
                 if 'backdrop_path' in movie_details and movie_details['backdrop_path']:
-                    enhanced_data['backdrop_url'] = f"{self.IMAGE_BASE_URL}original{movie_details['backdrop_path']}"
+                    enhanced_data['backdrop_url'] = f"{self.IMAGE_BASE_URL}original{movie_details['backdrop_path']}?language=en"
 
                 # Add genres if available
                 if 'genres' in movie_details and movie_details['genres']:
@@ -326,18 +326,18 @@ class TMDBService:
             images = self.get_movie_images(movie_id)
             if images and 'posters' in images and images['posters']:
                 # Use the first poster (usually the primary one)
-                enhanced_data['poster_url'] = f"{self.IMAGE_BASE_URL}original{images['posters'][0]['file_path']}"
+                enhanced_data['poster_url'] = f"{self.IMAGE_BASE_URL}original{images['posters'][0]['file_path']}?language=en"
 
                 # Add additional poster URLs at different sizes
                 enhanced_data['poster_urls'] = {
-                    size: f"{self.IMAGE_BASE_URL}{self.POSTER_SIZES[size]}{images['posters'][0]['file_path']}"
+                    size: f"{self.IMAGE_BASE_URL}{self.POSTER_SIZES[size]}{images['posters'][0]['file_path']}?language=en"
                     for size in self.POSTER_SIZES
                 }
 
                 # Add a list of all poster URLs if more than one is available
                 if len(images['posters']) > 1:
                     enhanced_data['all_posters'] = [
-                        f"{self.IMAGE_BASE_URL}original{poster['file_path']}"
+                        f"{self.IMAGE_BASE_URL}original{poster['file_path']}?language=en"
                         for poster in images['posters'][:5]  # Limit to first 5 posters
                     ]
 

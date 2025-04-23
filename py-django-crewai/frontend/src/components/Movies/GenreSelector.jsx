@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { genreData } from '../../data/genreData';
 
-function GenreSelector({ onSubgenreClick }) {
+function GenreSelector({ onSubgenreClick, disabled }) {
   const [selectedGenre, setSelectedGenre] = useState('popular');
 
   // Handle genre selection change
@@ -23,6 +23,8 @@ function GenreSelector({ onSubgenreClick }) {
           className="form-select bg-dark text-light border-secondary"
           value={selectedGenre}
           onChange={handleGenreChange}
+          disabled={disabled}
+          style={disabled ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
         >
           <option value="popular">Popular Genres</option>
           <option value="action">Action</option>
@@ -45,7 +47,13 @@ function GenreSelector({ onSubgenreClick }) {
           <div key={index} className="col-6">
             <button
               className="btn btn-red-carpet w-100 mb-2"
-              onClick={() => onSubgenreClick(`Show me ${subgenre.query}`)}
+              onClick={() => {
+                if (!disabled) {
+                  onSubgenreClick(`Show me ${subgenre.query}`);
+                }
+              }}
+              disabled={disabled}
+              style={disabled ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
             >
               {subgenre.icon && (
                 <i className={`bi ${subgenre.icon} me-2`} />

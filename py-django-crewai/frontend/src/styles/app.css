@@ -454,7 +454,7 @@ h4.section-header,
   min-width: 160px;
   width: 180px;
   flex-shrink: 0;
-  height: 320px;
+  height: 260px;
   transition: all 0.3s ease;
 }
 
@@ -468,6 +468,7 @@ h4.section-header,
   width: 100%;
   aspect-ratio: 2/3;
   object-fit: cover;
+  object-position: center top;
   display: block;
 }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-function SampleInquiries({ isFirstRun, onQuestionClick }) {
+function SampleInquiries({ isFirstRun, onQuestionClick, disabled }) {
   const firstRunQuestions = [
     { text: 'Action', query: 'Show me action movies playing this weekend' },
     { text: 'Comedy', query: 'Recommend a great comedy movie for a double-date' },
@@ -24,9 +24,15 @@ function SampleInquiries({ isFirstRun, onQuestionClick }) {
           key={index}
           className={`btn btn-sample ${question.className || ''}`}
           onClick={() => {
-            console.log('Sample question clicked:', question.query);
-            onQuestionClick(question.query);
+            if (!disabled) {
+              console.log('Sample question clicked:', question.query);
+              onQuestionClick(question.query);
+            } else {
+              console.log('Sample question click prevented: UI is disabled during processing');
+            }
           }}
+          disabled={disabled}
+          style={disabled ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
         >
           {question.text}
         </button>

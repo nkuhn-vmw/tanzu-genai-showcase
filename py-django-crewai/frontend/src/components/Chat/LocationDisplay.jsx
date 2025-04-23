@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAppContext } from '../../context/AppContext';
 
-function LocationDisplay() {
+function LocationDisplay({ disabled }) {
   const { location, isLoadingLocation, activeTab } = useAppContext();
-  
+
   // Only show for First Run mode
   if (activeTab !== 'first-run') {
     return null;
@@ -11,7 +11,7 @@ function LocationDisplay() {
 
   return (
     <div className="location-container">
-      <div className="input-group location-input-group">
+      <div className="input-group location-input-group" style={disabled ? { opacity: 0.7 } : {}}>
         <span className="input-group-text">
           <i className={`bi bi-geo-alt${isLoadingLocation ? ' spin' : ' location-icon-active'}`}></i>
         </span>

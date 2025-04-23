@@ -9,13 +9,17 @@ function MovieSection({ isFirstRun }) {
     firstRunMovies,
     casualMovies,
     loading,
-    requestStage
+    requestStage,
+    checkIsProcessing
   } = useAppContext();
 
   const movies = isFirstRun ? firstRunMovies : casualMovies;
 
   // Show loading skeleton when initially loading movies
   const isLoading = loading && (requestStage === 'searching' || requestStage === 'analyzing');
+
+  // Check if the application is in a processing state
+  const isProcessing = checkIsProcessing();
 
   return (
     <div className="content-wrapper">
@@ -55,6 +59,7 @@ function MovieSection({ isFirstRun }) {
                 });
                 document.dispatchEvent(event);
               }, [])}
+              disabled={isProcessing}
             />
           </div>
         )}

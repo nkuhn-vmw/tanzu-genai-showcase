@@ -25,6 +25,7 @@ export function AppProvider({ children }) {
   const [location, setLocation] = useState('');
   const [requestStage, setRequestStage] = useState('idle'); // idle, sending, searching, analyzing, theaters, complete
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Global state to track if any request is being processed
 
   // Loading states
   const [isLoadingTheaters, setIsLoadingTheaters] = useState(false);
@@ -139,8 +140,19 @@ export function AppProvider({ children }) {
     setSelectedDateIndex(0);
   }, []);
 
+  // Check if the application is in a processing state
+  const checkIsProcessing = useCallback(() => {
+    return loading || requestStage !== 'idle' || isProcessing;
+  }, [loading, requestStage, isProcessing]);
+
   // Switch between tabs
   const switchTab = useCallback((tab) => {
+    // Don't allow tab switching during processing
+    if (checkIsProcessing()) {
+      console.log('Tab switch prevented: Application is currently processing a request');
+      return;
+    }
+
     if (tab === activeTab) {
       console.log(`Already on ${tab} tab, no switch needed`);
       return;
@@ -157,7 +169,7 @@ export function AppProvider({ children }) {
       setProgress(0);
       setRequestStage('idle');
     }
-  }, [resetMovieSelection, activeTab, loading]);
+  }, [resetMovieSelection, activeTab, loading, checkIsProcessing]);
 
   // Helper to convert UI tab name to backend mode
   const getBackendMode = useCallback((tab) => {
@@ -212,7 +224,9 @@ export function AppProvider({ children }) {
       progress, setProgress,
       location, setLocation,
       requestStage, setRequestStage,
-      isLoadingLocation, setIsLoadingLocation
+      isLoadingLocation, setIsLoadingLocation,
+      isProcessing, setIsProcessing,
+      checkIsProcessing
     }}>
       {children}
     </AppContext.Provider>

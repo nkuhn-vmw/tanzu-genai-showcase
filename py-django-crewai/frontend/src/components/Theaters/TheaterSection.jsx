@@ -15,8 +15,12 @@ function TheaterSection() {
     fetchTheatersForMovie,
     setFirstRunMovies,
     setIsLoadingTheaters,
-    setTheaterError
+    setTheaterError,
+    checkIsProcessing
   } = useAppContext();
+
+  // Check if the application is in a processing state
+  const isProcessing = checkIsProcessing();
 
   // Local state for polling
   const [pollingStatus, setPollingStatus] = useState('');
@@ -26,13 +30,13 @@ function TheaterSection() {
   const pollingTimeoutRef = useRef(null);
   const pollingDelayRef = useRef(2000); // Start with 2 second delay
   const pollingAttemptsRef = useRef(0);
-  
+
   // Find selected movie
   const selectedMovie = useMemo(() => {
     if (!selectedMovieId) return null;
     return firstRunMovies.find(movie => movie.id === selectedMovieId);
   }, [firstRunMovies, selectedMovieId]);
-  
+
   // Get today's date and the selected date
   const today = new Date();
   const selectedDate = new Date(today);
@@ -80,16 +84,16 @@ function TheaterSection() {
     try {
       pollingAttemptsRef.current += 1;
       console.log(`Polling attempt ${pollingAttemptsRef.current} for theaters for movie ${selectedMovieId}`);
-      
+
       // Update progress based on attempts (max 90%)
       const newProgress = Math.min(pollingAttemptsRef.current * 5 + 30, 90);
       setPollingProgress(newProgress);
-      
+
       const response = await chatApi.pollTheaterStatus(selectedMovieId);
-      
+
       if (response.status === 'success') {
         console.log('Theater polling complete, data received');
-        
+
         // Update the movie in the firstRunMovies array
         setFirstRunMovies(prevMovies =>
           prevMovies.map(m =>
@@ -98,17 +102,17 @@ function TheaterSection() {
               : m
           )
         );
-        
+
         // Clear the polling interval and show completion
         clearInterval(pollingIntervalRef.current);
         clearTimeout(pollingTimeoutRef.current);
         pollingIntervalRef.current = null;
         pollingTimeoutRef.current = null;
-        
+
         setPollingProgress(100);
         setPollingStatus('complete');
         setPollingMessage('Theaters loaded successfully!');
-        
+
         // Clear loading state after a short delay
         setTimeout(() => {
           setPollingStatus('');
@@ -119,7 +123,7 @@ function TheaterSection() {
         // Still processing, continue polling
         setPollingStatus('processing');
         setPollingMessage(response.message || 'Still searching for theaters...');
-        
+
         // Gradually increase polling delay up to 5 seconds
         pollingDelayRef.current = Math.min(pollingDelayRef.current * 1.2, 5000);
       }
@@ -132,7 +136,7 @@ function TheaterSection() {
       }
     } catch (error) {
       console.error('Error during polling:', error);
-      
+
       // If we've tried more than 15 times (about 30+ seconds), stop polling
       if (pollingAttemptsRef.current > 15) {
         clearInterval(pollingIntervalRef.current);
@@ -147,13 +151,13 @@ function TheaterSection() {
   useEffect(() => {
     // Skip if no movie is selected
     if (!selectedMovieId) return;
-    
+
     // Skip if movie already has theaters
     if (selectedMovie?.theaters?.length > 0) return;
-    
+
     // Skip if already loading or error state
     if (isLoadingTheaters || theaterError) return;
-    
+
     console.log('Starting theater polling for movie:', selectedMovieId);
     setIsLoadingTheaters(true);
     setPollingStatus('starting');
@@ -161,25 +165,25 @@ function TheaterSection() {
     setPollingProgress(10);
     pollingAttemptsRef.current = 0;
     pollingDelayRef.current = 2000; // Reset delay
-    
+
     // Clear any existing polling
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
     }
-    
+
     if (pollingTimeoutRef.current) {
       clearTimeout(pollingTimeoutRef.current);
       pollingTimeoutRef.current = null;
     }
-    
+
     // Start initial polling after a short delay
     pollingTimeoutRef.current = setTimeout(() => {
       pollTheaterStatus();
-      
+
       // Set up recurring polling
       pollingIntervalRef.current = setInterval(pollTheaterStatus, pollingDelayRef.current);
-      
+
       // Set a timeout to stop polling after 2 minutes to prevent infinite polling
       pollingTimeoutRef.current = setTimeout(() => {
         if (pollingIntervalRef.current) {
@@ -189,7 +193,7 @@ function TheaterSection() {
         }
       }, 2 * 60 * 1000); // 2 minutes max polling
     }, 500);
-    
+
     // Cleanup function
     return () => {
       if (pollingIntervalRef.current) {
@@ -228,9 +232,9 @@ function TheaterSection() {
           <span className="text-muted small">Loading theaters...</span>
         </div>
         <div className="theaters-outer-wrapper">
-          <ProgressIndicator 
-            progress={pollingStatus ? pollingProgress : 70} 
-            message={pollingStatus ? pollingMessage : `Finding theaters showing "${selectedMovie.title}"...`} 
+          <ProgressIndicator
+            progress={pollingStatus ? pollingProgress : 70}
+            message={pollingStatus ? pollingMessage : `Finding theaters showing "${selectedMovie.title}"...`}
           />
         </div>
       </div>
@@ -246,6 +250,9 @@ function TheaterSection() {
           <button
             className="btn btn-sm btn-outline-danger"
             onClick={() => fetchTheatersForMovie(selectedMovieId)}
+            disabled={isProcessing}
+            style={isProcessing ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+            title={isProcessing ? "Can't retry while processing a request" : ""}
           >
             <i className="bi bi-arrow-repeat me-1"></i>
             Retry

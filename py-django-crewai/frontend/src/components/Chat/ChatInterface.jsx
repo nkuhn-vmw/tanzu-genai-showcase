@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { chatApi } from '../../services/api';
 import { getConfig } from '../../config';
@@ -17,7 +17,9 @@ function ChatInterface() {
     progress, setProgress,
     location,
     requestStage, setRequestStage,
-    activeTab
+    activeTab,
+    isProcessing, setIsProcessing,
+    checkIsProcessing
   } = useAppContext();
 
   // Always call hooks at the top level, unconditionally
@@ -39,71 +41,6 @@ function ChatInterface() {
     }
   }, [activeTab, detectLocation]);
 
-  // Effect to set up event listeners for external triggers
-  useEffect(() => {
-    const handleSubgenreQuery = (event) => {
-      const { query } = event.detail;
-      setInputValue(query);
-      setTimeout(() => sendMessage(query), 0);
-    };
-
-    document.addEventListener('subgenreQuery', handleSubgenreQuery);
-    return () => document.removeEventListener('subgenreQuery', handleSubgenreQuery);
-  }, []);
-
-  // Scroll chat to bottom when messages change
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [firstRunMessages, casualMessages]);
-
-  // Get appropriate message based on stage and progress
-  const getProgressMessage = (stage, currentProgress) => {
-    let message = '';
-
-    switch (stage) {
-      case 'sending':
-        message = 'Sending your request...';
-        break;
-      case 'searching':
-        message = 'Searching for movies matching your criteria...';
-        break;
-      case 'analyzing':
-        message = 'Analyzing movie options and preferences...';
-        break;
-      case 'theaters':
-        message = activeTab === 'first-run'
-          ? 'Finding theaters and showtimes near you...'
-          : 'Preparing your recommendations...';
-        break;
-      case 'complete':
-        message = 'Loading results...';
-        break;
-      default:
-        // Fallback to progress-based messages
-        if (currentProgress < 30) {
-          message = 'Looking for movies matching your request...';
-        } else if (currentProgress < 60) {
-          message = 'Analyzing movie options...';
-        } else if (currentProgress < 90) {
-          message = activeTab === 'first-run'
-            ? 'Finding theaters near you...'
-            : 'Preparing recommendations...';
-        } else {
-          message = 'Loading results...';
-        }
-    }
-
-    return message;
-  };
-
-  // Update effect for progress message
-  useEffect(() => {
-    const newMessage = getProgressMessage(requestStage, progress);
-    setProgressMessage(newMessage);
-  }, [requestStage, progress, activeTab]);
-
   // Progress simulation with stage-based messages
   const startProgressSimulation = () => {
     setProgress(0);
@@ -115,8 +52,8 @@ function ChatInterface() {
     }, 500);
   };
 
-  // Handle sending a message
-  const sendMessage = async (message) => {
+  // Handle sending a message - memoized with useCallback to prevent stale closures
+  const sendMessage = useCallback(async (message) => {
     // Debug log the message
     console.log('sendMessage received:', message);
 
@@ -152,10 +89,18 @@ function ChatInterface() {
     setMessages([...currentMessages, userMessage]);
     setInputValue('');
 
-    // Start loading state
+    // Start loading and processing state
     setLoading(true);
+    setIsProcessing(true);
     setRequestStage('sending');
     setRetryCount(0);
+
+    // Clear movies array when starting a new search
+    if (isFirstRunMode) {
+      setFirstRunMovies([]);
+    } else {
+      setCasualMovies([]);
+    }
 
     const progressInterval = startProgressSimulation();
 
@@ -181,10 +126,10 @@ function ChatInterface() {
             console.log('Movie recommendations are being processed, starting polling...');
             setRequestStage('theaters'); // Use theaters stage for polling UI
 
-            // Add a temporary bot message indicating processing
+            // Add a standardized processing message
             const processingMessage = {
               sender: 'bot',
-              content: response.message || 'Processing your movie recommendations...',
+              content: 'Your movie recommendations are being processed. Please wait a moment.',
               created_at: new Date().toISOString(),
               isProcessing: true
             };
@@ -344,14 +289,84 @@ function ChatInterface() {
 
       setTimeout(() => {
         setLoading(false);
+        setIsProcessing(false);
         setProgress(0);
         setRequestStage('idle');
       }, 500);
     }
+  }, [activeTab, firstRunMessages, casualMessages, loading, setLoading, setFirstRunMessages, setCasualMessages, setFirstRunMovies, setCasualMovies, location, requestStage, setRequestStage, setProgress, retryCount, setRetryCount, setInputValue]);
+
+  // Effect to set up event listeners for external triggers
+  useEffect(() => {
+    const handleSubgenreQuery = (event) => {
+      const { query } = event.detail;
+      setInputValue(query);
+      setTimeout(() => sendMessage(query), 0);
+    };
+
+    document.addEventListener('subgenreQuery', handleSubgenreQuery);
+    return () => document.removeEventListener('subgenreQuery', handleSubgenreQuery);
+  }, [sendMessage]);
+
+  // Scroll chat to bottom when messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [firstRunMessages, casualMessages]);
+
+  // Get appropriate message based on stage and progress
+  const getProgressMessage = (stage, currentProgress) => {
+    let message = '';
+
+    switch (stage) {
+      case 'sending':
+        message = 'Sending your request...';
+        break;
+      case 'searching':
+        message = 'Searching for movies matching your criteria...';
+        break;
+      case 'analyzing':
+        message = 'Analyzing movie options and preferences...';
+        break;
+      case 'theaters':
+        message = activeTab === 'first-run'
+          ? 'Finding theaters and showtimes near you...'
+          : 'Preparing your recommendations...';
+        break;
+      case 'complete':
+        message = 'Loading results...';
+        break;
+      default:
+        // Fallback to progress-based messages
+        if (currentProgress < 30) {
+          message = 'Looking for movies matching your request...';
+        } else if (currentProgress < 60) {
+          message = 'Analyzing movie options...';
+        } else if (currentProgress < 90) {
+          message = activeTab === 'first-run'
+            ? 'Finding theaters near you...'
+            : 'Preparing recommendations...';
+        } else {
+          message = 'Loading results...';
+        }
+    }
+
+    return message;
   };
 
-  // Handler for sample inquiry click
+  // Update effect for progress message
+  useEffect(() => {
+    const newMessage = getProgressMessage(requestStage, progress);
+    setProgressMessage(newMessage);
+  }, [requestStage, progress, activeTab]);
+
+  // Handler for sample inquiry click - disabled during processing
   const handleSampleInquiryClick = (query) => {
+    if (checkIsProcessing()) {
+      console.log('Sample inquiry click prevented: Application is currently processing a request');
+      return;
+    }
     setInputValue(query);
     sendMessage(query);
   };
@@ -370,7 +385,7 @@ function ChatInterface() {
         value={inputValue}
         onChange={setInputValue}
         onSend={sendMessage}
-        disabled={loading}
+        disabled={checkIsProcessing()}
         placeholder={activeTab === 'first-run'
           ? "Ask me about movies in theaters..."
           : "Ask me for movie recommendations..."}
@@ -385,12 +400,13 @@ function ChatInterface() {
           <SampleInquiries
             isFirstRun={activeTab === 'first-run'}
             onQuestionClick={handleSampleInquiryClick}
+            disabled={checkIsProcessing()}
           />
         </div>
 
         {activeTab === 'first-run' && (
           <div className="location-display-container">
-            <LocationDisplay />
+            <LocationDisplay disabled={checkIsProcessing()} />
           </div>
         )}
       </div>

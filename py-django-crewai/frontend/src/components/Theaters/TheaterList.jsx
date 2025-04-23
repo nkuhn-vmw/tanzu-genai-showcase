@@ -1,6 +1,10 @@
 import React from 'react';
+import { useAppContext } from '../../context/AppContext';
 
 function TheaterList({ theaters }) {
+  // Check if the application is in a processing state
+  const { checkIsProcessing } = useAppContext();
+  const isProcessing = checkIsProcessing();
   // Format time to 12-hour format with AM/PM
   const formatTime = (isoString) => {
     try {
@@ -81,7 +85,11 @@ function TheaterList({ theaters }) {
                         <button
                           key={timeIndex}
                           className={`btn btn-sm btn-outline-light ${badgeClass}`}
-                          title={`Book tickets for ${format} showing at ${formatTime(date)}`}
+                          title={isProcessing
+                            ? "Can't book tickets while processing a request"
+                            : `Book tickets for ${format} showing at ${formatTime(date)}`}
+                          disabled={isProcessing}
+                          style={isProcessing ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                         >
                           {formatTime(date)}
                         </button>
