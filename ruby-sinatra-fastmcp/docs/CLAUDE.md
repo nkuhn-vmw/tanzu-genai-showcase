@@ -14,7 +14,7 @@ The Flight Tracking Chatbot implements the Model Context Protocol (MCP), which a
    ```
 
 2. Restart Claude Desktop completely
-   
+
 3. When you open Claude Desktop, you should see "flight-tracking-bot" available in the chat interface
 
 ## Understanding the Architecture
@@ -60,7 +60,7 @@ To debug the communication between Claude Desktop and your MCP server:
    ```bash
    ./scripts/mcp_server_wrapper.rb
    ```
-   
+
 2. The terminal will show messages exchanged between Claude and your server, helping you identify any issues
 
 ## Implementation Details

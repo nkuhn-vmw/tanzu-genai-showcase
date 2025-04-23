@@ -409,7 +409,7 @@ class EdgarApiClient extends AbstractApiClient
         // Not directly applicable for EDGAR API
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -418,7 +418,7 @@ class EdgarApiClient extends AbstractApiClient
         // For EDGAR, we'll search by company name in the CIK mapping
         $results = [];
         $term = strtoupper($term);
-        
+
         foreach ($this->cikMapping as $ticker => $company) {
             if (strpos($ticker, $term) !== false || strpos(strtoupper($company['name']), $term) !== false) {
                 $results[] = [
@@ -428,16 +428,16 @@ class EdgarApiClient extends AbstractApiClient
                     'exchange' => 'US',  // Default value
                 ];
             }
-            
+
             // Limit to reasonable number of results
             if (count($results) >= 10) {
                 break;
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -445,7 +445,7 @@ class EdgarApiClient extends AbstractApiClient
     {
         $symbol = strtoupper($symbol);
         $cik = $this->getCik($symbol);
-        
+
         if (!$cik) {
             $this->logger->warning('CIK not found for ticker: ' . $symbol);
             return [
@@ -462,7 +462,7 @@ class EdgarApiClient extends AbstractApiClient
                 'phone' => '',
             ];
         }
-        
+
         // In a real implementation, we would search SEC data for company info
         // For now, return mock data
         return [
@@ -479,7 +479,7 @@ class EdgarApiClient extends AbstractApiClient
             'phone' => '',
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -504,7 +504,7 @@ class EdgarApiClient extends AbstractApiClient
             'updated' => date('Y-m-d H:i:s'),
         ];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -513,22 +513,22 @@ class EdgarApiClient extends AbstractApiClient
         // Get the latest 10-K/10-Q reports and extract financial data
         $symbol = strtoupper($symbol);
         $cik = $this->getCik($symbol);
-        
+
         if (!$cik) {
             return [];
         }
-        
+
         $formType = $period === 'annual' ? '10-K' : '10-Q';
         $filings = $this->searchFilings("cik:{$cik} AND formType:\"{$formType}\"", [
             'forms' => [$formType],
             'limit' => 4  // Get last 4 quarters or years
         ]);
-        
+
         // In a real implementation, we would extract financial data from filings
         // For now, return empty array
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -538,7 +538,7 @@ class EdgarApiClient extends AbstractApiClient
         // This would normally come from a news API
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -548,7 +548,7 @@ class EdgarApiClient extends AbstractApiClient
         // For now, return empty array
         return [];
     }
-    
+
     /**
      * {@inheritdoc}
      */

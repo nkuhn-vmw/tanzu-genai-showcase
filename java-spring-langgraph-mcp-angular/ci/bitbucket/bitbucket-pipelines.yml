@@ -67,7 +67,7 @@ pipelines:
                 BITBUCKET_APP_PASSWORD: $BITBUCKET_APP_PASSWORD
                 FILENAME: 'target/*.jar'
                 TARGET: 'artifacts/java-spring-langgraph-mcp-angular-backend-${BITBUCKET_BUILD_NUMBER}.jar'
-            
+
             # Upload frontend artifacts
             - cd ../frontend
             - tar -czf frontend.tar.gz dist/

@@ -41,7 +41,7 @@ class FastMcpMiddleware
     @server = server
     @transport = nil
   end
-  
+
   def call(env)
     # Lazy initialize the transport
     if @transport.nil?
@@ -73,7 +73,7 @@ end
 error do
   @error_title = 'An Error Occurred'
   @error_message = env['sinatra.error'].message
-  
+
   if request.path.start_with?('/api')
     content_type :json
     status 500
@@ -91,80 +91,80 @@ end
 # API routes
 get '/api/search' do
   content_type :json
-  
+
   # Get params from query string
   params_to_pass = {}
   %w[flight_iata flight_icao dep_iata arr_iata airline_name airline_iata flight_status limit flight_date].each do |param|
     params_to_pass[param.to_sym] = params[param] if params[param] && !params[param].empty?
   end
-  
+
   # Set default limit
   params_to_pass[:limit] ||= 10
-  
+
   # Call the API
   client = AviationStackClient.new
   result = client.search_flights(params_to_pass)
-  
+
   # Return the result
   result['data'].to_json
 end
 
 get '/api/airports' do
   content_type :json
-  
+
   # Get params from query string
   params_to_pass = {}
   %w[iata_code icao_code airport_name city country limit].each do |param|
     params_to_pass[param.to_sym] = params[param] if params[param] && !params[param].empty?
   end
-  
+
   # Set default limit
   params_to_pass[:limit] ||= 10
-  
+
   # Call the API
   client = AviationStackClient.new
   result = client.search_airports(params_to_pass)
-  
+
   # Return the result
   result['data'].to_json
 end
 
 get '/api/schedules' do
   content_type :json
-  
+
   # Get params from query string
   params_to_pass = {}
   %w[flight_iata flight_icao dep_iata arr_iata airline_name airline_iata flight_status limit].each do |param|
     params_to_pass[param.to_sym] = params[param] if params[param] && !params[param].empty?
   end
-  
+
   # Set default limit
   params_to_pass[:limit] ||= 10
-  
+
   # Call the API
   client = AviationStackClient.new
   result = client.get_flight_schedules(params_to_pass)
-  
+
   # Return the result
   result['data'].to_json
 end
 
 get '/api/future-schedules' do
   content_type :json
-  
+
   # Get params from query string
   params_to_pass = {}
   %w[date iataCode type limit].each do |param|
     params_to_pass[param.to_sym] = params[param] if params[param] && !params[param].empty?
   end
-  
+
   # Set default limit
   params_to_pass[:limit] ||= 10
-  
+
   # Call the API
   client = AviationStackClient.new
   result = client.get_future_flight_schedules(params_to_pass)
-  
+
   # Return the result
   result['data'].to_json
 end
@@ -172,7 +172,7 @@ end
 # Default route for JSON API
 get '/api' do
   content_type :json
-  { 
+  {
     message: 'Flight Tracking Chatbot API is running',
     mcp_endpoint: '/mcp',
     api_endpoints: [

@@ -3,22 +3,22 @@
 
 pipeline {
     agent any
-    
+
     tools {
         jdk 'jdk21'
         maven 'maven3'
     }
-    
+
     options {
         // Only keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     // Only run on changes to project files or CI configuration
     triggers {
         pollSCM('H/5 * * * *')
     }
-    
+
     stages {
         stage('Build') {
             when {
@@ -36,7 +36,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Upload Artifacts') {
             when {
                 allOf {
@@ -53,7 +53,7 @@ pipeline {
                     archiveArtifacts artifacts: 'client/target/*.jar', fingerprint: true
                     archiveArtifacts artifacts: 'server/target/*.jar', fingerprint: true
                     archiveArtifacts artifacts: 'api/target/*.jar', fingerprint: true
-                    
+
                     // You can also upload to an artifact repository like Nexus or Artifactory
                     // Example for Nexus deployment:
                     /*
@@ -67,7 +67,7 @@ pipeline {
                           -DrepositoryId=nexus \
                           -Durl=${NEXUS_URL}/repository/maven-releases \
                           -Dfile=client/target/java-spring-ai-mcp-client-*.jar
-                        
+
                         mvn deploy:deploy-file \
                           -DgroupId=com.example \
                           -DartifactId=java-spring-ai-mcp-server \
@@ -77,7 +77,7 @@ pipeline {
                           -DrepositoryId=nexus \
                           -Durl=${NEXUS_URL}/repository/maven-releases \
                           -Dfile=server/target/java-spring-ai-mcp-server-*.jar
-                        
+
                         mvn deploy:deploy-file \
                           -DgroupId=com.example \
                           -DartifactId=java-spring-ai-mcp-api \
@@ -93,7 +93,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()

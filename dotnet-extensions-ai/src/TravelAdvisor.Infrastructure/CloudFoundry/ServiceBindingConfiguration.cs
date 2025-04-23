@@ -1,8 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Steeltoe.Connector.CloudFoundry;
 using Steeltoe.Extensions.Configuration.CloudFoundry;
@@ -27,21 +27,13 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
             // Configure GenAI service
             services.Configure<GenAIOptions>(options =>
             {
-                var serviceName = configuration["GenAI:ServiceName"] ?? "travel-advisor-llm";
-
-                // Try to get GenAI credentials from bound services
-                if (TryGetServiceCredentials(configuration, serviceName, out var credentials))
+                if (TryGetGenAIChatServiceCredentials(configuration, out var credentials))
                 {
-                    options.ApiKey = credentials.GetValue<string>("api_key") ??
-                                    credentials.GetValue<string>("apiKey") ??
-                                    configuration["GenAI:ApiKey"] ?? "";
-
-                    options.ApiUrl = credentials.GetValue<string>("api_url") ??
-                                    credentials.GetValue<string>("apiUrl") ??
-                                    configuration["GenAI:ApiUrl"] ?? "";
-
-                    options.Model = credentials.GetValue<string>("model") ??
-                                    configuration["GenAI:Model"] ?? "";
+                    // Map the credentials to the same properties as the Java implementation
+                    options.ApiKey = credentials.GetValue<string>("api_key") ?? "";
+                    options.ApiUrl = credentials.GetValue<string>("api_base") ?? "";
+                    options.Model = credentials.GetValue<string>("model_name") ?? "";
+                    options.ServiceName = "GenAI on Tanzu Platform (chat)";
                 }
                 else
                 {
@@ -49,12 +41,11 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                     options.ApiKey = configuration["GenAI:ApiKey"] ?? "";
                     options.ApiUrl = configuration["GenAI:ApiUrl"] ?? "";
                     options.Model = configuration["GenAI:Model"] ?? "";
+                    options.ServiceName = configuration["GenAI:ServiceName"] ?? "travel-advisor-llm";
                 }
-
-                options.ServiceName = serviceName;
             });
 
-            // Configure Google Maps service
+            // Configure Google Maps service (unchanged)
             services.Configure<GoogleMapsOptions>(options =>
             {
                 options.ApiKey = configuration["GoogleMaps:ApiKey"] ?? "";
@@ -64,9 +55,10 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
         }
 
         /// <summary>
-        /// Try to get service credentials from bound Cloud Foundry services
+        /// Try to get GenAI Chat service credentials from bound Cloud Foundry services
+        /// Following the Java implementation pattern
         /// </summary>
-        private static bool TryGetServiceCredentials(IConfiguration configuration, string serviceName, out IConfigurationSection credentials)
+        private static bool TryGetGenAIChatServiceCredentials(IConfiguration configuration, out IConfigurationSection credentials)
         {
             // Default credentials section
             credentials = configuration.GetSection("GenAI");
@@ -91,31 +83,45 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                 // Check each service instance within the type
                 foreach (var serviceInstance in serviceType.GetChildren())
                 {
-                    var name = serviceInstance.GetValue<string>("name");
+                    bool hasGenAITag = false;
+                    bool hasGenAILabel = false;
 
-                    // Check if this is the service we're looking for
-                    if (name == serviceName)
-                    {
-                        credentials = serviceInstance.GetSection("credentials");
-                        return credentials.Exists();
-                    }
-
-                    // If not found by name, check if it has "genai" in name or tags
-                    if (name != null && name.Contains("genai", StringComparison.OrdinalIgnoreCase))
-                    {
-                        credentials = serviceInstance.GetSection("credentials");
-                        return credentials.Exists();
-                    }
-
-                    // Check tags if present
+                    // Check if service has genai tag
                     var tagsSection = serviceInstance.GetSection("tags");
                     if (tagsSection.Exists())
                     {
                         var tags = tagsSection.GetChildren().Select(tag => tag.Value);
-                        if (tags.Any(tag => tag != null && tag.Contains("genai", StringComparison.OrdinalIgnoreCase)))
+                        hasGenAITag = tags.Any(tag => tag != null &&
+                                         tag.Contains("genai", StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    // Check if service has label starting with genai
+                    var labelSection = serviceInstance.GetSection("label");
+                    if (labelSection.Exists())
+                    {
+                        var label = labelSection.Value;
+                        hasGenAILabel = label != null &&
+                                      label.StartsWith("genai", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    // If this is a GenAI service, check if it supports chat
+                    if (hasGenAITag || hasGenAILabel)
+                    {
+                        var credentialsSection = serviceInstance.GetSection("credentials");
+                        if (credentialsSection.Exists())
                         {
-                            credentials = serviceInstance.GetSection("credentials");
-                            return credentials.Exists();
+                            // Check if model_capabilities contains "chat"
+                            var modelCapabilitiesSection = credentialsSection.GetSection("model_capabilities");
+                            if (modelCapabilitiesSection.Exists())
+                            {
+                                var modelCapabilities = modelCapabilitiesSection.GetChildren().Select(c => c.Value);
+                                if (modelCapabilities.Any(cap => cap != null &&
+                                                     cap.Equals("chat", StringComparison.OrdinalIgnoreCase)))
+                                {
+                                    credentials = credentialsSection;
+                                    return true;
+                                }
+                            }
                         }
                     }
                 }

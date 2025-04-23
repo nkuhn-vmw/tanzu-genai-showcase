@@ -73,7 +73,7 @@ upload:
       cd dotnet-extensions-ai
       # Create archive of the publish directory
       tar -czf publish.tar.gz publish/
-      
+
       # Upload the archive to GitLab Package Registry using the API
       curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
            --upload-file publish.tar.gz \

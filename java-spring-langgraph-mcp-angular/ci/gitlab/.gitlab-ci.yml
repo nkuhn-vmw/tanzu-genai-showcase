@@ -62,7 +62,7 @@ upload:
   image: alpine:latest
   script:
     - echo "Uploading artifacts to GitLab Package Registry"
-    
+
     # Backend artifacts
     - |
       if [ -d "java-spring-langgraph-mcp-angular/backend/target" ]; then
@@ -80,7 +80,7 @@ upload:
       else
         echo "Backend target directory not found"
       fi
-    
+
     # Frontend artifacts
     - |
       if [ -d "java-spring-langgraph-mcp-angular/frontend/dist" ]; then

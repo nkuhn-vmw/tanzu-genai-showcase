@@ -3,27 +3,27 @@
 
 pipeline {
     agent any
-    
+
     tools {
         go 'go1.21'
     }
-    
+
     environment {
         GOPATH = "${WORKSPACE}/.go"
         GO111MODULE = "on"
         PATH = "${GOPATH}/bin:${PATH}"
     }
-    
+
     options {
         // Only keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     // Only run on changes to project files or CI configuration
     triggers {
         pollSCM('H/5 * * * *')
     }
-    
+
     stages {
         stage('Test') {
             when {
@@ -41,7 +41,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build') {
             when {
                 anyOf {
@@ -56,7 +56,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Upload Artifacts') {
             when {
                 allOf {
@@ -71,7 +71,7 @@ pipeline {
                 dir('go-fiber-langchaingo') {
                     // Archive the artifacts in Jenkins
                     archiveArtifacts artifacts: 'bin/**', fingerprint: true
-                    
+
                     // You can also deploy to a production environment or artifact repository
                     // For example, deploy to an S3 bucket
                     /*
@@ -87,7 +87,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()

@@ -20,11 +20,11 @@ class AviationStackClient
   end
 
   def get_flight_status(flight_iata, params = {})
-    params = { 
+    params = {
       access_key: @api_key,
-      flight_iata: flight_iata 
+      flight_iata: flight_iata
     }.merge(params)
-    
+
     response = @conn.get('flights', params)
     handle_response(response)
   end
@@ -63,11 +63,11 @@ class AviationStackClient
 
   def handle_response(response)
     result = JSON.parse(response.body)
-    
+
     if result['error']
       raise "AviationStack API Error: #{result['error']['code']} - #{result['error']['message']}"
     end
-    
+
     result
   end
 end

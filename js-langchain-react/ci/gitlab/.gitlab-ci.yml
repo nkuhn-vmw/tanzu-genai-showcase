@@ -67,7 +67,7 @@ upload:
         # Create archive of the build directory
         cd js-langchain-react
         tar -czf build.tar.gz build/
-        
+
         # Upload the archive to GitLab Package Registry using the API
         curl --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
              --upload-file build.tar.gz \

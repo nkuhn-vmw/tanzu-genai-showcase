@@ -7,21 +7,21 @@ pipeline {
             image 'ruby:3.2.5'
         }
     }
-    
+
     options {
         // Only keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     // Only run on changes to project files or CI configuration
     triggers {
         pollSCM('H/5 * * * *')
     }
-    
+
     environment {
         BUNDLE_PATH = 'vendor/bundle'
     }
-    
+
     stages {
         stage('Install Dependencies') {
             when {
@@ -41,7 +41,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Run Tests') {
             when {
                 anyOf {
@@ -61,7 +61,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Create Package') {
             when {
                 allOf {
@@ -81,7 +81,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Upload Artifacts') {
             when {
                 allOf {
@@ -96,7 +96,7 @@ pipeline {
                 dir('ruby-sinatra-fastmcp') {
                     // Archive the artifacts in Jenkins
                     archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                    
+
                     // You can also deploy to a production environment or artifact repository
                     // For example, deploy to a web server
                     /*
@@ -111,7 +111,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()

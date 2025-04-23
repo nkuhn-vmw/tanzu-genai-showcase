@@ -3,21 +3,21 @@
 
 pipeline {
     agent any
-    
+
     tools {
         dotnetsdk 'dotnet-sdk-latest'
     }
-    
+
     options {
         // Only keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     // Only run on changes to project files or CI configuration
     triggers {
         pollSCM('H/5 * * * *')
     }
-    
+
     stages {
         stage('Restore Dependencies') {
             when {
@@ -35,7 +35,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build') {
             when {
                 anyOf {
@@ -49,7 +49,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Test') {
             when {
                 anyOf {
@@ -63,7 +63,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Publish') {
             when {
                 allOf {
@@ -80,7 +80,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Upload Artifacts') {
             when {
                 allOf {
@@ -95,7 +95,7 @@ pipeline {
                 dir('dotnet-extensions-ai') {
                     // Archive the artifacts in Jenkins
                     archiveArtifacts artifacts: 'publish/**', fingerprint: true
-                    
+
                     // You can also deploy to a production environment or artifact repository
                     // For example, deploy to a NuGet repository
                     /*
@@ -108,7 +108,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()

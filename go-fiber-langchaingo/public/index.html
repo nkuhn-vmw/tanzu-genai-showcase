@@ -75,7 +75,7 @@
                     Hello! I'm your Congress.gov chatbot assistant. How can I help you today? You can ask me about bills, legislation, members of Congress, and more.
                 </div>
             </div>
-            
+
             <!-- Progress bar and loader -->
             <div id="progress-container" class="hidden">
                 <div class="progress-bar">
@@ -120,14 +120,14 @@
                     userInput.disabled = true;
                     sendButton.disabled = true;
                     clearButton.disabled = true;
-                    
+
                     // Add visual indication that buttons are disabled
                     sendButton.classList.add('opacity-50', 'cursor-not-allowed');
                     clearButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    
+
                     // Show progress indicators
                     progressContainer.classList.remove('hidden');
-                    
+
                     // Animate progress bar
                     progressBarFill.style.width = '5%';
                     setTimeout(() => { progressBarFill.style.width = '30%'; }, 500);
@@ -137,14 +137,14 @@
                     userInput.disabled = false;
                     sendButton.disabled = false;
                     clearButton.disabled = false;
-                    
+
                     // Remove visual indication
                     sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     clearButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    
+
                     // Complete progress bar animation before hiding
                     progressBarFill.style.width = '100%';
-                    
+
                     // Hide progress indicators after a short delay
                     setTimeout(() => {
                         progressContainer.classList.add('hidden');
@@ -167,7 +167,7 @@
                 try {
                     // Set UI to processing state
                     setProcessingState(true);
-                    
+
                     const response = await fetch('/api/chat', {
                         method: 'POST',
                         headers: {
@@ -195,7 +195,7 @@
             async function clearChat() {
                 try {
                     setProcessingState(true);
-                    
+
                     const response = await fetch('/api/clear', {
                         method: 'POST',
                     });
@@ -243,7 +243,7 @@
             async function loadChatHistory() {
                 try {
                     setProcessingState(true);
-                    
+
                     const response = await fetch('/api/history');
                     if (response.ok) {
                         const data = await response.json();
