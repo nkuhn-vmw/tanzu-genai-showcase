@@ -7,7 +7,7 @@ function MessageList({ messages }) {
     if (typeof text !== 'string') {
       return text;
     }
-    
+
     // Replace ** with bold tags
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
@@ -41,22 +41,31 @@ function MessageList({ messages }) {
     <>
       {messages.map((message, index) => (
         <React.Fragment key={index}>
-          <div className={`message ${message.sender}`}>
-            {message.sender === 'bot' ? (
-              typeof message.content === 'string' ? (
-                <div dangerouslySetInnerHTML={{
-                  __html: formatMessageText(message.content)
-                }} />
+          <div className={`message-container ${message.sender}`}>
+            <div className={`message ${message.sender} ${message.isProcessing ? 'processing' : ''}`}>
+              {message.isProcessing && (
+                <div className="processing-indicator">
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                </div>
+              )}
+              {message.sender === 'bot' ? (
+                typeof message.content === 'string' ? (
+                  <div dangerouslySetInnerHTML={{
+                    __html: formatMessageText(message.content)
+                  }} />
+                ) : (
+                  message.content
+                )
               ) : (
                 message.content
-              )
-            ) : (
-              message.content
-            )}
+              )}
+            </div>
+            <div className={`message-time ${message.sender === 'user' ? 'text-end' : 'text-start'}`}>
+              {formatTime(message.created_at)}
+            </div>
           </div>
-          <span className={`message-time ${message.sender === 'user' ? 'text-end' : ''}`}>
-            {formatTime(message.created_at)}
-          </span>
         </React.Fragment>
       ))}
     </>

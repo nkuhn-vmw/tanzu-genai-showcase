@@ -209,12 +209,24 @@ def get_movies_theaters_and_showtimes(request):
         # Process and save movie recommendations
         recommendations_data = []
         for movie_data in response_data.get('movies', []):
+            # Convert release_date string to a proper date object
+            release_date_str = movie_data.get('release_date')
+            release_date = None
+            if release_date_str:
+                try:
+                    from datetime import datetime
+                    release_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    # Handle invalid date format
+                    logger.warning(f"Invalid release date format: {release_date_str}")
+                    pass
+
             movie = MovieRecommendation.objects.create(
                 conversation=conversation,
                 title=movie_data.get('title', 'Unknown Movie'),
                 overview=movie_data.get('overview', ''),
                 poster_url=movie_data.get('poster_url', ''),
-                release_date=movie_data.get('release_date'),
+                release_date=release_date,  # Now a proper date object
                 tmdb_id=movie_data.get('tmdb_id'),
                 rating=movie_data.get('rating')
             )
@@ -294,6 +306,92 @@ def get_movie_recommendations(request):
             content=user_message_text
         )
 
+        # Store the query in the session for polling
+        request.session['casual_query'] = user_message_text
+        request.session['casual_query_timestamp'] = timezone.now().isoformat()
+
+        # Check if we should process immediately or return a processing status
+        # For simplicity, we'll always return processing status to enable polling
+        return JsonResponse({
+            'status': 'processing',
+            'message': 'Your movie recommendations are being processed. Please wait a moment.',
+            'conversation_id': conversation.id
+        })
+
+    except Exception as e:
+        logger.error(f"Error initiating movie recommendation request: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while processing your request.'
+        }, status=500)
+
+
+@csrf_exempt
+def poll_movie_recommendations(request):
+    """Poll for movie recommendations that are being processed."""
+    if request.method != 'GET':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'This endpoint only accepts GET requests'
+        }, status=405)
+
+    try:
+        # Get the conversation
+        conversation = _get_or_create_conversation(request, 'casual')
+
+        # Check if we have a query to process
+        user_message_text = request.session.get('casual_query')
+        if not user_message_text:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No pending movie recommendation request found.'
+            }, status=404)
+
+        # Check if we already have recommendations for this conversation
+        existing_recommendations = conversation.recommendations.all()
+
+        # If we have recommendations and they were created after the query timestamp,
+        # return them as the result
+        query_timestamp = request.session.get('casual_query_timestamp')
+        if query_timestamp and existing_recommendations.exists():
+            # Get the latest recommendation timestamp
+            latest_recommendation = existing_recommendations.order_by('-created_at').first()
+            if latest_recommendation and latest_recommendation.created_at.isoformat() > query_timestamp:
+                # We have fresh recommendations, return them
+                logger.info(f"Found existing recommendations for conversation {conversation.id}")
+
+                # Get the bot message
+                bot_message = conversation.messages.filter(sender='bot').order_by('-created_at').first()
+                bot_response = bot_message.content if bot_message else "Here are your movie recommendations."
+
+                # Format recommendations
+                recommendations_data = []
+                for movie in existing_recommendations.filter(created_at__gt=timezone.parse_datetime(query_timestamp)):
+                    recommendations_data.append({
+                        'id': movie.id,
+                        'title': movie.title,
+                        'overview': movie.overview,
+                        'poster_url': movie.poster_url,
+                        'release_date': movie.release_date.isoformat() if movie.release_date and hasattr(movie.release_date, 'isoformat') else movie.release_date,
+                        'rating': float(movie.rating) if movie.rating else None,
+                        'theaters': []  # No theaters for casual mode
+                    })
+
+                if recommendations_data:
+                    # Clear the query from the session
+                    if 'casual_query' in request.session:
+                        del request.session['casual_query']
+                    if 'casual_query_timestamp' in request.session:
+                        del request.session['casual_query_timestamp']
+
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': bot_response,
+                        'recommendations': recommendations_data
+                    })
+
+        # If we don't have recommendations yet, process the query
         # Initialize movie crew manager
         movie_crew_manager = MovieCrewManager(
             api_key=settings.LLM_CONFIG['api_key'],
@@ -311,51 +409,92 @@ def get_movie_recommendations(request):
             'content': msg.content
         } for msg in conversation.messages.all()]
 
-        response_data = movie_crew_manager.process_query(
-            query=user_message_text,
-            conversation_history=conversation_history,
-            first_run_mode=conversation.mode == 'first_run'
-        )
-
-        # Save bot response and process recommendations
-        bot_response = response_data.get('response', 'Sorry, I could not generate a response.')
-        bot_message = Message.objects.create(
-            conversation=conversation,
-            sender='bot',
-            content=bot_response
-        )
-
-        # Process and save movie recommendations
-        recommendations_data = []
-        for movie_data in response_data.get('movies', []):
-            movie = MovieRecommendation.objects.create(
-                conversation=conversation,
-                title=movie_data.get('title', 'Unknown Movie'),
-                overview=movie_data.get('overview', ''),
-                poster_url=movie_data.get('poster_url', ''),
-                release_date=movie_data.get('release_date'),
-                tmdb_id=movie_data.get('tmdb_id'),
-                rating=movie_data.get('rating')
-            )
-
-            recommendations_data.append({
-                'id': movie.id,
-                'title': movie.title,
-                'overview': movie.overview,
-                'poster_url': movie.poster_url,
-                'release_date': movie.release_date.isoformat() if movie.release_date else None,
-                'rating': float(movie.rating) if movie.rating else None,
-                'theaters': []  # No theaters for casual mode
+        # Check if we're already processing this query
+        if getattr(request, '_processing_casual_query', False):
+            return JsonResponse({
+                'status': 'processing',
+                'message': 'Your movie recommendations are still being processed. Please wait a moment.',
+                'conversation_id': conversation.id
             })
 
+        # Set a flag to prevent concurrent processing
+        setattr(request, '_processing_casual_query', True)
+
+        try:
+            # Process the query
+            response_data = movie_crew_manager.process_query(
+                query=user_message_text,
+                conversation_history=conversation_history,
+                first_run_mode=conversation.mode == 'first_run'
+            )
+
+            # Save bot response
+            bot_response = response_data.get('response', 'Sorry, I could not generate a response.')
+            bot_message = Message.objects.create(
+                conversation=conversation,
+                sender='bot',
+                content=bot_response
+            )
+
+            # Process and save movie recommendations
+            recommendations_data = []
+            for movie_data in response_data.get('movies', []):
+                # Convert release_date string to a proper date object
+                release_date_str = movie_data.get('release_date')
+                release_date = None
+                if release_date_str:
+                    try:
+                        from datetime import datetime
+                        release_date = datetime.strptime(release_date_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        # Handle invalid date format
+                        logger.warning(f"Invalid release date format: {release_date_str}")
+                        pass
+
+                movie = MovieRecommendation.objects.create(
+                    conversation=conversation,
+                    title=movie_data.get('title', 'Unknown Movie'),
+                    overview=movie_data.get('overview', ''),
+                    poster_url=movie_data.get('poster_url', ''),
+                    release_date=release_date,  # Now a proper date object
+                    tmdb_id=movie_data.get('tmdb_id'),
+                    rating=movie_data.get('rating')
+                )
+
+                recommendations_data.append({
+                    'id': movie.id,
+                    'title': movie.title,
+                    'overview': movie.overview,
+                    'poster_url': movie.poster_url,
+                    'release_date': movie.release_date.isoformat() if movie.release_date and hasattr(movie.release_date, 'isoformat') else movie.release_date,
+                    'rating': float(movie.rating) if movie.rating else None,
+                    'theaters': []  # No theaters for casual mode
+                })
+
+            # Clear the query from the session
+            if 'casual_query' in request.session:
+                del request.session['casual_query']
+            if 'casual_query_timestamp' in request.session:
+                del request.session['casual_query_timestamp']
+
+            return JsonResponse({
+                'status': 'success',
+                'message': bot_response,
+                'recommendations': recommendations_data
+            })
+        finally:
+            # Clear the processing flag
+            setattr(request, '_processing_casual_query', False)
+
+        # If we get here, we're still processing
         return JsonResponse({
-            'status': 'success',
-            'message': bot_response,
-            'recommendations': recommendations_data
+            'status': 'processing',
+            'message': 'Your movie recommendations are still being processed. Please wait a moment.',
+            'conversation_id': conversation.id
         })
 
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+        logger.error(f"Error processing movie recommendation poll: {str(e)}")
         logger.error(traceback.format_exc())
         return JsonResponse({
             'status': 'error',
@@ -544,4 +683,30 @@ def theater_status(request, movie_id):
         return JsonResponse({
             'status': 'error',
             'message': 'An error occurred while checking theater status'
+        }, status=500)
+
+
+@csrf_exempt
+def get_api_config(request):
+    """Return API configuration settings for the frontend."""
+    if request.method != 'GET':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'This endpoint only accepts GET requests'
+        }, status=405)
+
+    try:
+        from movie_chatbot.settings import app_config
+
+        # Return non-sensitive configuration settings
+        return JsonResponse({
+            'api_timeout_seconds': app_config.API_REQUEST_TIMEOUT,
+            'api_max_retries': app_config.API_MAX_RETRIES,
+            'api_retry_backoff_factor': app_config.API_RETRY_BACKOFF_FACTOR
+        })
+    except Exception as e:
+        logger.error(f"Error getting API configuration: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while getting API configuration'
         }, status=500)

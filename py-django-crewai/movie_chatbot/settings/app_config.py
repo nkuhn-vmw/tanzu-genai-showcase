@@ -21,17 +21,17 @@ DEFAULT_SEARCH_START_YEAR = int(os.getenv('DEFAULT_SEARCH_START_YEAR', '1900'))
 # --- API Request Configuration ---
 
 # Maximum seconds to wait for API responses
-API_REQUEST_TIMEOUT = int(os.getenv('API_REQUEST_TIMEOUT_SECONDS', '30'))
+API_REQUEST_TIMEOUT = int(os.getenv('API_REQUEST_TIMEOUT_SECONDS', '60'))
 # Maximum number of retry attempts for failed API requests
-API_MAX_RETRIES = int(os.getenv('API_MAX_RETRIES', '3'))
+API_MAX_RETRIES = int(os.getenv('API_MAX_RETRIES', '10'))
 # Exponential backoff factor between retries (in seconds)
-API_RETRY_BACKOFF_FACTOR = float(os.getenv('API_RETRY_BACKOFF_FACTOR', '0.5'))
+API_RETRY_BACKOFF_FACTOR = float(os.getenv('API_RETRY_BACKOFF_FACTOR', '1.5'))
 
 
 # --- SerpAPI Request Configuration ---
 
 # Base delay between theater requests for different movies (seconds)
-SERPAPI_REQUEST_BASE_DELAY = float(os.getenv('SERPAPI_REQUEST_BASE_DELAY', '8.0'))
+SERPAPI_REQUEST_BASE_DELAY = float(os.getenv('SERPAPI_REQUEST_BASE_DELAY', '10.0'))
 # Additional delay per movie processed (seconds)
 SERPAPI_PER_MOVIE_DELAY = float(os.getenv('SERPAPI_PER_MOVIE_DELAY', '3.0'))
 # Maximum retries for SerpAPI requests

@@ -1,13 +1,32 @@
-/* Chat messages time */
+/* Chat messages container and time */
+.message-container {
+  clear: both;
+  margin-bottom: 1rem;
+  max-width: 80%;
+}
+
+.message-container.user {
+  float: right;
+}
+
+.message-container.bot {
+  float: left;
+}
+
 .message-time {
   display: block;
   font-size: 0.75rem;
   color: var(--red-carpet-light-gray);
-  margin-bottom: 1rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
 }
 
 .message-time.text-end {
   text-align: right;
+}
+
+.message-time.text-start {
+  text-align: left;
 }
 
 /* CSS Variables */
@@ -296,13 +315,11 @@ h4.section-header,
 
 /* Chat messages */
 .message {
-  margin-bottom: 1rem;
-  max-width: 80%;
-  clear: both;
+  width: 100%;
+  margin-bottom: 0;
 }
 
 .message.user {
-  float: right;
   background-color: var(--red-carpet-red);
   color: white;
   border-radius: 1rem 1rem 0 1rem;
@@ -310,12 +327,52 @@ h4.section-header,
 }
 
 .message.bot {
-  float: left;
   background-color: var(--red-carpet-gray);
   color: var(--red-carpet-text);
   border-radius: 1rem 1rem 1rem 0;
   padding: 0.75rem 1rem;
   white-space: pre-line;
+}
+
+/* Processing message styling */
+.message.processing {
+  background-color: rgba(48, 48, 48, 0.7);
+  border: 1px solid var(--red-carpet-light-gray);
+}
+
+.processing-indicator {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.processing-indicator .dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--red-carpet-red);
+  border-radius: 50%;
+  margin: 0 4px;
+  opacity: 0.6;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.processing-indicator .dot:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.processing-indicator .dot:nth-child(3) {
+  animation-delay: 1s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
 }
 
 /* Movie grid */
@@ -421,7 +478,7 @@ h4.section-header,
   right: 0;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%);
   padding: 1.5rem 1rem 1rem;
-  transform: translateY(calc(100% - 3rem));
+  transform: translateY(100%);
   transition: transform 0.3s ease;
 }
 

@@ -1,4 +1,8 @@
 import axios from 'axios';
+import { loadApiConfig, getConfig } from '../config';
+
+// Initialize with default configuration
+let apiConfig = getConfig();
 
 // Create an axios instance with CSRF token handling
 const api = axios.create({
@@ -6,7 +10,16 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   // Add timeout to prevent hanging requests
-  timeout: 30000, // 30 seconds
+  timeout: apiConfig.apiTimeout, // Will use the value from config
+});
+
+// Load configuration from backend
+loadApiConfig().then(config => {
+  // Update the axios instance with the loaded configuration
+  api.defaults.timeout = config.apiTimeout;
+  console.log(`API timeout set to ${config.apiTimeout}ms`);
+}).catch(error => {
+  console.error('Error loading API configuration:', error);
 });
 
 // Add CSRF token to requests
@@ -170,6 +183,16 @@ export const chatApi = {
         mode: 'casual' // Explicitly set mode to casual
       });
 
+      // If the response indicates processing, start polling
+      if (response.data && response.data.status === 'processing') {
+        console.log('Movie recommendations are being processed, will start polling...');
+        return {
+          status: 'processing',
+          message: response.data.message || 'Processing your movie recommendations...',
+          conversation_id: response.data.conversation_id
+        };
+      }
+
       if (!response.data || response.data.status !== 'success') {
         throw new Error(response.data?.message || 'Failed to get movie recommendations');
       }
@@ -177,6 +200,33 @@ export const chatApi = {
       return response.data;
     } catch (error) {
       console.error('Error getting movie recommendations:', error);
+      throw error;
+    }
+  },
+
+  // Method for polling movie recommendation status
+  pollMovieRecommendations: async () => {
+    try {
+      console.log('Polling for movie recommendations...');
+      const response = await api.get('/poll-movie-recommendations/');
+
+      // If the processing is complete, return the results
+      if (response.data.status === 'success' && response.data.recommendations) {
+        console.log('Polling successful, found recommendations');
+        return response.data;
+      } else if (response.data.status === 'processing') {
+        // Still processing
+        return {
+          status: 'processing',
+          message: response.data.message || 'Still processing your movie recommendations...'
+        };
+      } else {
+        // Error or unexpected status
+        console.error('Unexpected response from polling:', response.data);
+        throw new Error(response.data?.message || 'Failed to get movie recommendations');
+      }
+    } catch (error) {
+      console.error('Error polling for movie recommendations:', error);
       throw error;
     }
   },

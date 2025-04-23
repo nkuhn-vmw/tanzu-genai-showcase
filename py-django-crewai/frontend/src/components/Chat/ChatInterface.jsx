@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { chatApi } from '../../services/api';
+import { getConfig } from '../../config';
 import { useLocation } from '../../hooks/useLocation';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
-import ProgressIndicator from './ProgressIndicator';
 import SampleInquiries from './SampleInquiries';
 import LocationDisplay from './LocationDisplay';
 
@@ -119,7 +119,7 @@ function ChatInterface() {
   const sendMessage = async (message) => {
     // Debug log the message
     console.log('sendMessage received:', message);
-    
+
     // Safeguard against non-string messages
     if (typeof message !== 'string') {
       console.error('Invalid message type received:', typeof message);
@@ -128,7 +128,7 @@ function ChatInterface() {
 
     // Ensure message is trimmed and not empty
     const trimmedMessage = message.trim();
-    
+
     // If we're loading or message is empty, don't proceed
     if (loading || !trimmedMessage) {
       console.log('Message rejected:', { loading, message: trimmedMessage });
@@ -175,14 +175,96 @@ function ChatInterface() {
         } else {
           console.log('Using Casual Viewing mode API');
           response = await chatApi.getMovieRecommendations(trimmedMessage);
+
+          // If the response indicates processing, start polling
+          if (response && response.status === 'processing') {
+            console.log('Movie recommendations are being processed, starting polling...');
+            setRequestStage('theaters'); // Use theaters stage for polling UI
+
+            // Add a temporary bot message indicating processing
+            const processingMessage = {
+              sender: 'bot',
+              content: response.message || 'Processing your movie recommendations...',
+              created_at: new Date().toISOString(),
+              isProcessing: true
+            };
+
+            setMessages([...currentMessages, userMessage, processingMessage]);
+
+            // Get configuration values
+            const config = getConfig();
+
+            // Start polling with exponential backoff
+            let attempts = 0;
+            const maxAttempts = config.apiMaxRetries; // Use value from config
+            const initialPollInterval = 2000; // 2 seconds
+
+            const poll = async () => {
+              if (attempts >= maxAttempts) {
+                console.log(`Max polling attempts (${maxAttempts}) reached`);
+                throw {
+                  status: 'error',
+                  message: 'It\'s taking longer than expected to get your recommendations. Please try again.'
+                };
+              }
+
+              attempts++;
+              const backoffFactor = Math.min(attempts, 5); // Cap the backoff factor
+              const pollInterval = initialPollInterval * Math.pow(config.apiRetryBackoffFactor, backoffFactor - 1);
+
+              console.log(`Polling attempt ${attempts}/${maxAttempts} (interval: ${pollInterval}ms)`);
+
+              try {
+                const pollResponse = await chatApi.pollMovieRecommendations();
+
+                if (pollResponse.status === 'success' && pollResponse.recommendations) {
+                  console.log('Polling successful, found recommendations');
+                  // Replace the processing message with the actual response
+                  response = pollResponse;
+                  return; // Exit polling once we get results
+                } else if (pollResponse.status === 'processing') {
+                  // Continue polling
+                  setTimeout(poll, pollInterval);
+                } else {
+                  console.log('Polling returned unexpected status:', pollResponse.status);
+                  throw {
+                    status: 'error',
+                    message: 'Failed to get movie recommendations. Please try again.'
+                  };
+                }
+              } catch (pollError) {
+                console.error('Error while polling for recommendations:', pollError);
+
+                // Check if we've reached max attempts
+                if (attempts >= maxAttempts - 1) {
+                  throw pollError;
+                }
+
+                // For network errors, retry with exponential backoff
+                if (!pollError.response) {
+                  console.log(`Network error during polling, will retry (attempt ${attempts + 1}/${maxAttempts})`);
+                  setTimeout(poll, pollInterval * 2); // Double the interval for network errors
+                } else {
+                  throw pollError;
+                }
+              }
+            };
+
+            // Start polling
+            try {
+              await poll();
+            } catch (pollError) {
+              throw pollError;
+            }
+          }
         }
-        
+
         console.log('API response:', response);
       } catch (error) {
         console.error('API call failed:', error);
         throw {
           status: 'error',
-          message: 'Failed to get movie recommendations. Please try again.'
+          message: error.message || 'Failed to get movie recommendations. Please try again.'
         };
       }
 
@@ -200,7 +282,7 @@ function ChatInterface() {
           const theaterCount = movie.theaters ? movie.theaters.length : 0;
           return `${movie.title}: Available at ${theaterCount} theater${theaterCount === 1 ? '' : 's'}`;
         }).join('\n');
-        
+
         if (movieTheaterCounts) {
           botContent = `${response.message}\n\nTheater Availability:\n${movieTheaterCounts}`;
         }
@@ -283,13 +365,6 @@ function ChatInterface() {
         <MessageList messages={currentMessages} />
       </div>
 
-      {loading && (
-        <ProgressIndicator
-          progress={progress}
-          message={progressMessage}
-        />
-      )}
-
       <InputArea
         ref={inputRef}
         value={inputValue}
@@ -303,16 +378,16 @@ function ChatInterface() {
         id={activeTab === 'first-run' ? 'userInput' : 'casualUserInput'}
         sendButtonId={activeTab === 'first-run' ? 'sendButton' : 'casualSendButton'}
       />
-      
+
       {/* Bottom row with Sample Inquiries and Location Display */}
       <div className="bottom-row">
         <div className="sample-inquiries-container">
-          <SampleInquiries 
-            isFirstRun={activeTab === 'first-run'} 
-            onQuestionClick={handleSampleInquiryClick} 
+          <SampleInquiries
+            isFirstRun={activeTab === 'first-run'}
+            onQuestionClick={handleSampleInquiryClick}
           />
         </div>
-        
+
         {activeTab === 'first-run' && (
           <div className="location-display-container">
             <LocationDisplay />
