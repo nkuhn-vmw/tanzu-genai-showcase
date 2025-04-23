@@ -1,5 +1,5 @@
 // Genre data with subgenres and icons
-const genreData = {
+export const genreData = {
     popular: {
         title: 'Popular Genres',
         subgenres: [
@@ -122,43 +122,3 @@ const genreData = {
         ]
     }
 };
-
-// Function to update subgenre buttons based on selected genre
-function switchGenreTab(genreId) {
-    console.log('Switching to genre:', genreId); // Debug log
-
-    const subgenreContainer = document.getElementById('subgenreContainer');
-    if (!subgenreContainer) {
-        console.error('Subgenre container not found!');
-        return;
-    }
-
-    subgenreContainer.innerHTML = ''; // Clear existing buttons
-
-    // Get the genre data or default to popular
-    const genre = genreData[genreId] || genreData.popular;
-    console.log('Selected genre data:', genre); // Debug log
-
-    // Generate buttons for each subgenre
-    genre.subgenres.forEach(subgenre => {
-        const colDiv = document.createElement('div');
-        colDiv.className = 'col-6';
-
-        const button = document.createElement('button');
-        button.className = 'btn btn-red-carpet w-100 mb-2';
-        button.onclick = function() {
-            sendCasualSampleQuestion(`Show me ${subgenre.query}`);
-        };
-
-        // Add icon if available
-        if (subgenre.icon) {
-            const icon = document.createElement('i');
-            icon.className = `bi ${subgenre.icon} me-2`;
-            button.appendChild(icon);
-        }
-
-        button.appendChild(document.createTextNode(subgenre.name));
-        colDiv.appendChild(button);
-        subgenreContainer.appendChild(colDiv);
-    });
-}

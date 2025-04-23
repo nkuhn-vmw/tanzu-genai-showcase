@@ -3,21 +3,22 @@
 
 pipeline {
     agent any
-    
+
     tools {
         python 'python3.12'
+        nodejs 'node18'
     }
-    
+
     options {
         // Only keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
-    
+
     // Only run on changes to project files or CI configuration
     triggers {
         pollSCM('H/5 * * * *')
     }
-    
+
     stages {
         stage('Setup Python Environment') {
             when {
@@ -37,8 +38,8 @@ pipeline {
                 }
             }
         }
-        
-        stage('Test') {
+
+        stage('Backend Test') {
             when {
                 anyOf {
                     changeset 'py-django-crewai/**'
@@ -51,7 +52,27 @@ pipeline {
                 }
             }
         }
-        
+
+        stage('Frontend Build') {
+            when {
+                anyOf {
+                    changeset 'py-django-crewai/**'
+                    changeset 'py-django-crewai/ci/jenkins/Jenkinsfile'
+                }
+            }
+            steps {
+                dir('py-django-crewai') {
+                    // Cache npm dependencies
+                    cache(path: 'frontend/node_modules', key: "${env.JOB_NAME}-frontend") {
+                        dir('frontend') {
+                            sh 'npm ci'
+                            sh 'npm run build'
+                        }
+                    }
+                }
+            }
+        }
+
         stage('Collect Static Files') {
             when {
                 anyOf {
@@ -65,7 +86,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Create Package') {
             when {
                 allOf {
@@ -80,12 +101,12 @@ pipeline {
                 dir('py-django-crewai') {
                     sh '''
                         mkdir -p dist
-                        zip -r dist/py-django-crewai.zip . -x "*.git*" "*.env*" "*.pyc" "__pycache__/*" "*.github/*" "dist/*" "venv/*"
+                        zip -r dist/py-django-crewai.zip . -x "*.git*" "*.env*" "*.pyc" "__pycache__/*" "*.github/*" "dist/*" "venv/*" "frontend/node_modules/*"
                     '''
                 }
             }
         }
-        
+
         stage('Upload Artifacts') {
             when {
                 allOf {
@@ -100,26 +121,47 @@ pipeline {
                 dir('py-django-crewai') {
                     // Archive the artifacts in Jenkins
                     archiveArtifacts artifacts: 'dist/*.zip', fingerprint: true
-                    
-                    // You can also deploy to a production environment or artifact repository
-                    // For example, deploy to an S3 bucket
-                    /*
-                    withAWS(region: 'us-east-1', credentials: 'aws-credentials') {
-                        s3Upload(
-                            file: 'dist/py-django-crewai.zip',
-                            bucket: 'your-s3-bucket',
-                            path: 'py-django-crewai/${BUILD_NUMBER}/py-django-crewai.zip'
-                        )
+                }
+            }
+        }
+
+        stage('Deploy to Cloud Foundry') {
+            when {
+                allOf {
+                    branch 'main'
+                    anyOf {
+                        changeset 'py-django-crewai/**'
+                        changeset 'py-django-crewai/ci/jenkins/Jenkinsfile'
                     }
-                    */
+                    expression { return env.CF_DEPLOY == 'true' }
+                }
+            }
+            steps {
+                dir('py-django-crewai') {
+                    withCredentials([
+                        string(credentialsId: 'CF_API', variable: 'CF_API'),
+                        string(credentialsId: 'CF_USERNAME', variable: 'CF_USERNAME'),
+                        string(credentialsId: 'CF_PASSWORD', variable: 'CF_PASSWORD'),
+                        string(credentialsId: 'CF_ORG', variable: 'CF_ORG'),
+                        string(credentialsId: 'CF_SPACE', variable: 'CF_SPACE')
+                    ]) {
+                        sh '''
+                            curl -L "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" | tar -zx
+                            ./cf login -a $CF_API -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORG -s $CF_SPACE
+                            ./deploy-on-tp4cf.sh
+                        '''
+                    }
                 }
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()
+        }
+        success {
+            archiveArtifacts artifacts: 'py-django-crewai/dist/*.zip', fingerprint: true
         }
     }
 }
