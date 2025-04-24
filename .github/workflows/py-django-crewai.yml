@@ -1,6 +1,7 @@
 name: py-django-crewai CI/CD
 
 on:
+  workflow_call:
   push:
     paths:
       - 'py-django-crewai/**'

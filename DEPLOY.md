@@ -28,7 +28,10 @@ The workflow automates the following steps:
 
 ## Required GitHub Secrets
 
-You **must** configure the following secrets in your repository (`Settings` -> `Secrets and variables` -> `Actions`) for the applications you intend to deploy:
+You **must** configure the following secrets in your repository for the applications you intend to deploy. For a complete list of required secrets and detailed instructions on how to set them up, please refer to the [SECRETS.md](./SECRETS.md) file.
+
+> [!TIP]
+> We provide a convenient script (`create-gh-secrets.sh`) and a template file (`.env.example`) to help you set up all required GitHub secrets. See [SECRETS.md](./SECRETS.md) for details.
 
 | GitHub Secret Name          | Used By Project(s)                      | App Environment Variable Set |
 | :-------------------------- | :-------------------------------------- | :--------------------------- |
@@ -64,7 +67,7 @@ You **must** configure the following secrets in your repository (`Settings` -> `
     *   **Cloud Foundry Username**: Your CF username.
     *   **Cloud Foundry Target Organization**: The name of the CF organization to deploy into.
     *   **Cloud Foundry Target Space**: The name of the CF space within the organization.
-    *   **GenAI Service Plan Name** (Optional): The plan name for the `genai` service type (default: `standard`). Only needed if the selected app requires a GenAI service.
+    *   **GenAI Service Plan Name** (Optional): The plan name for the `genai` service type. Only needed if the selected app requires a GenAI service.
     *   **Database Service Type** (Optional): The type of database service (e.g., `postgresql`, `mysql`). Only needed if the selected app requires a database.
     *   **Database Service Plan Name** (Optional): The plan name for the database service. Only needed if the selected app requires a database.
 5.  Click the **"Run workflow"** button.
@@ -87,7 +90,7 @@ You **must** configure the following secrets in your repository (`Settings` -> `
 *   **Authentication Failed**: Double-check your CF username and ensure the `CF_PASSWORD` secret is correct. Verify your user has access to the target CF API.
 *   **Org/Space Creation Failed**: Ensure the CF user has permissions to create organizations or spaces if they don't exist. If they should exist, verify the names are spelled correctly.
 *   **Build Failed**: Check the logs for the specific build step (e.g., "Build .NET App"). Ensure the correct SDK/runtime versions are installed and dependencies are correct.
-*   **Service Creation Failed**: Verify the service type (`genai`, `postgresql`, etc.) and plan name (`standard`, etc.) are valid in your CF marketplace (`cf marketplace`).
+*   **Service Creation Failed**: Verify the service type (e.g., `genai`, `postgresql`) and plan name (e.g., `standard`) are valid in your CF marketplace (`cf marketplace`).
 *   **Push Failed**: Examine the `cf push` logs. Common issues include incorrect paths in the `manifest.yml`, insufficient memory/disk quota, or buildpack errors.
 *   **App Fails to Start**: Check `cf logs APP_NAME --recent`. Common causes include missing environment variables (secrets), incorrect database connection strings (if using DB service), or application errors. Ensure all required secrets were set in GitHub.
 *   **Secret Not Set**: Verify the GitHub secret exists with the *exact* name specified in the "Required GitHub Secrets" table. Secrets are case-sensitive.
