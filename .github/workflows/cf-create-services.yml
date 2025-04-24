@@ -68,7 +68,7 @@ jobs:
         run: |
           if ! cf service "${{ inputs.ups_name }}"; then
             echo "Creating user-provided service: ${{ inputs.ups_name }}"
-            
+
             # Use provided credentials JSON if available, otherwise use secret
             if [[ -n "${{ inputs.ups_credentials }}" ]]; then
               cf create-user-provided-service "${{ inputs.ups_name }}" -p '${{ inputs.ups_credentials }}' || echo "UPS creation might have failed or already exists"

@@ -10,7 +10,7 @@ const InputArea = forwardRef(({
   id = 'userInput',
   sendButtonId = 'sendButton'
 }, ref) => {
-  
+
   const handleInputChange = (e) => {
     onChange(e.target.value);
   };

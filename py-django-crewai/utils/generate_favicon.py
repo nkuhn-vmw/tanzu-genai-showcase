@@ -26,10 +26,10 @@ print(f"Generating favicon.ico from {svg_path}...")
 
 for size in sizes:
     print(f"Processing size {size}x{size}...")
-    
+
     # Convert SVG to PNG of the specified size
     png_data = cairosvg.svg2png(url=svg_path, output_width=size, output_height=size)
-    
+
     # Create a PIL Image from the PNG data
     img = Image.open(BytesIO(png_data))
     ico_images.append(img)

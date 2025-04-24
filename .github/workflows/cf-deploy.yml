@@ -43,7 +43,7 @@ jobs:
           if [ -z "$APP_NAME" ]; then
             APP_NAME=$(basename "${{ inputs.project_path }}")
           fi
-          
+
           echo "Setting input environment variables..."
           ENV_VARS_JSON='${{ inputs.env_vars }}'
           for key in $(echo "$ENV_VARS_JSON" | jq -r 'keys[]'); do
@@ -60,7 +60,7 @@ jobs:
             if [ -z "$APP_NAME" ]; then
               APP_NAME=$(basename "${{ inputs.project_path }}")
             fi
-            
+
             echo "Setting environment variables from artifact..."
             ENV_VARS_JSON=$(cat ../env_vars.json)
             for key in $(echo "$ENV_VARS_JSON" | jq -r 'keys[]'); do
@@ -79,7 +79,7 @@ jobs:
           if [ -z "$APP_NAME" ]; then
             APP_NAME=$(basename "${{ inputs.project_path }}")
           fi
-          
+
           echo "Starting application..."
           cf start "$APP_NAME"
         env:

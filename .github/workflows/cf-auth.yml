@@ -38,7 +38,7 @@ jobs:
       - name: Authenticate to Cloud Foundry
         run: |
           cf api "${{ inputs.cf_api }}"
-          
+
           # Determine authentication method
           if [[ "${{ inputs.use_sso }}" == "true" ]]; then
             echo "Using SSO authentication with refresh token"
@@ -47,6 +47,6 @@ jobs:
             echo "Using username/password authentication"
             cf auth "${{ inputs.cf_username }}" "${{ secrets.CF_PASSWORD }}"
           fi
-          
+
           # Verify authentication was successful
           cf target || { echo "Authentication failed"; exit 1; }

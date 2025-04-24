@@ -78,7 +78,7 @@ jobs:
             cf auth "${{ inputs.cf_username }}" "${{ secrets.CF_PASSWORD }}"
           fi
           cf target -o "${{ inputs.cf_org }}" -s "${{ inputs.cf_space }}"
-          
+
           # Create UPS
           if ! cf service aviation-stack-service-credentials; then
             echo "Creating user-provided service: aviation-stack-service-credentials"
