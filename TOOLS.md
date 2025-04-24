@@ -329,8 +329,8 @@ All projects are configured for deployment to Tanzu Platform for Cloud Foundry.
 
 - **CLI**: Cloud Foundry CLI v8
 - **Documentation**: [https://docs.cloudfoundry.org/](https://docs.cloudfoundry.org/)
-- **Deployment Guide**: See [DEPLOY.md](DEPLOY.md) in this repository
+- **Deployment Guide**: Consult the [guide](DEPLOY.md) in this repository
 
 ### Required Environment Variables
 
-Each project requires specific environment variables to be set, either directly or through service bindings. See [DEPLOY.md](DEPLOY.md) for details on the required environment variables for each project.
+Each project requires specific environment variables to be set, either directly or through service bindings. Consult the aforementioned [guide](DEPLOY.md) for details on the required environment variables for each project.
