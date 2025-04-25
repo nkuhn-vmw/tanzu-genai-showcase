@@ -869,6 +869,10 @@ graph TD
 
     Casual -.-> Task1
     Casual -.-> Task2
+
+    Manager --> CompatibilityLayer[CrewAI Compatibility Layer]
+    CompatibilityLayer --> EventTracking[Event Tracking Patch]
+    CompatibilityLayer --> ToolCompat[Tool Compatibility Checks]
 ```
 
 ### Agent Definitions
@@ -958,19 +962,493 @@ Each agent uses specialized Pydantic-based tools:
    - Retrieves showtimes for recommended movies
    - Formats theater and showtime data for display
 
-## Integration Architecture
+## CrewAI Integration
 
-### LLM Integration
+The application integrates with CrewAI 0.114.0 and includes specific compatibility fixes and workarounds to ensure stable operation.
 
-The application is designed to integrate with any LLM service that provides an OpenAI-compatible API. It supports:
+### Version Compatibility
 
-1. **Cloud Foundry Service Binding**: Automatically detects and uses credentials from bound GenAI services
-2. **Manual Configuration**: Supports custom API keys and endpoints via environment variables
-3. **Model Selection**: Configurable LLM model (default: gpt-4o-mini)
+The system is specifically designed to work with CrewAI 0.114.0, which requires certain compatibility adjustments:
 
 ```python
-# LLM Configuration from settings.py
+def _ensure_tool_compatibility(self, tools: List[Any]) -> None:
+    """
+    Ensure tools have all necessary attributes for CrewAI 0.114.0 compatibility.
+
+    Args:
+        tools: List of tools to check and enhance
+    """
+    for tool in tools:
+        try:
+            # Make sure the tool has a name attribute
+            if not hasattr(tool, 'name'):
+                tool_class_name = tool.__class__.__name__
+                # Derive a name from the class name if needed
+                derived_name = tool_class_name.lower().replace('tool', '_tool')
+                setattr(tool, 'name', derived_name)
+                logger.info(f"Added missing name '{derived_name}' to tool of type {tool_class_name}")
+
+            # Ensure tool name is registered with CrewAI's event tracking system
+            # This prevents the KeyError: 'search_movies_tool' issue
+            from crewai.utilities.events.utils.console_formatter import ConsoleFormatter
+            if hasattr(ConsoleFormatter, 'tool_usage_counts') and tool.name not in ConsoleFormatter.tool_usage_counts:
+                ConsoleFormatter.tool_usage_counts[tool.name] = 0
+                logger.info(f"Pre-registered tool '{tool.name}' with CrewAI event tracking")
+        except Exception as e:
+            logger.warning(f"Error ensuring tool compatibility for {tool.__class__.__name__}: {e}")
+```
+
+### Event Tracking Patch
+
+The application includes a custom patch for CrewAI's event tracking system to handle missing tools gracefully:
+
+```python
+def _patch_crewai_event_tracking(self):
+    """
+    Patch CrewAI's event tracking system to handle missing tools gracefully.
+    This addresses the KeyError: 'search_movies_tool' issue in newer CrewAI versions.
+    """
+    try:
+        # Import necessary modules from CrewAI
+        from crewai.utilities.events.utils.console_formatter import ConsoleFormatter
+        from crewai.utilities.events.event_listener import CrewAgentEventListener
+
+        # Store original handle_tool_usage_finished method
+        original_handle = ConsoleFormatter.handle_tool_usage_finished
+
+        # Define patched method with error handling
+        def patched_handle_tool_usage_finished(self, event):
+            try:
+                # First try to initialize tool_usage_counts if it doesn't exist
+                if not hasattr(self, 'tool_usage_counts'):
+                    self.tool_usage_counts = {}
+
+                # Get tool name safely
+                tool_name = getattr(event, 'tool_name', 'unknown_tool')
+
+                # Initialize counter for this tool if not already done
+                if tool_name not in self.tool_usage_counts:
+                    self.tool_usage_counts[tool_name] = 0
+
+                # Now call the original method which should work
+                return original_handle(self, event)
+            except KeyError as e:
+                # Log the error but continue execution
+                logger.warning(f"CrewAI event tracking KeyError handled: {e}")
+                # Initialize the missing key
+                if hasattr(event, 'tool_name'):
+                    self.tool_usage_counts[event.tool_name] = 1
+                return None
+            except Exception as e:
+                # Log other errors but don't crash
+                logger.error(f"Error in CrewAI event tracking: {e}")
+                return None
+
+        # Apply the patch
+        ConsoleFormatter.handle_tool_usage_finished = patched_handle_tool_usage_finished
+        logger.info("Successfully patched CrewAI event tracking")
+
+    except Exception as e:
+        # If patching fails, log but continue
+        logger.warning(f"Failed to patch CrewAI event tracking: {e}")
+```
+
+### JSON Output Processing
+
+The application includes robust JSON parsing with multiple fallback mechanisms to handle CrewAI's output format variations:
+
+```python
+def safe_extract_task_output(task, task_name):
+    logger.debug(f"Extracting output from {task_name} task")
+
+    if not hasattr(task, 'output'):
+        logger.error(f"{task_name} task has no 'output' attribute")
+        return "[]"
+
+    if task.output is None:
+        logger.error(f"{task_name} task output is None")
+        return "[]"
+
+    # Try different approaches to get the raw output
+    if hasattr(task.output, 'raw'):
+        output = task.output.raw
+        logger.debug(f"Using 'raw' attribute from {task_name} task output")
+    elif hasattr(task.output, 'result'):
+        output = task.output.result
+        logger.debug(f"Using 'result' attribute from {task_name} task output")
+    elif hasattr(task.output, 'output'):
+        output = task.output.output
+        logger.debug(f"Using 'output' attribute from {task_name} task output")
+    else:
+        output = str(task.output)
+        logger.debug(f"Using string conversion for {task_name} task output")
+
+    # Validate output is a string and has content
+    if not isinstance(output, str):
+        logger.warning(f"{task_name} task output is not a string, converting")
+        output = str(output)
+
+    if not output.strip():
+        logger.error(f"{task_name} task output is empty after processing")
+        return "[]"
+
+    return output
+```
+
+## Movie Classification System
+
+The application implements a sophisticated movie classification system to differentiate between current theatrical releases and older movies, which affects how they are displayed and processed.
+
+### Current vs. Older Release Classification
+
+Movies are classified based on their release year relative to the current year:
+
+```python
+def _process_current_releases(self, recommendations: List[Dict[str, Any]]) -> None:
+    """
+    Process recommendations to identify current releases.
+
+    Args:
+        recommendations: List of movie recommendations
+    """
+    # Check which movies are current/first-run vs older movies
+    current_year = datetime.now().year
+    for movie in recommendations:
+        if not isinstance(movie, dict):
+            continue
+
+        # Parse release date to determine if it's a current movie
+        release_date = movie.get('release_date', '')
+        release_year = None
+        if release_date and len(release_date) >= 4:
+            try:
+                release_year = int(release_date[:4])
+            except ValueError:
+                pass
+
+        # Movies from current year or previous year are considered "current"
+        is_current = False
+        if release_year and (release_year >= current_year - 1):
+            is_current = True
+
+        # Set a flag on each movie
+        movie['is_current_release'] = is_current
+
+        # For older movies, set an empty theaters list to prevent showtimes lookup
+        if not is_current:
+            movie['theaters'] = []
+            logger.info(f"Movie '{movie.get('title')}' is an older release ({release_year}), skipping theater lookup")
+```
+
+### Mode-Specific Processing
+
+The application uses different search strategies based on the conversation mode:
+
+1. **First Run Mode**: Prioritizes current theatrical releases
+   - Searches for movies currently playing in theaters
+   - Only shows theater and showtime information for current releases
+   - Uses SerpAPI to get real-time showtime data
+
+2. **Casual Viewing Mode**: Allows exploration of movies from any time period
+   - Searches for movies from any year
+   - Does not show theater or showtime information
+   - Supports decade-specific searches
+
+### Decade Detection
+
+The SearchMoviesTool includes sophisticated decade detection for historical movie searches:
+
+```python
+# Check for decade or year range in the query
+import re
+year_ranges = []
+
+# Check for specific decades (90s, 1990s, etc.)
+decade_patterns = [
+    (r'1990s|90s|nineties', (1990, 1999)),
+    (r'1980s|80s|eighties', (1980, 1989)),
+    (r'1970s|70s|seventies', (1970, 1979)),
+    (r'1960s|60s|sixties', (1960, 1969)),
+    (r'1950s|50s|fifties', (1950, 1959)),
+    (r'2000s|two thousands', (2000, 2009)),
+    (r'2010s|twenty tens', (2010, 2019)),
+    (r'2020s|twenty twenties', (2020, 2029))
+]
+
+for pattern, (start_year, end_year) in decade_patterns:
+    if re.search(fr'\b{pattern}\b', search_query.lower()):
+        year_ranges.append((start_year, end_year))
+        logger.info(f"Detected decade: {start_year}-{end_year} in query: {search_query}")
+```
+
+### Year Range Detection
+
+The application can detect and process various year range formats in user queries:
+
+```python
+# Check for year range patterns like "2000-2010" or "between 2000 and 2010"
+range_matches = re.findall(r'(\d{4})\s*-\s*(\d{4})', search_query)
+if range_matches:
+    for start, end in range_matches:
+        year_ranges.append((int(start), int(end)))
+        logger.info(f"Detected explicit year range: {start}-{end} in query")
+
+# Check for "between X and Y" patterns
+between_matches = re.findall(r'between\s+(\d{4})\s+and\s+(\d{4})', search_query.lower())
+if between_matches:
+    for start, end in between_matches:
+        year_ranges.append((int(start), int(end)))
+        logger.info(f"Detected 'between' year range: {start}-{end} in query")
+
+# Check for from/before/after year patterns
+from_year_match = re.search(r'from\s+(\d{4})', search_query.lower())
+if from_year_match:
+    year = int(from_year_match.group(1))
+    year_ranges.append((year, datetime.now().year))
+    logger.info(f"Detected 'from year' pattern: {year}-present in query")
+```
+
+### Discover API Integration
+
+For year-specific searches, the application uses TMDb's Discover API to find popular movies from specific time periods:
+
+```python
+# If we're in casual mode and have year ranges, try to use the discover API first
+if not self.first_run_mode and year_ranges:
+    try:
+        # Get results limit from the settings
+        results_limit = getattr(settings, 'MOVIE_RESULTS_LIMIT', 5)
+        logger.info(f"Using discover API for year-specific search in casual mode")
+
+        # Use the discover API directly to get popular movies from the decade
+        discover = tmdb.Discover()
+
+        # Use the first detected year range
+        start_year, end_year = year_ranges[0]
+
+        # Log the exact years we're searching for
+        logger.info(f"Searching for movies released between {start_year} and {end_year}")
+
+        discover_params = {
+            "primary_release_date.gte": f"{start_year}-01-01",
+            "primary_release_date.lte": f"{end_year}-12-31",
+            "sort_by": "vote_average.desc", # Sort by highest rated first
+            "vote_count.gte": 100  # Ensure we get well-known movies with sufficient votes
+        }
+
+        # Add genres if specified
+        if genres:
+            discover_params["with_genres"] = ",".join(str(g) for g in genres)
+
+        discover_response = discover.movie(**discover_params)
+```
+
+### UI Rendering Based on Classification
+
+The frontend renders different components based on the movie classification:
+
+```jsx
+// In First Run mode, show both movies and theaters
+if (activeTab === 'first-run') {
+  return (
+    <>
+      <div className="movie-section">
+        <h3>Recommended Movies</h3>
+        {movies.map(movie => (
+          <MovieCard
+            key={movie.id}
+            movie={movie}
+            isSelected={movie.id === selectedMovieId}
+            onClick={() => selectMovie(movie.id)}
+            isCurrentRelease={movie.is_current_release}
+          />
+        ))}
+      </div>
+
+      {/* Only show theater section for current releases */}
+      {selectedMovie && selectedMovie.is_current_release && (
+        <TheaterSection
+          movie={selectedMovie}
+          isLoading={isLoadingTheaters}
+        />
+      )}
+    </>
+  );
+} else {
+  // In Casual Viewing mode, only show movies (no theaters)
+  return (
+    <div className="movie-section">
+      <h3>Recommended Movies</h3>
+      {movies.map(movie => (
+        <MovieCard
+          key={movie.id}
+          movie={movie}
+          isSelected={movie.id === selectedMovieId}
+          onClick={() => selectMovie(movie.id)}
+          showReleaseYear={true} // Always show release year in casual mode
+    // Update the movie with theaters
+    if (response.status === 'success' && response.theaters) {
+      console.log(`Found ${response.theaters.length} theaters for movie: ${movie.title}`);
+      setFirstRunMovies(prevMovies =>
+        prevMovies.map(m =>
+          m.id === movieId
+            ? { ...m, theaters: response.theaters }
+            : m
+        )
+      );
+      setIsLoadingTheaters(false);
+    } else if (response.status === 'processing') {
+      // If theaters are still being processed, poll for updates
+      console.log('Theaters are still being processed, starting polling');
+      let attempts = 0;
+      const maxAttempts = 5; // Reduced from 10 to 5
+      const pollInterval = 2000; // 2 seconds
+
+      const poll = async () => {
+        if (attempts >= maxAttempts) {
+          console.log('Max polling attempts reached, assuming no theaters available');
+          // Instead of showing an error, just set empty theaters array
+          setFirstRunMovies(prevMovies =>
+            prevMovies.map(m =>
+              m.id === movieId
+                ? { ...m, theaters: [] }
+                : m
+            )
+          );
+          setIsLoadingTheaters(false);
+          return;
+        }
+
+        attempts++;
+        console.log(`Polling attempt ${attempts}/${maxAttempts}`);
+
+        try {
+          const pollResponse = await chatApi.pollTheaterStatus(movieId);
+
+          if (pollResponse.status === 'success' && pollResponse.theaters) {
+            console.log(`Polling successful, found ${pollResponse.theaters.length} theaters`);
+            setFirstRunMovies(prevMovies =>
+              prevMovies.map(m =>
+                m.id === movieId
+                  ? { ...m, theaters: pollResponse.theaters }
+                  : m
+              )
+            );
+            setIsLoadingTheaters(false);
+            return; // Exit polling once we get results
+          } else if (pollResponse.status === 'processing') {
+            // Continue polling
+            setTimeout(poll, pollInterval);
+          } else {
+            console.log('Polling returned unexpected status:', pollResponse.status);
+            // Instead of showing an error, just set empty theaters array
+            setFirstRunMovies(prevMovies =>
+              prevMovies.map(m =>
+                m.id === movieId
+                  ? { ...m, theaters: [] }
+                  : m
+              )
+            );
+            setIsLoadingTheaters(false);
+          }
+        } catch (pollError) {
+          console.error('Error while polling for theaters:', pollError);
+          // Instead of showing an error, just set empty theaters array
+          setFirstRunMovies(prevMovies =>
+            prevMovies.map(m =>
+              m.id === movieId
+                ? { ...m, theaters: [] }
+                : m
+            )
+          );
+          setIsLoadingTheaters(false);
+        }
+      };
+
+      // Start polling
+      setTimeout(poll, pollInterval);
+    }
+  } catch (error) {
+    console.error('Error fetching theaters:', error);
+    // Error handling...
+  }
+}, [firstRunMovies]);
+```
+
+## LLM Configuration
+
+The application implements a flexible LLM configuration system that supports multiple providers and deployment environments.
+
+### Provider/Model Format
+
+The system supports a provider/model format for specifying LLMs:
+
+```python
+def create_llm(self) -> ChatOpenAI:
+    """Create the LLM for the agents."""
+    # Check if we have a provider specified
+    provider = self.llm_provider
+    model = self.model
+
+    # If model contains a provider prefix (e.g., "openai/gpt-4o-mini"), extract it
+    if model and '/' in model:
+        parts = model.split('/', 1)
+        if len(parts) == 2:
+            provider = parts[0]
+            model = parts[1]
+            logger.info(f"Extracted provider '{provider}' and model '{model}' from combined format")
+
+    # Create the LLM with the appropriate configuration
+    llm = ChatOpenAI(
+        api_key=self.api_key,
+        base_url=self.base_url,
+        model=model,
+        temperature=0.7
+    )
+
+    return llm
+```
+
+### LiteLLM Compatibility
+
+The application supports LiteLLM for model compatibility across different providers:
+
+```python
+def _create_litellm_compatible_model(self, provider: str, model: str) -> str:
+    """
+    Create a LiteLLM-compatible model name from provider and model.
+
+    Args:
+        provider: The LLM provider (e.g., "openai", "anthropic", "azure")
+        model: The model name (e.g., "gpt-4o-mini", "claude-3-opus")
+
+    Returns:
+        LiteLLM-compatible model name
+    """
+    # Handle special cases for certain providers
+    if provider.lower() == "anthropic":
+        return f"anthropic/{model}"
+    elif provider.lower() == "azure":
+        return f"azure/{model}"
+    elif provider.lower() == "openai":
+        return model  # OpenAI models don't need a prefix in LiteLLM
+    else:
+        # For other providers, use the format provider/model
+        return f"{provider}/{model}"
+```
+
+### Environment Variable Configuration
+
+The application supports flexible environment variable configuration:
+
+```python
+# settings.py
+# LLM Configuration
+LLM_CONFIG = get_llm_config()
+
+# Function to get LLM configuration from environment or service bindings
 def get_llm_config():
+    """Get LLM configuration from environment or service bindings."""
     # Check if running in Cloud Foundry with bound services
     if cf_env.get_service(label='genai') or cf_env.get_service(name='movie-chatbot-llm'):
         service = cf_env.get_service(label='genai') or cf_env.get_service(name='movie-chatbot-llm')
@@ -979,15 +1457,111 @@ def get_llm_config():
         return {
             'api_key': credentials.get('api_key') or credentials.get('apiKey'),
             'base_url': credentials.get('url') or credentials.get('baseUrl'),
-            'model': credentials.get('model') or 'gpt-4o-mini'
+            'model': credentials.get('model') or os.getenv('LLM_MODEL', 'gpt-4o-mini'),
+            'provider': credentials.get('provider') or os.getenv('LLM_PROVIDER', 'openai')
         }
 
     # Fallback to environment variables for local development
     return {
         'api_key': os.getenv('OPENAI_API_KEY'),
         'base_url': os.getenv('LLM_BASE_URL'),
-        'model': os.getenv('LLM_MODEL', 'gpt-4o-mini')
+        'model': os.getenv('LLM_MODEL', 'gpt-4o-mini'),
+        'provider': os.getenv('LLM_PROVIDER', 'openai')
     }
+```
+
+### Cloud Foundry Service Binding
+
+The application automatically detects and uses credentials from bound GenAI services:
+
+```python
+# Check if running in Cloud Foundry
+if os.getenv('VCAP_APPLICATION'):
+    logger.info("Running in Cloud Foundry environment")
+
+    # Check for GenAI service binding
+    genai_service = cf_env.get_service(label='genai')
+    if genai_service:
+        logger.info(f"Found GenAI service: {genai_service.name}")
+        credentials = genai_service.credentials
+
+        # Extract credentials
+        api_key = credentials.get('api_key') or credentials.get('apiKey')
+        base_url = credentials.get('url') or credentials.get('baseUrl')
+        model = credentials.get('model', os.getenv('LLM_MODEL', 'gpt-4o-mini'))
+
+        logger.info(f"Using model from GenAI service: {model}")
+        logger.info(f"Using base URL from GenAI service: {base_url}")
+```
+
+### Model Initialization
+
+The application initializes the LLM with appropriate configuration:
+
+```python
+def process_query(self, query: str, conversation_history: List[Dict[str, str]], first_run_mode: bool = True) -> Dict[str, Any]:
+    """Process a user query and return movie recommendations."""
+    # Create the LLM
+    llm = self.create_llm()
+    logger.info(f"Created LLM with model: {self.model}")
+
+    # Apply CrewAI compatibility patches
+    self._patch_crewai_event_tracking()
+
+    # Create the agents
+    movie_finder = MovieFinderAgent.create(llm)
+    recommender = RecommendationAgent.create(llm)
+    theater_finder = TheaterFinderAgent.create(llm)
+
+    # Create tools for each task, passing the mode
+    search_tool = SearchMoviesTool()
+    search_tool.first_run_mode = first_run_mode
+    analyze_tool = AnalyzePreferencesTool()
+    theater_finder_tool = FindTheatersTool(user_location=self.user_location)
+
+    # Ensure tool compatibility with CrewAI
+    self._ensure_tool_compatibility([search_tool, analyze_tool, theater_finder_tool])
+```
+
+## Integration Architecture
+
+### TMDb API Integration
+
+The application uses TMDbSimple to interact with The Movie Database API for movie information:
+
+- Movie search functionality
+- Detailed movie information
+- Now playing movies
+- Movie credits and genres
+- Enhanced image quality selection
+
+Code example for searching current movies:
+
+```python
+# Check for currently playing movies in TMDB
+now_playing = tmdb.Movies()
+response = now_playing.now_playing()
+
+if response and 'results' in response and response['results']:
+    # Filter by genre if specified
+    results = response['results']
+    if genres:
+        results = [movie for movie in results if any(genre_id in movie.get('genre_ids', []) for genre_id in genres)]
+
+    # Process limited number of results
+    results_limit = getattr(settings, 'MOVIE_RESULTS_LIMIT', 5)
+    results = results[:results_limit]
+    for movie in results:
+        movie_id = movie.get('id')
+        title = movie.get('title', 'Unknown Title')
+        overview = movie.get('overview', '')
+        release_date = movie.get('release_date', '')
+        poster_path = movie.get('poster_path', '')
+
+        # Get full-size poster image
+        poster_url = ""
+        if poster_path:
+            poster_url = f"https://image.tmdb.org/t/p/original{poster_path}"
 ```
 
 ### TMDb API Integration

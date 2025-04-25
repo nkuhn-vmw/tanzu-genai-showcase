@@ -15,6 +15,7 @@ This document provides guidance on troubleshooting common issues with the Movie 
 - [Performance Optimization](#performance-optimization)
 - [Deployment-Specific Issues](#deployment-specific-issues)
 - [Logging and Monitoring](#logging-and-monitoring)
+- [First Run Mode Issues](#first-run-mode-issues)
 
 ## Application Startup Issues
 
@@ -1124,3 +1125,96 @@ When examining logs, look for these patterns:
    - Repeated queries
    - Abandoned conversations
    - Error-triggering queries
+
+## First Run Mode Issues
+
+### Only One Movie Gets Theater Data
+
+**Symptoms**:
+- Only one movie (typically the first one) shows theaters and showtimes
+- Other movies show "No theaters found" even when they should be in theaters
+
+**Explanation**:
+- The Theater Finder agent may only be processing the first movie in the recommendations
+- SerpAPI may only return results for certain movies that are currently in theaters
+- Some movies might be classified as current releases but not actually playing in theaters
+
+**Solutions**:
+
+1. **Check movie classification**:
+   - Verify that movies are correctly classified as current releases
+   - Check the `_process_current_releases` method in `MovieCrewManager`
+
+2. **Review theater search logs**:
+   ```bash
+   LOG_LEVEL=DEBUG
+   # Look for logs like "Found X theaters for movie: [Movie Title]"
+   ```
+
+3. **Examine SerpAPI responses**:
+   - Check if SerpAPI is returning results for all movies
+   - Verify that the search queries are correctly formatted
+
+4. **Improve UI feedback**:
+   - Update the MovieCard component to show "Checking theaters..." while loading
+   - Display "No theaters found" when a movie has no theaters
+   - Ensure the UI doesn't get stuck in a loading state
+
+5. **Implement parallel theater searches**:
+   - Use ThreadPoolExecutor to search for theaters for multiple movies in parallel
+   - Add caching for theater results to avoid redundant searches
+
+### UI Gets Stuck When Switching Between Movies
+
+**Symptoms**:
+- UI becomes unresponsive when clicking on different movie tiles
+- Endless polling for theaters that don't exist
+- Theater section shows perpetual loading state
+
+**Solutions**:
+
+1. **Implement timeout for theater polling**:
+   - Reduce the maximum polling time from 2 minutes to 30 seconds
+   - Set empty theaters array after timeout instead of showing an error
+   ```javascript
+   // In TheaterSection.jsx
+   setTimeout(() => {
+     if (pollingIntervalRef.current) {
+       clearInterval(pollingIntervalRef.current);
+       // Instead of showing an error, just set empty theaters array
+       setFirstRunMovies(prevMovies =>
+         prevMovies.map(m =>
+           m.id === selectedMovieId
+             ? { ...m, theaters: [] }
+             : m
+         )
+       );
+       setIsLoadingTheaters(false);
+     }
+   }, 30 * 1000); // 30 seconds max polling
+   ```
+
+2. **Add theater status indicator in MovieCard**:
+   ```jsx
+   // In MovieCard.jsx
+   const theaterStatus = isFirstRun ? (
+     movie.theaters === undefined ? 'checking' :
+     movie.theaters && movie.theaters.length === 0 ? 'none' :
+     'found'
+   ) : 'not-applicable';
+
+   // Then in the render:
+   {isFirstRun && (
+     <div className="mt-2 small text-muted">
+       {theaterStatus === 'found' && theaterCount > 0 ? (
+         `Available at ${theaterCount} theater${theaterCount === 1 ? '' : 's'}`
+       ) : theaterStatus === 'checking' ? (
+         <span><i className="bi bi-hourglass-split me-1"></i>Checking theaters...</span>
+       ) : (
+         <span><i className="bi bi-x-circle me-1"></i>No theaters found nearby</span>
+       )}
+     </div>
+   )}
+   ```
+
+3. **Skip theater fetching for movies with empty theaters**:

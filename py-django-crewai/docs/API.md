@@ -73,6 +73,64 @@ POST /get-movies-theaters-and-showtimes/
 }
 ```
 
+**Alternative Response** (when processing):
+```json
+{
+  "status": "processing",
+  "message": "Your movie recommendations are being processed. Please wait a moment.",
+  "conversation_id": 123
+}
+```
+
+#### Poll First Run Recommendations Endpoint
+
+```
+GET /poll-first-run-recommendations/
+```
+
+**Purpose**: Poll for First Run mode movie recommendations, theaters, and showtimes that are being processed
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Based on your interest in action movies, I recommend...",
+  "recommendations": [
+    {
+      "id": 123456,
+      "tmdb_id": 123456,
+      "title": "Action Movie Title",
+      "overview": "Movie description...",
+      "release_date": "2025-04-01",
+      "poster_url": "https://image.tmdb.org/t/p/original/poster_path.jpg",
+      "rating": 8.5,
+      "theaters": [
+        {
+          "name": "AMC Theater",
+          "address": "123 Main St, Seattle, WA",
+          "distance_miles": 2.5,
+          "showtimes": [
+            {
+              "start_time": "2025-04-23T19:30:00-07:00",
+              "format": "Standard"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Alternative Response** (when still processing):
+```json
+{
+  "status": "processing",
+  "message": "Your movie recommendations are still being processed. Please wait a moment.",
+  "conversation_id": 123
+}
+```
+
 #### Casual Viewing Mode Endpoint
 
 ```
@@ -107,6 +165,52 @@ POST /get-movie-recommendations/
       "theaters": []
     }
   ]
+}
+```
+
+**Alternative Response** (when processing):
+```json
+{
+  "status": "processing",
+  "message": "Your movie recommendations are being processed. Please wait a moment.",
+  "conversation_id": 123
+}
+```
+
+#### Poll Movie Recommendations Endpoint
+
+```
+GET /poll-movie-recommendations/
+```
+
+**Purpose**: Poll for Casual Viewing mode movie recommendations that are being processed
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Here are some great sci-fi classics from the 1980s...",
+  "recommendations": [
+    {
+      "id": 789012,
+      "tmdb_id": 789012,
+      "title": "Classic Sci-Fi Movie",
+      "overview": "Movie description...",
+      "release_date": "1982-06-11",
+      "poster_url": "https://image.tmdb.org/t/p/original/poster_path.jpg",
+      "rating": 8.9,
+      "theaters": []
+    }
+  ]
+}
+```
+
+**Alternative Response** (when still processing):
+```json
+{
+  "status": "processing",
+  "message": "Your movie recommendations are still being processed. Please wait a moment.",
+  "conversation_id": 123
 }
 ```
 
@@ -167,6 +271,23 @@ GET /reset/
 **Purpose**: Reset all conversation history
 
 **Response**: Redirects to index page
+
+#### API Configuration Endpoint
+
+```
+GET /api-config/
+```
+
+**Purpose**: Get API configuration settings for the frontend
+
+**Response**:
+```json
+{
+  "api_timeout_seconds": 30,
+  "api_max_retries": 5,
+  "api_retry_backoff_factor": 1.5
+}
+```
 
 ### Frontend API Service
 
@@ -285,6 +406,28 @@ export const chatApi = {
     }
   },
 
+  // Method for polling first run recommendations
+  pollFirstRunRecommendations: async () => {
+    try {
+      const response = await api.get('/poll-first-run-recommendations/');
+      return response.data;
+    } catch (error) {
+      console.error('Error polling first run recommendations:', error);
+      throw error;
+    }
+  },
+
+  // Method for polling casual mode recommendations
+  pollMovieRecommendations: async () => {
+    try {
+      const response = await api.get('/poll-movie-recommendations/');
+      return response.data;
+    } catch (error) {
+      console.error('Error polling movie recommendations:', error);
+      throw error;
+    }
+  },
+
   getTheaters: async (movieId) => {
     try {
       console.log(`Fetching theaters for movie ID: ${movieId}`);
@@ -363,10 +506,17 @@ The frontend implements:
    - Prevents redundant API calls for the same movie
    - Automatically expires old data
 
-2. **Polling for Theater Data**:
+2. **Polling for Recommendations**:
+   - Initial requests to `/get-movies-theaters-and-showtimes/` and `/get-movie-recommendations/` return "processing" status
+   - Frontend then polls `/poll-first-run-recommendations/` or `/poll-movie-recommendations/` until data is ready
+   - Provides better user experience for long-running operations
+   - Implements exponential backoff for polling with configurable retry limits
+
+3. **Polling for Theater Data**:
    - Initial request to `/get-theaters/{movie_id}/` may return "processing" status
    - Frontend then polls `/theater-status/{movie_id}/` until data is ready
-   - Provides better user experience for long-running operations
+   - Implements timeout mechanism to prevent endless polling (30 seconds max)
+   - Sets empty theaters array after timeout instead of showing an error
 
 ## LLM API Integration
 
@@ -903,7 +1053,7 @@ async function gatherLocationDataFromIpApi() {
 }
 ```
 
-#### ipapi.co Response Format
+#### Example Response
 
 ```json
 {
@@ -936,35 +1086,39 @@ async function gatherLocationDataFromIpApi() {
 
 ### OpenStreetMap Services
 
+The application uses OpenStreetMap services for geocoding and finding theaters:
+
 #### Nominatim API
 
-Used for geocoding and reverse geocoding:
+Used for reverse geocoding (converting coordinates to addresses):
 
-```python
-def geocode_location(location_str: str):
-    """Convert location string to coordinates using Nominatim."""
-    try:
-        geolocator = Nominatim(user_agent="movie_booking_chatbot")
-        location = geolocator.geocode(location_str)
+```javascript
+// Reverse geocoding with Nominatim
+async function reverseGeocode(latitude, longitude) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+    );
 
-        if location:
-            return {
-                "latitude": location.latitude,
-                "longitude": location.longitude,
-                "display_name": location.address
-            }
-    except Exception as e:
-        logger.error(f"Geocoding error: {str(e)}")
+    if (!response.ok) {
+      throw new Error('Geocoding failed');
+    }
 
-    return None
+    const data = await response.json();
+    return data.display_name;
+  } catch (err) {
+    console.error('Reverse geocoding error:', err);
+    return null;
+  }
+}
 ```
 
 #### Overpass API
 
-Used to find actual theaters near coordinates:
+Used to find movie theaters near a location:
 
 ```python
-def search_theaters(self, latitude: float, longitude: float, radius_miles: float = 20):
+def search_theaters(latitude: float, longitude: float, radius_miles: float = 20):
     """Search for movie theaters within a specified radius."""
     # Convert radius to meters for API
     radius_meters = radius_miles * 1609.34
@@ -980,9 +1134,87 @@ def search_theaters(self, latitude: float, longitude: float, radius_miles: float
     out center;
     """
 
-    # Execute query and process results
+    # Execute query
     response = requests.post("https://overpass-api.de/api/interpreter", data=overpass_query)
     data = response.json()
 
-    # Process theaters...
+    # Process results
+    theaters = []
+    for element in data.get('elements', []):
+        if element.get('tags'):
+            theater = {
+                "name": element['tags'].get('name', 'Unknown Theater'),
+                "address": _format_address(element['tags']),
+                "latitude": element.get('lat') or element.get('center', {}).get('lat'),
+                "longitude": element.get('lon') or element.get('center', {}).get('lon'),
+                "distance_miles": _calculate_distance(
+                    latitude, longitude,
+                    element.get('lat') or element.get('center', {}).get('lat'),
+                    element.get('lon') or element.get('center', {}).get('lon')
+                )
+            }
+            theaters.append(theater)
+
+    return theaters
+```
+
+#### Distance Calculation
+
+The application calculates distances between user location and theaters:
+
+```python
+def _calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate distance between two points in miles using Haversine formula."""
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+
+    # Haversine formula
+    dlon = lon2_rad - lon1_rad
+    dlat = lat2_rad - lat1_rad
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+    # Radius of Earth in miles
+    radius = 3959
+
+    # Calculate distance
+    distance = radius * c
+
+    return round(distance, 1)
+```
+
+#### Example Response (Overpass API)
+
+```json
+{
+  "version": 0.6,
+  "generator": "Overpass API",
+  "osm3s": {
+    "timestamp_osm_base": "2025-04-17T00:00:00Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+    {
+      "type": "node",
+      "id": 123456789,
+      "lat": 47.6101,
+      "lon": -122.3420,
+      "tags": {
+        "amenity": "cinema",
+        "name": "AMC Pacific Place 11",
+        "addr:housenumber": "600",
+        "addr:street": "Pine Street",
+        "addr:city": "Seattle",
+        "addr:state": "WA",
+        "addr:postcode": "98101",
+        "website": "https://www.amctheatres.com/movie-theatres/seattle-tacoma/amc-pacific-place-11",
+        "phone": "+1-206-652-2404",
+        "opening_hours": "10:00-23:00"
+      }
+    }
+  ]
+}
 ```
