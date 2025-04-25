@@ -57,6 +57,11 @@ on:
         description: 'Database Service Plan Name (if needed by app)'
         required: false
         type: string
+      random_route:
+        description: 'Use random route for the application'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   # Delegate to the appropriate project-specific CD job
@@ -70,6 +75,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -85,6 +91,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -100,6 +107,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -114,6 +122,7 @@ jobs:
       use_sso: ${{ inputs.use_sso }}
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -129,6 +138,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -146,6 +156,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -164,6 +175,7 @@ jobs:
       genai_plan: ${{ inputs.genai_plan }}
       db_service_type: ${{ inputs.db_service_type }}
       db_plan: ${{ inputs.db_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -186,6 +198,7 @@ jobs:
       genai_plan: ${{ inputs.genai_plan }}
       db_service_type: ${{ inputs.db_service_type }}
       db_plan: ${{ inputs.db_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}
@@ -204,6 +217,7 @@ jobs:
       cf_org: ${{ inputs.cf_org }}
       cf_space: ${{ inputs.cf_space }}
       genai_plan: ${{ inputs.genai_plan }}
+      random_route: ${{ inputs.random_route }}
     secrets:
       CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
       CF_SSO_REFRESH_TOKEN: ${{ secrets.CF_SSO_REFRESH_TOKEN }}

@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         description: 'JSON string of environment variables to set'
+      random_route:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to use a random route for the application'
 
 jobs:
   deploy:
@@ -33,7 +38,13 @@ jobs:
           echo "Deploying application: $APP_NAME from project: ${{ inputs.project_path }}"
 
           # Push the application without starting it
-          cf push "$APP_NAME" -f manifest.yml --no-start || echo "cf push failed, check logs."
+          if [ "${{ inputs.random_route }}" == "true" ]; then
+            echo "Pushing with random route..."
+            cf push "$APP_NAME" -f manifest.yml --no-start --random-route || echo "cf push failed, check logs."
+          else
+            echo "Pushing with route from manifest..."
+            cf push "$APP_NAME" -f manifest.yml --no-start || echo "cf push failed, check logs."
+          fi
 
       - name: Set Input Environment Variables
         working-directory: ${{ inputs.project_path }}

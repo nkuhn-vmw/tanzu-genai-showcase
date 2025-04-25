@@ -37,6 +37,11 @@ on:
         required: false
         type: string
         description: 'Database Service Plan Name'
+      random_route:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to use a random route for the application'
     secrets:
       CF_PASSWORD:
         required: false
@@ -114,3 +119,4 @@ jobs:
     uses: ./.github/workflows/cf-deploy.yml
     with:
       project_path: 'py-django-crewai'
+      random_route: ${{ inputs.random_route }}

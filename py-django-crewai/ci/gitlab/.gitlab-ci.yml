@@ -121,24 +121,85 @@ upload:
   needs:
     - package
 
-# Deploy to Cloud Foundry (optional)
+# Deploy to Cloud Foundry
 deploy:
   stage: deploy
+  image: governmentpaas/cf-cli:latest
+  variables:
+    CF_API: ""
+    CF_USERNAME: ""
+    CF_PASSWORD: ""
+    CF_ORG: ""
+    CF_SPACE: ""
+    RANDOM_ROUTE: "false"
+    OPENAI_API_KEY: ""
+    TMDB_API_KEY: ""
+    SERPAPI_API_KEY: ""
+    DJANGO_SECRET_KEY: ""
   script:
-    - apt-get update && apt-get install -y wget
-    - wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | apt-key add -
-    - echo "deb https://packages.cloudfoundry.org/debian stable main" | tee /etc/apt/sources.list.d/cloudfoundry-cli.list
-    - apt-get update && apt-get install -y cf-cli
     - cd py-django-crewai
+    - echo "Deploying to Cloud Foundry..."
+    - cf api "$CF_API"
+    - cf auth "$CF_USERNAME" "$CF_PASSWORD"
+    - cf target -o "$CF_ORG" -s "$CF_SPACE"
+
+    # Create GenAI service if it doesn't exist
     - |
-      if [ -n "$CF_API" ] && [ -n "$CF_USERNAME" ] && [ -n "$CF_PASSWORD" ] && [ -n "$CF_ORG" ] && [ -n "$CF_SPACE" ]; then
-        cf login -a $CF_API -u $CF_USERNAME -p $CF_PASSWORD -o $CF_ORG -s $CF_SPACE
-        ./deploy-on-tp4cf.sh
+      if ! cf service movie-chatbot-llm > /dev/null 2>&1; then
+        echo "Creating GenAI service..."
+        cf create-service genai standard movie-chatbot-llm || echo "Service creation failed, it might already exist or plan is not available"
       else
-        echo "Skipping deployment - missing CF credentials"
+        echo "GenAI service already exists"
       fi
+
+    # Create database service if it doesn't exist
+    - |
+      if ! cf service movie-chatbot-db > /dev/null 2>&1; then
+        echo "Creating database service..."
+        cf create-service postgresql small movie-chatbot-db || echo "Service creation failed, it might already exist or plan is not available"
+      else
+        echo "Database service already exists"
+      fi
+
+    # Set environment variables
+    - |
+      APP_NAME=$(grep 'name:' manifest.yml | head -n 1 | awk '{print $2}')
+      if [ -z "$APP_NAME" ]; then
+        APP_NAME=$(basename $(pwd)) # Fallback to directory name
+      fi
+
+      # Push the application without starting it
+      if [ "$RANDOM_ROUTE" = "true" ]; then
+        echo "Pushing with random route..."
+        cf push "$APP_NAME" -f manifest.yml --no-start --random-route
+      else
+        echo "Pushing with route from manifest..."
+        cf push "$APP_NAME" -f manifest.yml --no-start
+      fi
+
+      # Set environment variables
+      if [ -n "$DJANGO_SECRET_KEY" ]; then
+        cf set-env "$APP_NAME" "DJANGO_SECRET_KEY" "$DJANGO_SECRET_KEY"
+      fi
+
+      if [ -n "$OPENAI_API_KEY" ]; then
+        cf set-env "$APP_NAME" "OPENAI_API_KEY" "$OPENAI_API_KEY"
+      fi
+
+      if [ -n "$TMDB_API_KEY" ]; then
+        cf set-env "$APP_NAME" "TMDB_API_KEY" "$TMDB_API_KEY"
+      fi
+
+      if [ -n "$SERPAPI_API_KEY" ]; then
+        cf set-env "$APP_NAME" "SERPAPI_API_KEY" "$SERPAPI_API_KEY"
+      fi
+
+      # Start the application
+      cf start "$APP_NAME"
+  environment:
+    name: production
+  when: manual
   needs:
     - package
   rules:
-    - if: $CI_COMMIT_BRANCH == "main" && $CF_DEPLOY == "true"
-  when: manual
+    - if: $CI_COMMIT_BRANCH == "main"

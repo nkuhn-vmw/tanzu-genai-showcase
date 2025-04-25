@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         description: 'GenAI Service Plan Name (if needed by app)'
+      random_route:
+        required: false
+        type: boolean
+        default: false
+        description: 'Whether to use a random route for the application'
     secrets:
       CF_PASSWORD:
         required: false
@@ -88,3 +93,4 @@ jobs:
     uses: ./.github/workflows/cf-deploy.yml
     with:
       project_path: 'java-spring-ai-mcp/client'
+      random_route: ${{ inputs.random_route }}
