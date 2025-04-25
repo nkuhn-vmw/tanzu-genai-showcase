@@ -328,6 +328,8 @@ namespace TravelAdvisor.Infrastructure.Services
         {
             try
             {
+                _logger.LogInformation("Processing follow-up question: {Question}", question);
+
                 // Create message history for answering the follow-up question
                 var history = new List<ChatMessage>
                 {
@@ -368,13 +370,46 @@ namespace TravelAdvisor.Infrastructure.Services
                 // Get response from AI
                 var response = await _chatClient.GetResponseAsync(history, new ChatOptions { Temperature = 0.7f });
 
-                return ChatMessageContentBuilder.GetContentFromResponse(response) ??
-                       "I'm sorry, I couldn't answer your follow-up question. Could you try rephrasing it?";
+                // Check if the response contains an error (e.g., service unavailable)
+                var errorProperty = response.GetType().GetProperty("Error");
+                if (errorProperty != null)
+                {
+                    var errorValue = errorProperty.GetValue(response) as string;
+                    if (!string.IsNullOrEmpty(errorValue))
+                    {
+                        _logger.LogWarning("Error received from chat client when answering follow-up question: {Error}", errorValue);
+                        return $"I'm sorry, I couldn't answer your follow-up question due to a service issue. Error: {errorValue}";
+                    }
+                }
+
+                var content = ChatMessageContentBuilder.GetContentFromResponse(response);
+
+                // Check if the response is empty or contains an error message
+                if (string.IsNullOrEmpty(content))
+                {
+                    _logger.LogWarning("Empty response received from chat client when answering follow-up question");
+                    return "I'm sorry, I couldn't answer your follow-up question due to a service issue. Please try again later.";
+                }
+
+                // Check if the response contains a service unavailable message
+                if (content.Contains("Service temporarily unavailable"))
+                {
+                    _logger.LogWarning("Service unavailable message received from chat client when answering follow-up question");
+                    return "I'm sorry, the AI service is temporarily unavailable. Please try again later.";
+                }
+
+                return content;
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("USE_MOCK_DATA is false"))
+            {
+                // Special handling for the case when USE_MOCK_DATA is false but we're trying to use mock data
+                _logger.LogError(ex, "AI service configuration error when answering follow-up question");
+                return "I'm sorry, there's an issue with the AI service configuration. Please contact the administrator to verify the API key and settings.";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error answering follow-up question");
-                return "I'm sorry, I couldn't answer your follow-up question. Could you try rephrasing it?";
+                return "I'm sorry, I couldn't answer your follow-up question due to a technical issue. Please try again later.";
             }
         }
 

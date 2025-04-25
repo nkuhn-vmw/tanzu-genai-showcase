@@ -105,45 +105,58 @@ namespace TravelAdvisor.Infrastructure
                 {
                     Console.WriteLine($"Error setting up AI client: {ex.Message}");
 
-                    // Fallback to mock implementation
+                    // Check if mock data is enabled
+                    string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                    bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                    if (useMockData)
+                    {
+                        // Only fallback to mock implementation if mock data is explicitly enabled
+                        services.AddSingleton<IChatClient>(sp =>
+                        {
+                            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                            var logger = loggerFactory.CreateLogger<MockChatClient>();
+
+                            return new MockChatClient(logger, true);
+                        });
+                    }
+                    else
+                    {
+                        // If mock data is not enabled, rethrow the exception to prevent fallback
+                        throw new InvalidOperationException($"Failed to initialize AI client and USE_MOCK_DATA is false. Original error: {ex.Message}", ex);
+                    }
+                }
+            }
+            // If API key or URL is not provided
+            else
+            {
+                // Force a direct environment variable check to bypass any caching
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only use mock implementation if mock data is explicitly enabled
                     services.AddSingleton<IChatClient>(sp =>
                     {
                         var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
                         var logger = loggerFactory.CreateLogger<MockChatClient>();
 
-                        return new MockChatClient(logger);
+                        // Also check through the utility to maintain logging and for debugging
+                        bool useMockDataFromUtils = EnvironmentVariables.GetBool("USE_MOCK_DATA", false);
+
+                        logger.LogInformation($"Raw environment variable USE_MOCK_DATA = '{useMockDataStr}', parsed as {useMockData}");
+                        logger.LogInformation($"EnvironmentVariables.GetBool(\"USE_MOCK_DATA\") = {useMockDataFromUtils}");
+                        logger.LogInformation("Mock data is ENABLED via environment variable USE_MOCK_DATA");
+
+                        return new MockChatClient(logger, true);
                     });
                 }
-            }
-            // Fallback to a mock implementation
-            else
-            {
-                services.AddSingleton<IChatClient>(sp =>
+                else
                 {
-                    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-                    var logger = loggerFactory.CreateLogger<MockChatClient>();
-
-                    // Force a direct environment variable check to bypass any caching
-                    string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
-                    bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
-
-                    // Also check through the utility to maintain logging and for debugging
-                    bool useMockDataFromUtils = EnvironmentVariables.GetBool("USE_MOCK_DATA", false);
-
-                    logger.LogInformation($"Raw environment variable USE_MOCK_DATA = '{useMockDataStr}', parsed as {useMockData}");
-                    logger.LogInformation($"EnvironmentVariables.GetBool(\"USE_MOCK_DATA\") = {useMockDataFromUtils}");
-
-                    if (useMockData)
-                    {
-                        logger.LogInformation("Mock data is ENABLED via environment variable USE_MOCK_DATA");
-                    }
-                    else
-                    {
-                        logger.LogInformation("Mock data is DISABLED via environment variable USE_MOCK_DATA");
-                    }
-
-                    return new MockChatClient(logger, useMockData);
-                });
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException("GenAI API key and URL are required when USE_MOCK_DATA is false. Please configure GenAI:ApiKey and GenAI:ApiUrl in your configuration.");
+                }
             }
 
             // Register the PromptFactory
@@ -191,9 +204,21 @@ namespace TravelAdvisor.Infrastructure
 
             if (azureOpenAIClientType == null)
             {
-                // Fallback to creating a mock client if we can't find the Azure OpenAI client
-                Console.WriteLine("Could not find AzureOpenAIChatClient type in the loaded assemblies. Using MockChatClient as fallback.");
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    Console.WriteLine("Could not find AzureOpenAIChatClient type in the loaded assemblies. Using MockChatClient as fallback.");
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException("Could not find AzureOpenAIChatClient type in the loaded assemblies and USE_MOCK_DATA is false.");
+                }
             }
 
             try
@@ -222,13 +247,38 @@ namespace TravelAdvisor.Infrastructure
                     return client;
                 }
 
-                // If we can't create the client, fall back to mock
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException("Could not create AzureOpenAIChatClient with the available constructors and USE_MOCK_DATA is false.");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to create AzureOpenAIChatClient: {ex.Message}. Using MockChatClient as fallback.");
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    Console.WriteLine($"Failed to create AzureOpenAIChatClient: {ex.Message}. Using MockChatClient as fallback.");
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException($"Failed to create AzureOpenAIChatClient and USE_MOCK_DATA is false. Original error: {ex.Message}", ex);
+                }
             }
         }
 
@@ -273,9 +323,21 @@ namespace TravelAdvisor.Infrastructure
 
             if (openAIClientType == null)
             {
-                // Fallback to creating a mock client if we can't find the OpenAI client
-                Console.WriteLine("Could not find OpenAIChatClient type in the loaded assemblies. Using MockChatClient as fallback.");
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    Console.WriteLine("Could not find OpenAIChatClient type in the loaded assemblies. Using MockChatClient as fallback.");
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException("Could not find OpenAIChatClient type in the loaded assemblies and USE_MOCK_DATA is false.");
+                }
             }
 
             try
@@ -304,13 +366,38 @@ namespace TravelAdvisor.Infrastructure
                     return client;
                 }
 
-                // If we can't create the client, fall back to mock
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException("Could not create OpenAIChatClient with the available constructors and USE_MOCK_DATA is false.");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to create OpenAIChatClient: {ex.Message}. Using MockChatClient as fallback.");
-                return new MockChatClient(null, true);
+                // Check if mock data is enabled
+                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
+
+                if (useMockData)
+                {
+                    // Only fallback to mock implementation if mock data is explicitly enabled
+                    Console.WriteLine($"Failed to create OpenAIChatClient: {ex.Message}. Using MockChatClient as fallback.");
+                    return new MockChatClient(null, true);
+                }
+                else
+                {
+                    // If mock data is not enabled, throw an exception to prevent fallback
+                    throw new InvalidOperationException($"Failed to create OpenAIChatClient and USE_MOCK_DATA is false. Original error: {ex.Message}", ex);
+                }
             }
         }
     }
