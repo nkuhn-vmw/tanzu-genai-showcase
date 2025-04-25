@@ -4,9 +4,9 @@ import axios from 'axios';
 
 // Default configuration values
 const defaultConfig = {
-  apiTimeout: 60000, // 60 seconds in milliseconds
-  apiMaxRetries: 10,  // Maximum number of polling attempts
-  apiRetryBackoffFactor: 1.5 // Exponential backoff factor
+  apiTimeout: 180000, // 180 seconds in milliseconds (increased from 60s)
+  apiMaxRetries: 15,  // Maximum number of polling attempts (increased from 10)
+  apiRetryBackoffFactor: 1.3 // Exponential backoff factor (reduced from 1.5)
 };
 
 // Configuration state

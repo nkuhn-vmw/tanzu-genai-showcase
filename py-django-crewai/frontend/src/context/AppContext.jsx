@@ -55,9 +55,9 @@ export function AppProvider({ children }) {
       return;
     }
 
-    // If movie already has theaters, no need to fetch
-    if (movie.theaters && movie.theaters.length > 0) {
-      console.log(`Movie ${movie.title} already has theaters, skipping fetch`);
+    // If movie already has theaters (even empty array), no need to fetch
+    if (movie.theaters !== undefined) {
+      console.log(`Movie ${movie.title} already has theaters data (${movie.theaters.length} theaters), skipping fetch`);
       return;
     }
 
@@ -80,17 +80,26 @@ export function AppProvider({ children }) {
               : m
           )
         );
+        setIsLoadingTheaters(false);
       } else if (response.status === 'processing') {
         // If theaters are still being processed, poll for updates
         console.log('Theaters are still being processed, starting polling');
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 5; // Reduced from 10 to 5
         const pollInterval = 2000; // 2 seconds
 
         const poll = async () => {
           if (attempts >= maxAttempts) {
-            console.log('Max polling attempts reached');
-            setTheaterError('Unable to retrieve theater information. Please try again later.');
+            console.log('Max polling attempts reached, assuming no theaters available');
+            // Instead of showing an error, just set empty theaters array
+            setFirstRunMovies(prevMovies =>
+              prevMovies.map(m =>
+                m.id === movieId
+                  ? { ...m, theaters: [] }
+                  : m
+              )
+            );
+            setIsLoadingTheaters(false);
             return;
           }
 
@@ -109,17 +118,34 @@ export function AppProvider({ children }) {
                     : m
                 )
               );
+              setIsLoadingTheaters(false);
               return; // Exit polling once we get results
             } else if (pollResponse.status === 'processing') {
               // Continue polling
               setTimeout(poll, pollInterval);
             } else {
               console.log('Polling returned unexpected status:', pollResponse.status);
-              setTheaterError('Failed to load theaters. Please try again.');
+              // Instead of showing an error, just set empty theaters array
+              setFirstRunMovies(prevMovies =>
+                prevMovies.map(m =>
+                  m.id === movieId
+                    ? { ...m, theaters: [] }
+                    : m
+                )
+              );
+              setIsLoadingTheaters(false);
             }
           } catch (pollError) {
             console.error('Error while polling for theaters:', pollError);
-            setTheaterError('Failed to load theaters. Please try again.');
+            // Instead of showing an error, just set empty theaters array
+            setFirstRunMovies(prevMovies =>
+              prevMovies.map(m =>
+                m.id === movieId
+                  ? { ...m, theaters: [] }
+                  : m
+              )
+            );
+            setIsLoadingTheaters(false);
           }
         };
 
@@ -128,8 +154,14 @@ export function AppProvider({ children }) {
       }
     } catch (error) {
       console.error('Error fetching theaters:', error);
-      setTheaterError('Failed to load theaters. Please try again.');
-    } finally {
+      // Instead of showing an error, just set empty theaters array
+      setFirstRunMovies(prevMovies =>
+        prevMovies.map(m =>
+          m.id === movieId
+            ? { ...m, theaters: [] }
+            : m
+        )
+      );
       setIsLoadingTheaters(false);
     }
   }, [firstRunMovies]);

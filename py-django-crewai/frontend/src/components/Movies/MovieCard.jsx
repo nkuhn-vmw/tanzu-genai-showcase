@@ -32,7 +32,14 @@ function MovieCard({ movie, isSelected, onClick, isFirstRun }) {
   const ratingStars = movie.rating ? Math.round(movie.rating / 2) : 0;
 
   // Get theater count for first run movies
+  // If theaters is undefined (not yet fetched), show "Checking theaters..."
+  // If theaters is an empty array (fetched but none found), show "No theaters found"
   const theaterCount = isFirstRun && movie.theaters ? movie.theaters.length : 0;
+  const theaterStatus = isFirstRun ? (
+    movie.theaters === undefined ? 'checking' :
+    movie.theaters && movie.theaters.length === 0 ? 'none' :
+    'found'
+  ) : 'not-applicable';
 
   return (
     <div
@@ -79,10 +86,13 @@ function MovieCard({ movie, isSelected, onClick, isFirstRun }) {
         {/* Theater Count for First Run Movies */}
         {isFirstRun && (
           <div className="mt-2 small text-muted">
-            {theaterCount > 0
-              ? `Available at ${theaterCount} theater${theaterCount === 1 ? '' : 's'}`
-              : 'No theaters found nearby'
-            }
+            {theaterStatus === 'found' && theaterCount > 0 ? (
+              `Available at ${theaterCount} theater${theaterCount === 1 ? '' : 's'}`
+            ) : theaterStatus === 'checking' ? (
+              <span><i className="bi bi-hourglass-split me-1"></i>Checking theaters...</span>
+            ) : (
+              <span><i className="bi bi-x-circle me-1"></i>No theaters found nearby</span>
+            )}
           </div>
         )}
 

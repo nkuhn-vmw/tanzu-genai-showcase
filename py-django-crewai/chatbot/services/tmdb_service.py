@@ -75,20 +75,62 @@ class TMDBService:
         logger.info(f"Sequential enhancement completed in {elapsed_time:.2f} seconds")
         return result_movies
 
-    # Keeping this for backward compatibility, but it redirects to sequential processing
     def enhance_movies_parallel(self, movies: List[Dict[str, Any]], max_workers: int = 3) -> List[Dict[str, Any]]:
         """
-        Legacy method - now redirects to sequential processing to avoid race conditions.
+        Enhance multiple movies in parallel for better performance.
+        This implementation avoids race conditions by using a thread-safe approach.
 
         Args:
             movies: List of movie dictionaries to enhance
-            max_workers: No longer used
+            max_workers: Maximum number of worker threads
 
         Returns:
             List of enhanced movie dictionaries
         """
-        logger.warning("enhance_movies_parallel is deprecated - using sequential processing instead")
-        return self.enhance_movies_sequential(movies)
+        start_time = time.time()
+        logger.info(f"Starting parallel enhancement of {len(movies)} movies with {max_workers} workers")
+
+        # Handle empty list case
+        if not movies:
+            return []
+
+        # Create a copy of the movies list to avoid modifying the original
+        movies_copy = list(movies)
+
+        # Create a dictionary to store results by original index
+        result_dict = {}
+
+        def enhance_movie_task(idx, movie):
+            """Thread worker function to enhance a single movie"""
+            try:
+                logger.info(f"Parallel enhancing movie {idx+1}/{len(movies)}: {movie.get('title', 'Unknown')}")
+                enhanced_movie = self.enhance_movie_data(dict(movie))  # Create a copy to avoid race conditions
+                logger.info(f"Successfully enhanced movie {enhanced_movie.get('title', 'Unknown')} in parallel")
+                return idx, enhanced_movie
+            except Exception as e:
+                logger.error(f"Error enhancing movie at index {idx} in parallel: {str(e)}")
+                # Return the original movie on error
+                return idx, movie
+
+        # Use ThreadPoolExecutor for parallel processing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_idx = {
+                executor.submit(enhance_movie_task, idx, movie): idx
+                for idx, movie in enumerate(movies_copy)
+            }
+
+            # Process results as they complete
+            for future in concurrent.futures.as_completed(future_to_idx):
+                idx, enhanced_movie = future.result()
+                result_dict[idx] = enhanced_movie
+
+        # Reconstruct the result list in the original order
+        result_movies = [result_dict[idx] for idx in range(len(movies_copy))]
+
+        elapsed_time = time.time() - start_time
+        logger.info(f"Parallel enhancement completed in {elapsed_time:.2f} seconds")
+        return result_movies
 
     def _make_request(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """

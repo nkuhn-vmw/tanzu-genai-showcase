@@ -290,45 +290,81 @@ class FindTheatersTool(BaseTool):
                 # Try to get real showtimes via SerpAPI for this specific movie
                 try:
                     # Get retry configuration from settings with defaults
-                    max_retries = getattr(settings, 'SERPAPI_MAX_RETRIES', 3)
-                    base_retry_delay = getattr(settings, 'SERPAPI_BASE_RETRY_DELAY', 5.0)
-                    retry_multiplier = getattr(settings, 'SERPAPI_RETRY_MULTIPLIER', 2.0)
+                    max_retries = getattr(settings, 'SERPAPI_MAX_RETRIES', 2)  # Reduced from 3 to 2
+                    base_retry_delay = getattr(settings, 'SERPAPI_BASE_RETRY_DELAY', 3.0)  # Reduced from 5.0 to 3.0
+                    retry_multiplier = getattr(settings, 'SERPAPI_RETRY_MULTIPLIER', 1.5)  # Reduced from 2.0 to 1.5
+
+                    # Check if this movie is likely to have showtimes
+                    # Movies from current year are more likely to be in theaters
+                    current_year = datetime.now().year
+                    release_year = None
+                    release_date = movie.get('release_date', '')
+
+                    if release_date and len(release_date) >= 4:
+                        try:
+                            release_year = int(release_date[:4])
+                        except ValueError:
+                            pass
+
+                    # Adjust retry strategy based on release year
+                    if release_year and release_year < current_year:
+                        # Older movies are less likely to be in theaters, use fewer retries
+                        max_retries = min(max_retries, 1)
+                        logger.info(f"Movie '{movie_title}' is from {release_year}, using reduced retry count: {max_retries}")
 
                     retry_count = 0
                     movie_theaters_with_showtimes = None
 
-                    while retry_count <= max_retries and not movie_theaters_with_showtimes:
-                        try:
-                            logger.info(f"Attempt {retry_count+1}/{max_retries+1} to get showtimes for '{movie_title}'")
-                            movie_theaters_with_showtimes = self._get_movie_showtimes(movie_title, location, user_coords, movie_id)
+                    # Use a cache key based on movie title and location
+                    import hashlib
+                    cache_key = f"{movie_title}_{hashlib.md5(location.encode()).hexdigest()[:8]}"
 
-                            # If we got empty results but haven't exhausted retries
-                            if not movie_theaters_with_showtimes and retry_count < max_retries:
-                                # True exponential backoff: base_delay * (multiplier ^ retry_count)
-                                retry_delay = base_retry_delay * (retry_multiplier ** retry_count)
-                                logger.info(f"No theaters found, retrying in {retry_delay:.1f} seconds (attempt {retry_count+1}/{max_retries+1})")
-                                time.sleep(retry_delay)
+                    # Check if we have cached results (simple in-memory cache)
+                    if hasattr(self.__class__, '_theater_cache') and cache_key in self.__class__._theater_cache:
+                        cached_result = self.__class__._theater_cache.get(cache_key)
+                        logger.info(f"Using cached theater results for '{movie_title}' in {location}")
+                        movie_theaters_with_showtimes = cached_result
+                    else:
+                        # Initialize cache if needed
+                        if not hasattr(self.__class__, '_theater_cache'):
+                            self.__class__._theater_cache = {}
 
-                            retry_count += 1
-                        except Exception as retry_error:
-                            error_message = str(retry_error).lower()
-                            logger.error(f"Error in attempt {retry_count+1}: {error_message}")
+                        while retry_count <= max_retries and not movie_theaters_with_showtimes:
+                            try:
+                                logger.info(f"Attempt {retry_count+1}/{max_retries+1} to get showtimes for '{movie_title}'")
+                                movie_theaters_with_showtimes = self._get_movie_showtimes(movie_title, location, user_coords, movie_id)
 
-                            # Check specifically for rate limiting errors
-                            is_rate_limit = "rate" in error_message and ("limit" in error_message or "exceed" in error_message)
+                                # If we got results, cache them
+                                if movie_theaters_with_showtimes:
+                                    self.__class__._theater_cache[cache_key] = movie_theaters_with_showtimes
+                                    logger.info(f"Cached theater results for '{movie_title}' in {location}")
+                                # If we got empty results but haven't exhausted retries
+                                elif retry_count < max_retries:
+                                    # Linear backoff with small multiplier: base_delay * (multiplier * retry_count)
+                                    retry_delay = base_retry_delay * (1 + (retry_multiplier * retry_count))
+                                    logger.info(f"No theaters found, retrying in {retry_delay:.1f} seconds (attempt {retry_count+1}/{max_retries+1})")
+                                    time.sleep(retry_delay)
 
-                            if retry_count < max_retries:
-                                # Use longer delays for rate limit errors
-                                if is_rate_limit:
-                                    retry_delay = base_retry_delay * (retry_multiplier ** (retry_count + 1))  # Extra multiplier for rate limits
-                                    logger.warning(f"Rate limit detected, using extended delay of {retry_delay:.1f} seconds")
-                                else:
-                                    retry_delay = base_retry_delay * (retry_multiplier ** retry_count)
+                                retry_count += 1
+                            except Exception as retry_error:
+                                error_message = str(retry_error).lower()
+                                logger.error(f"Error in attempt {retry_count+1}: {error_message}")
 
-                                logger.info(f"Error occurred, retrying in {retry_delay:.1f} seconds (attempt {retry_count+1}/{max_retries+1})")
-                                time.sleep(retry_delay)
+                                # Check specifically for rate limiting errors
+                                is_rate_limit = "rate" in error_message and ("limit" in error_message or "exceed" in error_message)
 
-                            retry_count += 1
+                                if retry_count < max_retries:
+                                    # Use longer delays for rate limit errors
+                                    if is_rate_limit:
+                                        retry_delay = base_retry_delay * (retry_multiplier ** (retry_count + 1))  # Extra multiplier for rate limits
+                                        logger.warning(f"Rate limit detected, using extended delay of {retry_delay:.1f} seconds")
+                                    else:
+                                        retry_delay = base_retry_delay * (1 + retry_count)  # Linear backoff for other errors
+
+                                    logger.info(f"Error occurred, retrying in {retry_delay:.1f} seconds (attempt {retry_count+1}/{max_retries+1})")
+                                    time.sleep(retry_delay)
+
+                                retry_count += 1
 
                     # If we found real showtimes for this movie after retries, use them
                     if movie_theaters_with_showtimes:

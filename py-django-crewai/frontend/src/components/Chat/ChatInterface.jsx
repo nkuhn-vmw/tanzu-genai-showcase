@@ -117,6 +117,88 @@ function ChatInterface() {
         if (isFirstRunMode) {
           console.log('Using First Run mode API with location:', location);
           response = await chatApi.getMoviesTheatersAndShowtimes(trimmedMessage, location);
+
+          // If the response indicates processing, start polling
+          if (response && response.status === 'processing') {
+            console.log('First Run movie recommendations are being processed, starting polling...');
+            setRequestStage('theaters'); // Use theaters stage for polling UI
+
+            // Add a standardized processing message
+            const processingMessage = {
+              sender: 'bot',
+              content: 'Your movie recommendations and theater information are being processed. This may take a moment...',
+              created_at: new Date().toISOString(),
+              isProcessing: true
+            };
+
+            setMessages([...currentMessages, userMessage, processingMessage]);
+
+            // Get configuration values
+            const config = getConfig();
+
+            // Start polling with exponential backoff
+            let attempts = 0;
+            const maxAttempts = config.apiMaxRetries; // Use value from config
+            const initialPollInterval = 2000; // 2 seconds
+
+            const poll = async () => {
+              if (attempts >= maxAttempts) {
+                console.log(`Max polling attempts (${maxAttempts}) reached`);
+                throw {
+                  status: 'error',
+                  message: 'It\'s taking longer than expected to get your recommendations. Please try again.'
+                };
+              }
+
+              attempts++;
+              const backoffFactor = Math.min(attempts, 5); // Cap the backoff factor
+              const pollInterval = initialPollInterval * Math.pow(config.apiRetryBackoffFactor, backoffFactor - 1);
+
+              console.log(`Polling attempt ${attempts}/${maxAttempts} (interval: ${pollInterval}ms)`);
+
+              try {
+                const pollResponse = await chatApi.pollFirstRunRecommendations();
+
+                if (pollResponse.status === 'success' && pollResponse.recommendations) {
+                  console.log('Polling successful, found first run recommendations');
+                  // Replace the processing message with the actual response
+                  response = pollResponse;
+                  return; // Exit polling once we get results
+                } else if (pollResponse.status === 'processing') {
+                  // Continue polling
+                  setTimeout(poll, pollInterval);
+                } else {
+                  console.log('Polling returned unexpected status:', pollResponse.status);
+                  throw {
+                    status: 'error',
+                    message: 'Failed to get movie recommendations. Please try again.'
+                  };
+                }
+              } catch (pollError) {
+                console.error('Error while polling for first run recommendations:', pollError);
+
+                // Check if we've reached max attempts
+                if (attempts >= maxAttempts - 1) {
+                  throw pollError;
+                }
+
+                // For network errors, retry with exponential backoff
+                if (!pollError.response) {
+                  console.log(`Network error during polling, will retry (attempt ${attempts + 1}/${maxAttempts})`);
+                  setTimeout(poll, pollInterval * 2); // Double the interval for network errors
+                } else {
+                  throw pollError;
+                }
+              }
+            };
+
+            // Start polling
+            try {
+              await poll();
+            } catch (pollError) {
+              throw pollError;
+            }
+          }
         } else {
           console.log('Using Casual Viewing mode API');
           response = await chatApi.getMovieRecommendations(trimmedMessage);
@@ -331,7 +413,7 @@ function ChatInterface() {
         break;
       case 'theaters':
         message = activeTab === 'first-run'
-          ? 'Finding theaters and showtimes near you...'
+          ? 'Finding theaters and showtimes near you... This may take a few moments.'
           : 'Preparing your recommendations...';
         break;
       case 'complete':
@@ -345,7 +427,7 @@ function ChatInterface() {
           message = 'Analyzing movie options...';
         } else if (currentProgress < 90) {
           message = activeTab === 'first-run'
-            ? 'Finding theaters near you...'
+            ? 'Finding theaters near you... This may take a few moments.'
             : 'Preparing recommendations...';
         } else {
           message = 'Loading results...';

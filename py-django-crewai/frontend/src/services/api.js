@@ -131,6 +131,16 @@ export const chatApi = {
         mode: 'first_run' // Explicitly set mode to first_run
       });
 
+      // If the response indicates processing, return that status
+      if (response.data && response.data.status === 'processing') {
+        console.log('First Run movie recommendations are being processed, will start polling...');
+        return {
+          status: 'processing',
+          message: response.data.message || 'Processing your movie recommendations and theaters...',
+          conversation_id: response.data.conversation_id
+        };
+      }
+
       if (!response.data || response.data.status !== 'success') {
         throw new Error(response.data?.message || 'Failed to get movies and theaters');
       }
@@ -227,6 +237,33 @@ export const chatApi = {
       }
     } catch (error) {
       console.error('Error polling for movie recommendations:', error);
+      throw error;
+    }
+  },
+
+  // Method for polling first run movie recommendations
+  pollFirstRunRecommendations: async () => {
+    try {
+      console.log('Polling for first run movie recommendations...');
+      const response = await api.get('/poll-first-run-recommendations/');
+
+      // If the processing is complete, return the results
+      if (response.data.status === 'success' && response.data.recommendations) {
+        console.log('Polling successful, found first run recommendations');
+        return response.data;
+      } else if (response.data.status === 'processing') {
+        // Still processing
+        return {
+          status: 'processing',
+          message: response.data.message || 'Still processing your movie recommendations and theaters...'
+        };
+      } else {
+        // Error or unexpected status
+        console.error('Unexpected response from first run polling:', response.data);
+        throw new Error(response.data?.message || 'Failed to get movie recommendations');
+      }
+    } catch (error) {
+      console.error('Error polling for first run movie recommendations:', error);
       throw error;
     }
   },

@@ -65,8 +65,8 @@ class EnhanceMovieImagesTool(BaseTool):
 
             tmdb_service = TMDBService(api_key=self.tmdb_api_key)
 
-            # Enhance movies sequentially to avoid race conditions
-            enhanced_movies = tmdb_service.enhance_movies_sequential(movies)
+            # Use parallel enhancement for better performance
+            enhanced_movies = tmdb_service.enhance_movies_parallel(movies, max_workers=3)
 
             # Ensure all enhanced movies retain their TMDB ID and poster info
             for i, movie in enumerate(enhanced_movies):

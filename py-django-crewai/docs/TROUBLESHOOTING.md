@@ -816,12 +816,28 @@ This document provides guidance on troubleshooting common issues with the Movie 
 
 **Solutions**:
 
-1. **Profile LLM requests**:
+1. **Adjust API request configuration**:
+
+   ```bash
+   # Increase API timeout and optimize retry settings
+   API_REQUEST_TIMEOUT_SECONDS=180  # Increased from default 60 seconds
+   API_MAX_RETRIES=10               # Reasonable number of retries
+   API_RETRY_BACKOFF_FACTOR=1.3     # Gentler backoff factor
+
+   # Optimize SerpAPI request settings
+   SERPAPI_REQUEST_BASE_DELAY=5.0   # Reduced delay between requests
+   SERPAPI_PER_MOVIE_DELAY=2.0      # Reduced delay per movie
+   SERPAPI_MAX_RETRIES=2            # Fewer retries for theater searches
+   SERPAPI_BASE_RETRY_DELAY=3.0     # Shorter base delay
+   SERPAPI_RETRY_MULTIPLIER=1.5     # Gentler multiplier
+   ```
+
+2. **Profile LLM requests**:
 
    - Add timing to LLM API calls
    - Consider model size vs. speed tradeoffs
 
-2. **Implement caching for common queries**:
+3. **Implement caching for common queries**:
 
    ```python
    # Add caching for TMDb responses
@@ -840,18 +856,22 @@ This document provides guidance on troubleshooting common issues with the Movie 
        return result
    ```
 
-3. **Optimize database queries**:
+4. **Optimize database queries**:
    - Add appropriate indexes
    - Use select_related or prefetch_related for related data
 
-4. **Add progress feedback**:
+5. **Add progress feedback**:
    - Implement more granular progress updates
    - Display intermediate results when available
 
-5. **Optimize React rendering**:
+6. **Optimize React rendering**:
    - Use React.memo for expensive components
    - Implement useMemo and useCallback for optimizations
    - Use virtualized lists for long content
+
+7. **Use parallel processing where possible**:
+   - Enable parallel movie enhancement with ThreadPoolExecutor
+   - Implement caching for theater results to avoid redundant searches
 
 ### React Performance Issues
 

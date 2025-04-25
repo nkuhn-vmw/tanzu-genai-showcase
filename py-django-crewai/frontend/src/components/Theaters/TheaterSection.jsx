@@ -184,14 +184,26 @@ function TheaterSection() {
       // Set up recurring polling
       pollingIntervalRef.current = setInterval(pollTheaterStatus, pollingDelayRef.current);
 
-      // Set a timeout to stop polling after 2 minutes to prevent infinite polling
+      // Set a timeout to stop polling after 30 seconds to prevent excessive polling
       pollingTimeoutRef.current = setTimeout(() => {
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
-          setTheaterError('Request took too long. Please try again later.');
+
+          // Instead of showing an error, just indicate no theaters were found
+          console.log('Theater polling timed out, assuming no theaters available');
           setIsLoadingTheaters(false);
+
+          // Update the movie in the firstRunMovies array with an empty theaters array
+          // This prevents future polling attempts for this movie
+          setFirstRunMovies(prevMovies =>
+            prevMovies.map(m =>
+              m.id === selectedMovieId
+                ? { ...m, theaters: [] }
+                : m
+            )
+          );
         }
-      }, 2 * 60 * 1000); // 2 minutes max polling
+      }, 30 * 1000); // 30 seconds max polling (reduced from 2 minutes)
     }, 500);
 
     // Cleanup function
