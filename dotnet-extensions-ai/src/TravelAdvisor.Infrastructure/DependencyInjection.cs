@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using OpenAI;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -91,14 +92,37 @@ namespace TravelAdvisor.Infrastructure
                     }
                     else
                     {
-                        services.AddSingleton<IChatClient>(sp =>
-                        {
-                            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-                            var logger = loggerFactory.CreateLogger("OpenAIChatClient");
+                        // Check if mock data is enabled
+                        string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
+                        bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
 
-                            // Create a factory for OpenAI client
-                            return CreateOpenAIChatClient(genAIOptions.ApiKey, genAIOptions.Model);
-                        });
+                        if (useMockData)
+                        {
+                            // Use mock implementation if mock data is explicitly enabled
+                            services.AddSingleton<IChatClient>(sp =>
+                            {
+                                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                                var logger = loggerFactory.CreateLogger<MockChatClient>();
+
+                                Console.WriteLine("Using MockChatClient because USE_MOCK_DATA=true");
+                                return new MockChatClient(logger, true);
+                            });
+                        }
+                        else
+                        {
+                            // If mock data is not enabled, use the OpenAI client with AsChatClient extension method
+                            services.AddSingleton<IChatClient>(sp =>
+                            {
+                                var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+                                var logger = loggerFactory.CreateLogger("OpenAIClient");
+
+                                Console.WriteLine($"Creating OpenAIClient with API key: {genAIOptions.ApiKey.Substring(0, 5)}... and model: {genAIOptions.Model}");
+
+                                // Create the OpenAI client and use the AsChatClient extension method
+                                var openAIClient = new OpenAIClient(genAIOptions.ApiKey);
+                                return openAIClient.AsChatClient(genAIOptions.Model);
+                            });
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -282,124 +306,7 @@ namespace TravelAdvisor.Infrastructure
             }
         }
 
-        /// <summary>
-        /// Create OpenAI chat client using reflection to handle API changes
-        /// </summary>
-        private static IChatClient CreateOpenAIChatClient(string apiKey, string modelId)
-        {
-            // Try to find the OpenAI client type using reflection with different possible namespaces and assemblies
-            var openAIClientType =
-                Type.GetType("Microsoft.Extensions.AI.OpenAIChatClient, Microsoft.Extensions.AI") ??
-                Type.GetType("Microsoft.Extensions.AI.OpenAIChatClient, Microsoft.Extensions.AI.Abstractions") ??
-                Type.GetType("Microsoft.Extensions.AI.OpenAI.OpenAIChatClient, Microsoft.Extensions.AI.OpenAI");
-
-            if (openAIClientType == null)
-            {
-                // If we still can't find it, look through all loaded assemblies
-                foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    try
-                    {
-                        // Try to find any class that ends with "OpenAIChatClient"
-                        var types = assembly.GetTypes().Where(t => t.Name.EndsWith("OpenAIChatClient") &&
-                                                                  t.Namespace?.StartsWith("Microsoft.Extensions.AI") == true);
-
-                        foreach (var type in types)
-                        {
-                            Console.WriteLine($"Found potential OpenAIChatClient: {type.FullName} in {assembly.FullName}");
-                            openAIClientType = type;
-                            if (openAIClientType != null) break;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // If we can't load types from an assembly (e.g., due to missing dependencies), just skip it
-                        Console.WriteLine($"Skipping assembly {assembly.FullName}: {ex.Message}");
-                    }
-
-                    if (openAIClientType != null) break;
-                }
-            }
-
-            if (openAIClientType == null)
-            {
-                // Check if mock data is enabled
-                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
-                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
-
-                if (useMockData)
-                {
-                    // Only fallback to mock implementation if mock data is explicitly enabled
-                    Console.WriteLine("Could not find OpenAIChatClient type in the loaded assemblies. Using MockChatClient as fallback.");
-                    return new MockChatClient(null, true);
-                }
-                else
-                {
-                    // If mock data is not enabled, throw an exception to prevent fallback
-                    throw new InvalidOperationException("Could not find OpenAIChatClient type in the loaded assemblies and USE_MOCK_DATA is false.");
-                }
-            }
-
-            try
-            {
-                // Create an instance using the constructor - try different constructor signatures
-                var constructor = openAIClientType.GetConstructor(new[] { typeof(string), typeof(string) });
-
-                if (constructor != null)
-                {
-                    return (IChatClient)constructor.Invoke(new object[] { apiKey, modelId });
-                }
-
-                // Try with just the API key
-                constructor = openAIClientType.GetConstructor(new[] { typeof(string) });
-                if (constructor != null)
-                {
-                    var client = (IChatClient)constructor.Invoke(new object[] { apiKey });
-
-                    // Try to set the model via a property or method
-                    var modelProperty = openAIClientType.GetProperty("Model");
-                    if (modelProperty != null && modelProperty.CanWrite)
-                    {
-                        modelProperty.SetValue(client, modelId);
-                    }
-
-                    return client;
-                }
-
-                // Check if mock data is enabled
-                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
-                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
-
-                if (useMockData)
-                {
-                    // Only fallback to mock implementation if mock data is explicitly enabled
-                    return new MockChatClient(null, true);
-                }
-                else
-                {
-                    // If mock data is not enabled, throw an exception to prevent fallback
-                    throw new InvalidOperationException("Could not create OpenAIChatClient with the available constructors and USE_MOCK_DATA is false.");
-                }
-            }
-            catch (Exception ex)
-            {
-                // Check if mock data is enabled
-                string useMockDataStr = Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "false";
-                bool useMockData = useMockDataStr.ToLowerInvariant() == "true" || useMockDataStr == "1";
-
-                if (useMockData)
-                {
-                    // Only fallback to mock implementation if mock data is explicitly enabled
-                    Console.WriteLine($"Failed to create OpenAIChatClient: {ex.Message}. Using MockChatClient as fallback.");
-                    return new MockChatClient(null, true);
-                }
-                else
-                {
-                    // If mock data is not enabled, throw an exception to prevent fallback
-                    throw new InvalidOperationException($"Failed to create OpenAIChatClient and USE_MOCK_DATA is false. Original error: {ex.Message}", ex);
-                }
-            }
-        }
+        // CreateOpenAIChatClient method removed as we're now using a different approach
     }
 
     /// <summary>

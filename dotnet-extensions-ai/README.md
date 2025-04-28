@@ -40,7 +40,7 @@ A .NET 9 Blazor application showcasing the integration of LLMs with the Tanzu Pl
 dotnet build
 
 # Run the web project
-dotnet run --project cd src/TravelAdvisor.Web
+dotnet run --project src/TravelAdvisor.Web
 ```
 
 4. Open your browser to `https://localhost:5000`
