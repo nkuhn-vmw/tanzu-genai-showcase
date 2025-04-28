@@ -372,7 +372,43 @@ func (s *ChatbotService) createCongressTools() []llms.Tool {
 		Type: "function",
 		Function: &llms.FunctionDefinition{
 			Name:        "get_members_by_state",
-			Description: "Get members of Congress filtered by state. Use this when the user asks about representatives or senators from a specific state.",
+			Description: "Get all members of Congress (both senators and representatives) filtered by state. Use this when the user asks about all members from a specific state.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"stateCode": map[string]any{
+						"type":        "string",
+						"description": "Two-letter state code (e.g., 'WA' for Washington, 'TX' for Texas)",
+					},
+				},
+				"required": []string{"stateCode"},
+			},
+		},
+	}
+
+	getSenatorsByStateTool := llms.Tool{
+		Type: "function",
+		Function: &llms.FunctionDefinition{
+			Name:        "get_senators_by_state",
+			Description: "Get senators (only Senate members) from a specific state. Use this when the user specifically asks about senators from a state.",
+			Parameters: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"stateCode": map[string]any{
+						"type":        "string",
+						"description": "Two-letter state code (e.g., 'WA' for Washington, 'TX' for Texas)",
+					},
+				},
+				"required": []string{"stateCode"},
+			},
+		},
+	}
+
+	getRepresentativesByStateTool := llms.Tool{
+		Type: "function",
+		Function: &llms.FunctionDefinition{
+			Name:        "get_representatives_by_state",
+			Description: "Get representatives (only House members) from a specific state. Use this when the user specifically asks about representatives from a state.",
 			Parameters: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -514,6 +550,8 @@ func (s *ChatbotService) createCongressTools() []llms.Tool {
 		getMemberTool,
 		getMemberSponsorshipTool,
 		getMembersByStateTool,
+		getSenatorsByStateTool,
+		getRepresentativesByStateTool,
 
 		// Committee tools
 		searchCommitteesTool,
@@ -632,6 +670,26 @@ func (s *ChatbotService) executeCongressTool(ctx context.Context, toolName, args
 		}
 		// Use the member/{stateCode} endpoint
 		result, err = s.congressClient.SearchMembers(params.StateCode, 0, 20)
+
+	case "get_senators_by_state":
+		var params struct {
+			StateCode string `json:"stateCode"`
+		}
+		if err := json.Unmarshal([]byte(args), &params); err != nil {
+			return "", fmt.Errorf("failed to parse get_senators_by_state args: %w", err)
+		}
+		// Use the new method specifically for senators
+		result, err = s.congressClient.GetSenatorsByState(params.StateCode)
+
+	case "get_representatives_by_state":
+		var params struct {
+			StateCode string `json:"stateCode"`
+		}
+		if err := json.Unmarshal([]byte(args), &params); err != nil {
+			return "", fmt.Errorf("failed to parse get_representatives_by_state args: %w", err)
+		}
+		// Use the new method specifically for representatives
+		result, err = s.congressClient.GetRepresentativesByState(params.StateCode)
 
 	// Committee-related tools
 	case "search_committees":
