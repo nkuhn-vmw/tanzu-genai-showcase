@@ -1,7 +1,7 @@
 # GitLab CI/CD for ruby-sinatra-fastmcp
 # Equivalent to GitHub Actions workflow: ruby-sinatra-fastmcp.yml
 
-image: ruby:3.2.5
+image: ruby:3.4.3
 
 # Define stages in the pipeline
 stages:

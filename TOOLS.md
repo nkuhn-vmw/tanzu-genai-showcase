@@ -217,7 +217,7 @@ Required for the `ruby-sinatra-fastmcp` project.
 
 ### Ruby
 
-- **Version**: 3.2.5
+- **Version**: 3.4.3
 - **Installation**: [https://www.ruby-lang.org/en/documentation/installation/](https://www.ruby-lang.org/en/documentation/installation/)
 - **Documentation**: [https://www.ruby-lang.org/en/documentation/](https://www.ruby-lang.org/en/documentation/)
 

@@ -38,6 +38,64 @@ The application exposes MCP tools that can be called by AI models like Claude to
 - For Claude Desktop integration: Claude Desktop app
 - For Cloud Foundry deployment: CF CLI and access to a Tanzu Platform for Cloud Foundry environment
 
+## Ruby Installation Scripts
+
+We provide installation scripts to help you set up Ruby and its dependencies on different operating systems. These scripts install Ruby 3.4.3 by default (as specified in the Gemfile) but allow you to specify a different version if needed.
+
+### For macOS
+
+```bash
+# Install Ruby 3.4.3 (default)
+./scripts/install-ruby-mac.sh
+
+# Or specify a different version
+./scripts/install-ruby-mac.sh 3.3.0
+```
+
+This script:
+
+- Installs Homebrew if not already installed
+- Uses rbenv to manage Ruby versions
+- Configures your shell profile automatically
+- Installs Bundler
+
+### For Linux
+
+```bash
+# Install Ruby 3.4.3 (default)
+./scripts/install-ruby-linux.sh
+
+# Or specify a different version
+./scripts/install-ruby-linux.sh 3.3.0
+```
+
+This script:
+
+- Detects your Linux distribution
+- Installs necessary dependencies
+- Uses rbenv to manage Ruby versions
+- Configures your shell profile automatically
+- Installs Bundler
+
+### For Windows
+
+```powershell
+# Install Ruby 3.4.3 (default)
+.\scripts\install-ruby-windows.ps1
+
+# Or specify a different version
+.\scripts\install-ruby-windows.ps1 3.3.0
+```
+
+This script:
+
+- Downloads and runs RubyInstaller for Windows
+- Sets up MSYS2 for native gem support
+- Adds Ruby to your PATH
+- Installs Bundler
+
+After running the appropriate script for your operating system, you can proceed with the project installation steps below.
+
 ## Project Structure
 
 ```
