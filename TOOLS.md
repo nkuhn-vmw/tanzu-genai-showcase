@@ -118,7 +118,7 @@ Required for the `java-spring-ai-mcp` and `java-spring-langgraph-mcp-angular` pr
 
 ### Model Context Protocol (MCP)
 
-- **Version**: 0.8.1
+- **Version**: 0.9.0
 - **GitHub**: [https://github.com/modelcontextprotocol/mcp](https://github.com/modelcontextprotocol/mcp)
 
 ## JavaScript/Node.js Development
@@ -217,7 +217,7 @@ Required for the `ruby-sinatra-fastmcp` project.
 
 ### Ruby
 
-- **Version**: 3.4.3
+- **Version**: 3.3.6
 - **Installation**: [https://www.ruby-lang.org/en/documentation/installation/](https://www.ruby-lang.org/en/documentation/installation/)
 - **Documentation**: [https://www.ruby-lang.org/en/documentation/](https://www.ruby-lang.org/en/documentation/)
 

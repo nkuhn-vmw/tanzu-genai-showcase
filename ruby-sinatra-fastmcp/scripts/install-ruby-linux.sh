@@ -8,7 +8,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default Ruby version
-DEFAULT_RUBY_VERSION="3.4.3"
+DEFAULT_RUBY_VERSION="3.3.6"
 RUBY_VERSION=${1:-$DEFAULT_RUBY_VERSION}
 
 echo -e "${BLUE}=== Ruby Installation Script for Linux ===${NC}"

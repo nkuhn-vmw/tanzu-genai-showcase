@@ -2,7 +2,7 @@
 # This script installs Ruby using RubyInstaller for Windows
 
 # Default Ruby version
-$DEFAULT_RUBY_VERSION = "3.4.3"
+$DEFAULT_RUBY_VERSION = "3.3.6"
 $RUBY_VERSION = if ($args[0]) { $args[0] } else { $DEFAULT_RUBY_VERSION }
 
 # Colors for output
