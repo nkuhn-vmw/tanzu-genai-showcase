@@ -101,6 +101,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+config.json
 
 # Spyder project settings
 .spyderproject
@@ -144,4 +145,5 @@ staticfiles/
 static/frontend/
 package-lock.json
 
-
+# Python dependencies
+vendor/
