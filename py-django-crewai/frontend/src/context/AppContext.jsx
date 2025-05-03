@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
 import { chatApi } from '../services/api';
+import { getConfig } from '../config';
 
 // Create the context
 const AppContext = createContext(null);
@@ -34,14 +35,27 @@ export function AppProvider({ children }) {
   // Helper functions
   const selectMovie = useCallback((movieId) => {
     console.log('Selecting movie:', movieId);
+
+    // Reset loading states when changing movies
+    setTheaterError(null);
+    setIsLoadingTheaters(false);
+
+    // Update selected movie and reset date index
     setSelectedMovieId(movieId);
     setSelectedDateIndex(0); // Reset date selection when movie changes
 
-    // If we're in first run mode, fetch theaters for this movie
+    // If we're in first run mode, ensure theaters are initialized for this movie
     if (activeTab === 'first-run' && movieId) {
-      fetchTheatersForMovie(movieId);
+      // Check if the movie already has its theaters property initialized
+      const movie = firstRunMovies.find(m => m.id === movieId);
+      if (movie && movie.theaters === undefined) {
+        console.log(`Movie ${movieId} theaters not initialized yet, will fetch theaters`);
+        fetchTheatersForMovie(movieId);
+      } else {
+        console.log(`Movie ${movieId} already has theaters information, no need to fetch`);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, firstRunMovies]);
 
   // Fetch theaters for a movie
   const fetchTheatersForMovie = useCallback(async (movieId) => {
@@ -55,13 +69,15 @@ export function AppProvider({ children }) {
       return;
     }
 
-    // If movie already has theaters (even empty array), no need to fetch
+    // If movie already has theaters property defined (even empty array), no need to fetch
     if (movie.theaters !== undefined) {
       console.log(`Movie ${movie.title} already has theaters data (${movie.theaters.length} theaters), skipping fetch`);
       return;
     }
 
     try {
+      // Reset error state
+      setTheaterError(null);
       console.log(`Fetching theaters for movie: ${movie.title} (ID: ${movieId})`);
       setIsLoadingTheaters(true);
       setTheaterError(null);
@@ -208,11 +224,21 @@ export function AppProvider({ children }) {
     return tab === 'casual-viewing' ? 'casual' : 'first_run';
   }, []);
 
-  // Effect to initialize state
+  // Effect to initialize state based on feature flags
   useEffect(() => {
-    // Initialize with first-run tab
-    setActiveTab('first-run');
-    console.log('AppContext initialized with first-run tab');
+    // Check if First Run mode is enabled
+    const config = getConfig();
+    const isFirstRunEnabled = config.features?.enableFirstRunMode !== false;
+
+    if (isFirstRunEnabled) {
+      // If First Run Mode is enabled, initialize with first-run tab
+      setActiveTab('first-run');
+      console.log('AppContext initialized with first-run tab');
+    } else {
+      // If First Run Mode is disabled, initialize with casual-viewing tab
+      setActiveTab('casual-viewing');
+      console.log('First Run Mode disabled, AppContext initialized with casual-viewing tab');
+    }
   }, []);
 
   // Effect to fetch theaters when movie is selected
