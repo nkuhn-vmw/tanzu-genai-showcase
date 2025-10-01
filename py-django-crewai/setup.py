@@ -16,7 +16,7 @@ setup(
         'crewai>=0.108.0',
         'langchain>=0.3.22',
         'langchain-openai>=0.3.12',
-        'pydantic>=2.11.2',
+        'pydantic>=2.11.9',
         'dj-database-url>=2.3.0',
         'psycopg2-binary>=2.9.10'
     ],

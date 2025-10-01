@@ -1,15 +1,15 @@
 # Django framework
 Django==5.2
-python-dotenv==1.1.0
-whitenoise==6.9.0
+python-dotenv==1.1.1
+whitenoise==6.11.0
 geopy==2.4.1
 requests==2.32.3
 gunicorn==23.0.0
 pytz==2025.2  # Timezone support
 
 # CrewAI and dependencies
-crewai==0.118.0  # Latest stable version with improved event system
-langchain==0.3.24
+crewai==0.201.1  # Latest stable version with improved event system
+langchain==0.3.27
 langchain-openai==0.3.15
 pydantic==2.11.4  # Maintain compatibility with CrewAI's Pydantic v2 usage
 google-search-results==2.4.2  # SerpAPI client
