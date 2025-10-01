@@ -2,6 +2,7 @@ name: ruby-sinatra-fastmcp CI
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'ruby-sinatra-fastmcp/**'

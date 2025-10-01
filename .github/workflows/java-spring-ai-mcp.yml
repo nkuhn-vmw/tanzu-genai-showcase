@@ -2,6 +2,7 @@ name: java-spring-ai-mcp CI
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'java-spring-ai-mcp/**'

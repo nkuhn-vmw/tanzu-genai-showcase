@@ -2,6 +2,7 @@ name: js-langchain-react CI
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'js-langchain-react/**'
