@@ -44,6 +44,8 @@ on:
         required: false
         description: 'Google Maps API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/dotnet-extensions-ai.yml

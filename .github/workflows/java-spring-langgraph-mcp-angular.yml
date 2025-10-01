@@ -11,6 +11,9 @@ on:
       - 'java-spring-langgraph-mcp-angular/**'
       - '.github/workflows/java-spring-langgraph-mcp-angular.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build-backend:
     runs-on: ubuntu-latest

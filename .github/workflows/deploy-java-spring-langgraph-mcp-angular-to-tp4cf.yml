@@ -50,6 +50,8 @@ on:
         required: false
         description: 'OpenAI API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/java-spring-langgraph-mcp-angular.yml

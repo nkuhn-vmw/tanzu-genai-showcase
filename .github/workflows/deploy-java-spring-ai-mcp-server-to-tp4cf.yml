@@ -40,6 +40,8 @@ on:
         required: false
         description: 'Aviation Stack Access Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/java-spring-ai-mcp.yml

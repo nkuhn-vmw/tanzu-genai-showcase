@@ -12,6 +12,8 @@ on:
         type: string
         description: 'Cloud Foundry Target Space'
 
+permissions: {}
+
 jobs:
   setup_org_space:
     runs-on: ubuntu-latest

@@ -11,6 +11,9 @@ on:
       - 'dotnet-extensions-ai/**'
       - '.github/workflows/dotnet-extensions-ai.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

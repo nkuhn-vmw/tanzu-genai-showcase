@@ -11,6 +11,9 @@ on:
       - 'go-fiber-langchaingo/**'
       - '.github/workflows/go-fiber-langchaingo.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -11,6 +11,9 @@ on:
       - 'js-langchain-react/**'
       - '.github/workflows/js-langchain-react.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -44,6 +44,8 @@ on:
         required: false
         description: 'Congress API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/go-fiber-langchaingo.yml

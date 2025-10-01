@@ -68,6 +68,8 @@ on:
         required: false
         description: 'LinkedIn Client Secret'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/php-symfony-neuron.yml

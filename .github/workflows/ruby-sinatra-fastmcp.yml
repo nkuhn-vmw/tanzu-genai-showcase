@@ -11,6 +11,9 @@ on:
       - 'ruby-sinatra-fastmcp/**'
       - '.github/workflows/ruby-sinatra-fastmcp.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

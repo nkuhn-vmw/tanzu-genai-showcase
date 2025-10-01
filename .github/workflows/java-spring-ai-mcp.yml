@@ -11,6 +11,9 @@ on:
       - 'java-spring-ai-mcp/**'
       - '.github/workflows/java-spring-ai-mcp.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

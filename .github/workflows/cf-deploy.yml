@@ -17,6 +17,8 @@ on:
         default: false
         description: 'Whether to use a random route for the application'
 
+permissions: {}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

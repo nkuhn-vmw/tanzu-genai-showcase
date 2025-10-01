@@ -47,6 +47,8 @@ on:
         required: false
         description: 'LLM API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/js-langchain-react.yml

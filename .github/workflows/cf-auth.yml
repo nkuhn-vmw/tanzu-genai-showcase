@@ -24,6 +24,8 @@ on:
         required: false
         description: 'Cloud Foundry SSO Refresh Token (not required if using username/password)'
 
+permissions: {}
+
 jobs:
   authenticate:
     runs-on: ubuntu-latest

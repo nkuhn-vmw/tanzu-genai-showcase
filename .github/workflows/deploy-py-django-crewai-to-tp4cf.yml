@@ -62,6 +62,8 @@ on:
         required: false
         description: 'SerpAPI API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/py-django-crewai.yml

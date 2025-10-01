@@ -44,6 +44,8 @@ on:
         required: false
         description: 'AviationStack API Key'
 
+permissions: {}
+
 jobs:
   build:
     uses: ./.github/workflows/ruby-sinatra-fastmcp.yml
