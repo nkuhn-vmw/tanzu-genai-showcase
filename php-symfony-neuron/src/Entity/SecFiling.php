@@ -4,117 +4,73 @@ namespace App\Entity;
 
 use App\Repository\SecFilingRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 
-/**
- * @ORM\Entity(repositoryClass=SecFilingRepository::class)
- * @ORM\Table(name="sec_filing")
- */
+#[ORM\Entity(repositoryClass: SecFilingRepository::class)]
+#[ORM\Table(name: 'sec_filing')]
 class SecFiling
 {
-    /**
-     * @ORM\Id
-     * @ORM\GeneratedValue
-     * @ORM\Column(type="integer")
-     */
-    private $id;
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column(type: 'integer')]
+    private ?int $id = null;
 
-    /**
-     * @ORM\ManyToOne(targetEntity=Company::class, inversedBy="secFilings")
-     * @ORM\JoinColumn(nullable=false)
-     */
-    private $company;
+    #[ORM\ManyToOne(targetEntity: Company::class, inversedBy: 'secFilings')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Company $company = null;
 
-    /**
-     * @ORM\Column(type="string", length=20)
-     */
-    private $formType;
+    #[ORM\Column(type: 'string', length: 20)]
+    private ?string $formType = null;
 
-    /**
-     * @ORM\Column(type="date")
-     */
-    private $filingDate;
+    #[ORM\Column(type: 'date')]
+    private ?\DateTimeInterface $filingDate = null;
 
-    /**
-     * @ORM\Column(type="date", nullable=true)
-     */
-    private $reportDate;
+    #[ORM\Column(type: 'date', nullable: true)]
+    private ?\DateTimeInterface $reportDate = null;
 
-    /**
-     * @ORM\Column(type="string", length=255)
-     */
-    private $accessionNumber;
+    #[ORM\Column(type: 'string', length: 255)]
+    private ?string $accessionNumber = null;
 
-    /**
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
-    private $fileNumber;
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $fileNumber = null;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     */
-    private $description;
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $description = null;
 
-    /**
-     * @ORM\Column(type="string", length=255)
-     */
-    private $documentUrl;
+    #[ORM\Column(type: 'string', length: 255)]
+    private ?string $documentUrl = null;
 
-    /**
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
-    private $htmlUrl;
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $htmlUrl = null;
 
-    /**
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
-    private $textUrl;
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $textUrl = null;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     */
-    private $content;
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $content = null;
 
-    /**
-     * @ORM\Column(type="datetime_immutable")
-     */
-    private $createdAt;
+    #[ORM\Column(type: 'datetime_immutable')]
+    private ?\DateTimeImmutable $createdAt = null;
 
-    /**
-     * @ORM\Column(type="datetime_immutable", nullable=true)
-     */
-    private $updatedAt;
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $updatedAt = null;
 
-    /**
-     * @ORM\Column(type="string", length=50, nullable=true)
-     */
-    private $fiscalYear;
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    private ?string $fiscalYear = null;
 
-    /**
-     * @ORM\Column(type="string", length=50, nullable=true)
-     */
-    private $fiscalQuarter;
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    private ?string $fiscalQuarter = null;
 
-    /**
-     * @ORM\Column(type="json", nullable=true)
-     */
-    private $sections = [];
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $sections = [];
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     */
-    private $summary;
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $summary = null;
 
-    /**
-     * @ORM\Column(type="json", nullable=true)
-     */
-    private $keyFindings = [];
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $keyFindings = [];
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
-    private $isProcessed = false;
+    #[ORM\Column(type: 'boolean', nullable: true)]
+    private ?bool $isProcessed = false;
 
     public function __construct()
     {
