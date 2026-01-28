@@ -2,6 +2,7 @@ name: dotnet-extensions-ai CI
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'dotnet-extensions-ai/**'
@@ -11,6 +12,9 @@ on:
       - 'dotnet-extensions-ai/**'
       - '.github/workflows/dotnet-extensions-ai.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,10 +23,10 @@ jobs:
         working-directory: dotnet-extensions-ai
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         global-json-file: dotnet-extensions-ai/global.json
 
@@ -41,7 +45,7 @@ jobs:
 
     - name: Upload artifacts
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: dotnet-extensions-ai-artifacts
         path: dotnet-extensions-ai/publish

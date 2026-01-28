@@ -63,6 +63,8 @@ on:
         type: boolean
         default: false
 
+permissions: {}
+
 jobs:
   # Delegate to the appropriate project-specific CD job
   deploy-dotnet-extensions-ai:

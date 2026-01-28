@@ -1,6 +1,6 @@
 # CrewAI + Django Movie Chatbot
 
-![Status](https://img.shields.io/badge/status-under%20development-darkred) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/py-django-crewai.yml/badge.svg)
+![Status](https://img.shields.io/badge/status-ready-darkgreen) ![Github Action CI Workflow Status](https://github.com/cf-toolsuite/tanzu-genai-showcase/actions/workflows/py-django-crewai.yml/badge.svg)
 
 This example demonstrates a movie chatbot built with Django and CrewAI that can be deployed to Tanzu Platform for Cloud Foundry and integrate with LLM services through the GenAI tile.
 
@@ -418,9 +418,11 @@ To enable debug logging:
 * [ipapi.co Documentation](https://ipapi.co/api/)
 
 * [Architecture Guide](./docs/ARCHITECTURE.md)
+* [Configuration Guide](./docs/CONFIGURATION.md)
 * [Developer Guide](./docs/DEVELOPMENT.md)
 * [Troubleshooting Guide](./docs/TROUBLESHOOTING.md)
 * [Deployment Guide](DEPLOY.md)
+   * [Cloud Foundry Deployment Guide](./docs/CLOUD_FOUNDRY.md)
    * [Scenarios Guide](./docs/DEPLOYMENT_SCENARIOS.md)
 * [API Documentation](./docs/API.md)
 * [Testing Guide](./docs/TESTING.md)

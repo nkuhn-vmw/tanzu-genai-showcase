@@ -51,8 +51,8 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                 LogMessage(logger, vcapServicesEnv, Console.WriteLine);
             }
 
-            // Configure GenAI service
-            services.Configure<GenAIOptions>(options =>
+            // Configure GenAI service - this will override any existing configuration
+            services.PostConfigure<GenAIOptions>(options =>
             {
                 // Implement a clear fallback pattern for credentials:
                 // 1. Try service binding from VCAP_SERVICES (with special handling for credhub-ref)
@@ -88,6 +88,11 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                                             credhubCredentials.GetValue<string>("url") ??
                                             credhubCredentials.GetValue<string>("endpoint") ??
                                             credhubCredentials.GetValue<string>("openai_api_base") ?? "";
+                            // Ensure ApiUrl has a trailing slash for correct HttpClient BaseAddress behavior
+                            if (!string.IsNullOrEmpty(options.ApiUrl) && !options.ApiUrl.EndsWith("/"))
+                            {
+                                options.ApiUrl += "/";
+                            }
 
                             options.Model = credhubCredentials.GetValue<string>("model_name") ??
                                            credhubCredentials.GetValue<string>("modelName") ??
@@ -134,6 +139,11 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                                         credentialsSection.GetValue<string>("url") ??
                                         credentialsSection.GetValue<string>("endpoint") ??
                                         credentialsSection.GetValue<string>("openai_api_base") ?? "";
+                        // Ensure ApiUrl has a trailing slash for correct HttpClient BaseAddress behavior
+                        if (!string.IsNullOrEmpty(options.ApiUrl) && !options.ApiUrl.EndsWith("/"))
+                        {
+                            options.ApiUrl += "/";
+                        }
 
                         // Try different possible field names for model
                         options.Model = credentialsSection.GetValue<string>("model_name") ??
@@ -174,6 +184,11 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                         LogMessage(logger, "Using GenAI configuration from environment variables.", Console.WriteLine);
                         options.ApiKey = envApiKey;
                         options.ApiUrl = envApiUrl;
+                        // Ensure ApiUrl has a trailing slash for correct HttpClient BaseAddress behavior
+                        if (!string.IsNullOrEmpty(options.ApiUrl) && !options.ApiUrl.EndsWith("/"))
+                        {
+                            options.ApiUrl += "/";
+                        }
                         options.Model = envModel ?? configuration["GenAI:Model"] ?? "gpt-4o-mini"; // Default model if not specified
                         options.ServiceName = configuration["GenAI:ServiceName"] ?? "travel-advisor-llm";
                         credentialsFound = true;
@@ -197,6 +212,11 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                         LogMessage(logger, "Using GenAI configuration from appsettings.json.", Console.WriteLine);
                         options.ApiKey = configApiKey;
                         options.ApiUrl = configApiUrl;
+                        // Ensure ApiUrl has a trailing slash for correct HttpClient BaseAddress behavior
+                        if (!string.IsNullOrEmpty(options.ApiUrl) && !options.ApiUrl.EndsWith("/"))
+                        {
+                            options.ApiUrl += "/";
+                        }
                         options.Model = configuration["GenAI:Model"] ?? "gpt-4o-mini"; // Default model if not specified
                         options.ServiceName = configuration["GenAI:ServiceName"] ?? "travel-advisor-llm";
                         credentialsFound = true;
@@ -216,6 +236,15 @@ namespace TravelAdvisor.Infrastructure.CloudFoundry
                     LogMessage(logger, "1. Bind a GenAI service instance to this application", Console.WriteLine, LogLevel.Error);
                     LogMessage(logger, "2. Set GENAI__APIKEY and GENAI__APIURL environment variables", Console.WriteLine, LogLevel.Error);
                     LogMessage(logger, "3. Configure GenAI:ApiKey and GenAI:ApiUrl in appsettings.json", Console.WriteLine, LogLevel.Error);
+
+                    // Add more detailed diagnostic information
+                    LogMessage(logger, "Diagnostic information:", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- VCAP_SERVICES environment variable exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VCAP_SERVICES"))}", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- GENAI__APIKEY environment variable exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GENAI__APIKEY"))}", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- GENAI__APIURL environment variable exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GENAI__APIURL"))}", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- GenAI:ApiKey configuration exists: {!string.IsNullOrEmpty(configuration["GenAI:ApiKey"])}", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- GenAI:ApiUrl configuration exists: {!string.IsNullOrEmpty(configuration["GenAI:ApiUrl"])}", Console.WriteLine, LogLevel.Error);
+                    LogMessage(logger, $"- USE_MOCK_DATA environment variable: {Environment.GetEnvironmentVariable("USE_MOCK_DATA") ?? "not set"}", Console.WriteLine, LogLevel.Error);
 
                     // We don't throw an exception here, as the application might still work with mock data
                     // The DependencyInjection.cs will handle the case when credentials are missing

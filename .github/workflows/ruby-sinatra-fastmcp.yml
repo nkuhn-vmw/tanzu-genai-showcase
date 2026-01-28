@@ -2,6 +2,7 @@ name: ruby-sinatra-fastmcp CI
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'ruby-sinatra-fastmcp/**'
@@ -11,6 +12,9 @@ on:
       - 'ruby-sinatra-fastmcp/**'
       - '.github/workflows/ruby-sinatra-fastmcp.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,12 +23,12 @@ jobs:
         working-directory: ruby-sinatra-fastmcp
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.2.5'
+        ruby-version: '3.3.6'
         bundler-cache: true
 
     - name: Install dependencies
@@ -48,7 +52,7 @@ jobs:
 
     - name: Upload artifacts
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: ruby-sinatra-fastmcp-artifacts
         path: ruby-sinatra-fastmcp/dist

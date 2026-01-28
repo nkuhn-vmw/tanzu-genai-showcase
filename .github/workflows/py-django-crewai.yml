@@ -2,6 +2,7 @@ name: py-django-crewai CI/CD
 
 on:
   workflow_call:
+  workflow_dispatch:
   push:
     paths:
       - 'py-django-crewai/**'
@@ -11,6 +12,9 @@ on:
       - 'py-django-crewai/**'
       - '.github/workflows/py-django-crewai.yml'
 
+permissions:
+  contents: read
+
 jobs:
   backend-test:
     runs-on: ubuntu-latest
@@ -19,10 +23,10 @@ jobs:
         working-directory: py-django-crewai
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: 'pip'
@@ -43,10 +47,10 @@ jobs:
         working-directory: py-django-crewai
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '18'
 
@@ -60,7 +64,7 @@ jobs:
         ./build_frontend.sh
 
     - name: Set up Python for static collection
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: 'pip'
@@ -72,7 +76,7 @@ jobs:
         python manage.py collectstatic --noinput || echo "Static collection skipped"
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: frontend-build
         path: |
@@ -88,10 +92,10 @@ jobs:
         working-directory: py-django-crewai
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Download frontend build
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: frontend-build
         path: py-django-crewai
@@ -102,7 +106,7 @@ jobs:
         zip -r dist/py-django-crewai.zip . -x "*.git*" "*.env*" "*.pyc" "__pycache__/*" "*.github/*" "dist/*" "frontend/node_modules/*"
 
     - name: Upload package artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: py-django-crewai-package
         path: py-django-crewai/dist

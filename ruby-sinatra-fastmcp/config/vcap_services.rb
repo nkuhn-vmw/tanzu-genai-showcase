@@ -3,143 +3,72 @@ require 'json'
 module VcapServices
   # Environment Variable Fallbacks:
   # The service will check for credentials in this order:
-  # 1. Cloud Foundry VCAP_SERVICES (GenAI service binding)
-  # 2. Environment variables (multiple options for compatibility):
-  #    - API Key: LLM_API_KEY, API_KEY, GENAI_API_KEY
-  #    - API Base URL: LLM_API_BASE, API_BASE_URL, GENAI_API_BASE_URL
-  #    - Model: LLM_MODEL, MODEL_NAME, GENAI_MODEL
-  # 3. Default values where appropriate
-
-  # Parses VCAP_SERVICES environment variable in Cloud Foundry
-  # and returns service credentials
-  def self.parse_service_credentials(service_name)
-    return nil unless ENV['VCAP_SERVICES']
-
-    begin
-      vcap_services = JSON.parse(ENV['VCAP_SERVICES'])
-
-      # Find the service by name (matches service_name partially)
-      service_key = vcap_services.keys.find do |key|
-        key.downcase.include?(service_name.downcase)
-      end
-
-      return nil unless service_key
-
-      # Return the credentials from the first instance
-      vcap_services[service_key].first['credentials']
-    rescue JSON::ParserError => e
-      puts "Error parsing VCAP_SERVICES: #{e.message}"
-      nil
-    end
-  end
+  # 1. Cloud Foundry VCAP_SERVICES (service binding)
+  # 2. Environment variable:
+  #    - API Key:AVIATIONSTACK_API_KEY
 
   # Check if running in Cloud Foundry
   def self.cloud_foundry?
     !ENV['VCAP_APPLICATION'].nil?
   end
 
-  # Get GenAI LLM service credentials with enhanced detection
-  def self.parse_genai_credentials
-    return nil unless ENV['VCAP_SERVICES']
+  # Helper method to check credentials for API key
+  def self.check_credentials_for_api_key(credentials, env_var_name)
+    return credentials[env_var_name] if credentials[env_var_name]
+    return credentials['api_key'] if credentials['api_key']
+    return credentials['apiKey'] if credentials['apiKey']
+    nil
+  end
 
-    begin
-      vcap_services = JSON.parse(ENV['VCAP_SERVICES'])
+  # Get API key from environment variable, service bindings, or fallbacks
+  def self.get_api_key(env_var_name)
+    # Log the start of the API key retrieval process
+    puts "Attempting to retrieve API key for: #{env_var_name}"
 
-      # Iterate through all services to find GenAI services
-      vcap_services.each do |service_name, instances|
-        instances.each do |instance|
-          # Check for genai tag
-          has_genai_tag = instance['tags']&.any? { |tag| tag.to_s.downcase.include?('genai') }
+    # 1. Check direct environment variable first (works for cf set-env, .env, exported vars)
+    if ENV[env_var_name]
+      puts "Found #{env_var_name} in environment variables"
+      return ENV[env_var_name]
+    end
 
-          # Check for genai label
-          has_genai_label = instance['label']&.downcase&.include?('genai')
+    # 2. If in Cloud Foundry, check for service bindings
+    if cloud_foundry? && ENV['VCAP_SERVICES']
+      puts "Running in Cloud Foundry, checking VCAP_SERVICES"
 
-          # Check service name
-          has_genai_name = service_name.downcase.include?('genai') ||
-                           service_name.downcase.include?('llm')
+      # Parse VCAP_SERVICES
+      begin
+        vcap_services = JSON.parse(ENV['VCAP_SERVICES'])
+        puts "Successfully parsed VCAP_SERVICES"
 
-          if has_genai_tag || has_genai_label || has_genai_name
-            # Found a potential GenAI service, check for chat capability
+        # Check all services for a matching credential
+        vcap_services.each do |service_type, instances|
+          puts "Checking service type: #{service_type}"
+
+          instances.each do |instance|
+            puts "Checking instance: #{instance['name'] || 'unnamed'}"
+
             credentials = instance['credentials']
             next unless credentials
 
-            # Check for model_capabilities
-            model_capabilities = credentials['model_capabilities']
-            has_chat_capability = model_capabilities&.any? { |cap| cap.to_s.downcase == 'chat' }
-
-            # If no capabilities specified or has chat capability
-            if !model_capabilities || has_chat_capability
-              # Extract credentials with proper field mapping
-              result = {}
-
-              # API Key
-              result['api_key'] = credentials['api_key'] || credentials['apiKey']
-
-              # API Base URL
-              result['api_base'] = credentials['api_base'] ||
-                                  credentials['url'] ||
-                                  credentials['baseUrl'] ||
-                                  credentials['base_url']
-
-              # Model Name
-              model_name = credentials['model_name'] || credentials['model']
-
-              # If model_provider is available, prefix the model name
-              if credentials['model_provider'] && model_name
-                result['model'] = "#{credentials['model_provider']}/#{model_name}"
-              else
-                result['model'] = model_name
-              end
-
-              return result
+            # Check for API key in credentials
+            api_key = check_credentials_for_api_key(credentials, env_var_name)
+            if api_key
+              puts "Found API key in service credentials"
+              return api_key
             end
           end
         end
+
+        puts "No API key found in any service credentials"
+      rescue JSON::ParserError => e
+        puts "Error parsing VCAP_SERVICES: #{e.message}"
       end
-
-      nil
-    rescue JSON::ParserError => e
-      puts "Error parsing VCAP_SERVICES: #{e.message}"
-      nil
-    end
-  end
-
-  # Get GenAI LLM service credentials if available
-  def self.genai_llm_credentials
-    parse_genai_credentials || parse_service_credentials('genai')
-  end
-
-  # Get API key from service bindings or environment variable
-  def self.get_api_key(env_var_name)
-    if cloud_foundry?
-      # Try to get from service bindings
-      credentials = genai_llm_credentials
-      return credentials['api_key'] if credentials && credentials['api_key']
+    else
+      puts "Not running in Cloud Foundry or VCAP_SERVICES not available"
     end
 
-    # Fall back to environment variable with multiple options
-    ENV[env_var_name] || ENV['LLM_API_KEY'] || ENV['API_KEY'] || ENV['GENAI_API_KEY']
-  end
-
-  # Get complete LLM configuration (api_key, api_base, model)
-  def self.get_llm_config
-    if cloud_foundry?
-      # Try to get from service bindings
-      credentials = genai_llm_credentials
-      if credentials
-        return {
-          api_key: credentials['api_key'],
-          api_base: credentials['api_base'],
-          model: credentials['model']
-        }.compact
-      end
-    end
-
-    # Fall back to environment variables
-    {
-      api_key: ENV['LLM_API_KEY'] || ENV['API_KEY'] || ENV['GENAI_API_KEY'],
-      api_base: ENV['LLM_API_BASE'] || ENV['API_BASE_URL'] || ENV['GENAI_API_BASE_URL'],
-      model: ENV['LLM_MODEL'] || ENV['MODEL_NAME'] || ENV['GENAI_MODEL'] || 'gpt-4o-mini'
-    }.compact
+    # Log that no API key was found
+    puts "No API key found for: #{env_var_name}"
+    nil
   end
 end

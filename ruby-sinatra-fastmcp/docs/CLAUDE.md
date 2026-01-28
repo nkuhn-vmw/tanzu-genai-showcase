@@ -9,6 +9,7 @@ The Flight Tracking Chatbot implements the Model Context Protocol (MCP), which a
 ### Setup Instructions
 
 1. Run the setup script to configure Claude Desktop:
+
    ```bash
    ./scripts/setup-claude-desktop.sh
    ```
@@ -57,6 +58,7 @@ The `start` method automatically sets up the stdio transport and starts it, maki
 To debug the communication between Claude Desktop and your MCP server:
 
 1. Run your MCP server manually:
+
    ```bash
    ./scripts/mcp_server_wrapper.rb
    ```

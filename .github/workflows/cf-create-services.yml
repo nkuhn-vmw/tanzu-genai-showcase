@@ -37,6 +37,8 @@ on:
         required: false
         description: 'Secret credentials for user-provided service'
 
+permissions: {}
+
 jobs:
   create_services:
     runs-on: ubuntu-latest
